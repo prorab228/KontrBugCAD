@@ -1,0 +1,190 @@
+/* Стили для расширенного скетчинга */
+
+.extended-sketch-tools {
+    position: absolute;
+    top: 100px;
+    left: 20px;
+    background: rgba(0, 0, 0, 0.85);
+    color: white;
+    border-radius: 8px;
+    padding: 15px;
+    width: 280px;
+    z-index: 1000;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    font-family: 'Segoe UI', Arial, sans-serif;
+}
+
+.extended-sketch-tools .sketch-tools-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.extended-sketch-tools .tool-category h4 {
+    margin: 0 0 10px 0;
+    font-size: 14px;
+    color: #aaa;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.extended-sketch-tools .tool-buttons {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    margin-bottom: 15px;
+}
+
+.extended-sketch-tools .sketch-tool-btn {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: white;
+    padding: 8px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.2s;
+}
+
+.extended-sketch-tools .sketch-tool-btn:hover {
+    background: rgba(255, 255, 255, 0.15);
+    border-color: rgba(255, 255, 255, 0.3);
+}
+
+.extended-sketch-tools .sketch-tool-btn.active {
+    background: #2196F3;
+    border-color: #2196F3;
+}
+
+.extended-sketch-tools .tool-options {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.extended-sketch-tools .tool-options label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.extended-sketch-tools .tool-options input[type="checkbox"] {
+    margin: 0;
+}
+
+.extended-sketch-tools .tool-options input[type="number"] {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: white;
+    padding: 4px 8px;
+    border-radius: 3px;
+    width: 60px;
+}
+
+.extended-sketch-tools .sketch-status {
+    background: rgba(0, 0, 0, 0.3);
+    padding: 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    color: #4CAF50;
+    border-left: 3px solid #4CAF50;
+    margin-top: 10px;
+}
+
+/* Стили для ввода размеров */
+.dimension-input-ui {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 2000;
+    display: none;
+}
+
+.dimension-input-ui.active {
+    display: block;
+}
+
+.dimension-input-container {
+    background: rgba(0, 0, 0, 0.9);
+    color: white;
+    padding: 20px;
+    border-radius: 8px;
+    min-width: 300px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+}
+
+.dimension-input-container .input-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding-bottom: 10px;
+}
+
+.dimension-input-container .input-header h5 {
+    margin: 0;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.dimension-input-container .input-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.dimension-input-container .input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.dimension-input-container .input-group label {
+    font-size: 14px;
+    color: #aaa;
+}
+
+.dimension-input-container .input-group input {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: white;
+    padding: 10px;
+    border-radius: 4px;
+    font-size: 16px;
+}
+
+.dimension-input-container .input-buttons {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.dimension-input-container .input-hint {
+    font-size: 11px;
+    color: #888;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin-top: 10px;
+}
+
+/* Анимация для временной геометрии */
+@keyframes pulse {
+    0% { opacity: 0.3; }
+    50% { opacity: 0.6; }
+    100% { opacity: 0.3; }
+}
+
+.temp-geometry {
+    animation: pulse 2s infinite;
+}
