@@ -130,6 +130,15 @@ class LibraryManager {
                 iconPath: 'icons/bracket.png',
                 modelPath: 'models/bracket.stl',
                 createFunction: (position) => this.loadSTLModel('models/bracket.stl', 'Кронштейн', position)
+            },
+            {
+                id: 'bob',
+                name: 'Боб',
+                type: 'stl_model',
+                category: 'mechanical',
+                iconPath: 'icons/bob.png',
+                modelPath: 'models/bob.stl',
+                createFunction: (position) => this.loadSTLModel('models/bob.stl', 'Боб', position)
             }
         ];
     }
