@@ -12,32 +12,93 @@ class HistoryManager {
             this.history = this.history.slice(0, this.currentIndex + 1);
         }
 
-        // Для действий модификации сохраняем предыдущее состояние
-        if (['modify_position', 'modify_scale', 'modify_rotation', 'modify_size'].includes(action.type)) {
+        // Для действий модификации сохраняем предыдущее состояние ТОЛЬКО ЕСЛИ ЕГО ЕЩЁ НЕТ
+        if (['modify_position', 'modify_scale', 'modify_rotation', 'modify_size', 'modify_color', 'modify_opacity'].includes(action.type)) {
             const obj = this.findObjectByUuid(action.object);
-            if (obj && !action.data.previousState) {
+            if (obj) {
                 if (!action.data) action.data = {};
 
                 switch(action.type) {
                     case 'modify_position':
-                        action.data.previousPosition = obj.position.clone();
+                        if (!action.data.previousPosition) {
+                            action.data.previousPosition = obj.position.toArray();
+                        }
                         break;
                     case 'modify_scale':
-                        action.data.previousScale = obj.scale.clone();
+                        if (!action.data.previousScale) {
+                            action.data.previousScale = obj.scale.toArray();
+                        }
                         break;
                     case 'modify_rotation':
-                        action.data.previousRotation = obj.rotation.clone();
+                        if (!action.data.previousRotation) {
+                            const euler = new THREE.Euler().setFromQuaternion(obj.quaternion, 'XYZ');
+                            action.data.previousRotation = [euler.x, euler.y, euler.z];
+                        }
                         break;
                     case 'modify_size':
-                        const dimensions = this.editor.objectsManager.getObjectDimensions(obj);
-                        action.data.previousDimensions = {
-                            x: dimensions.x,
-                            y: dimensions.y,
-                            z: dimensions.z
-                        };
+                        if (!action.data.previousDimensions) {
+                            const dimensions = this.editor.objectsManager.getObjectDimensions(obj);
+                            action.data.previousDimensions = {
+                                x: dimensions.x,
+                                y: dimensions.y,
+                                z: dimensions.z
+                            };
+                        }
+                        break;
+                    case 'modify_color':
+                        if (!action.data.previousColor && obj.material) {
+                            action.data.previousColor = obj.material.color.getHexString();
+                        }
+                        break;
+                    case 'modify_opacity':
+                        if (!action.data.previousOpacity && obj.material) {
+                            action.data.previousOpacity = obj.material.opacity;
+                        }
                         break;
                 }
             }
+        }
+
+        // Для действий удаления сохраняем полные данные объектов
+        if (action.type === 'delete' && action.objects) {
+            action.objects = action.objects.map(objData => {
+                const obj = this.findObjectByUuid(objData.uuid);
+                if (obj) {
+                    return {
+                        uuid: obj.uuid,
+                        data: {
+                            userData: { ...obj.userData },
+                            position: obj.position.toArray(),
+                            rotation: obj.rotation.toArray(),
+                            scale: obj.scale.toArray(),
+                            type: obj.userData.type,
+                            name: obj.userData.name
+                        }
+                    };
+                }
+                return objData;
+            });
+        }
+
+        // Для булевых операций сохраняем полные данные исходных объектов
+        if (action.type === 'boolean' && action.sourceObjects) {
+            action.originalObjects = action.sourceObjects.map(uuid => {
+                const obj = this.findObjectByUuid(uuid);
+                if (obj) {
+                    return {
+                        uuid: obj.uuid,
+                        data: {
+                            userData: { ...obj.userData },
+                            position: obj.position.toArray(),
+                            rotation: obj.rotation.toArray(),
+                            scale: obj.scale.toArray(),
+                            type: obj.userData.type,
+                            name: obj.userData.name
+                        }
+                    };
+                }
+                return null;
+            }).filter(obj => obj !== null);
         }
 
         // Добавляем новое действие
@@ -57,6 +118,7 @@ class HistoryManager {
         this.updateHistoryUI();
         return this.history[this.currentIndex];
     }
+
 
     // Используем метод из CADEditor для поиска объектов
     findObjectByUuid(uuid) {

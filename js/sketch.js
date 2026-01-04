@@ -54,6 +54,10 @@ class SketchTools {
         this.gridVisible = true;
         this.grid = null;
 
+        this.originalCameraUp = new THREE.Vector3(0, 1, 0);
+        this.originalCameraPosition = new THREE.Vector3();
+        this.originalCameraTarget = new THREE.Vector3();
+
         this.initialize();
     }
 
@@ -68,65 +72,34 @@ class SketchTools {
 
         if (!this.currentPlane || !this.gridVisible) return;
 
-        // Определяем ориентацию плоскости для правильного направления сетки
-        const normal = new THREE.Vector3(0, 0, 1).applyQuaternion(this.currentPlane.quaternion);
-        let axis1, axis2;
+        // Размер сетки и шаг
+        const gridSize = 50; // Общий размер сетки
+        const gridStep = 1;  // Шаг сетки в мм
+        const divisions = gridSize / gridStep;
 
-        // Определяем основные оси плоскости
-        if (Math.abs(normal.y) > 0.9) {
-            // Плоскость Y (горизонтальная)
-            axis1 = new THREE.Vector3(1, 0, 0);
-            axis2 = new THREE.Vector3(0, 0, 1);
-        } else if (Math.abs(normal.z) > 0.9) {
-            // Плоскость Z (фронтальная)
-            axis1 = new THREE.Vector3(1, 0, 0);
-            axis2 = new THREE.Vector3(0, 1, 0);
-        } else {
-            // Плоскость X (боковая)
-            axis1 = new THREE.Vector3(0, 1, 0);
-            axis2 = new THREE.Vector3(0, 0, 1);
-        }
-
-        // Преобразуем оси в локальные координаты плоскости
-        axis1.applyQuaternion(this.currentPlane.quaternion.inverse());
-        axis2.applyQuaternion(this.currentPlane.quaternion.inverse());
-
-        // Создаем сетку 200x200 с шагом 10
-        const size = 50;
-        const divisions = 50;
+        // Цвета
         const gridColor = 0xAAAAAA;
         const centerColor = 0x555555;
 
-        // Вертикальные линии
+        // Создаем линии в локальных координатах плоскости
+        // Горизонтальные линии (вдоль оси X плоскости)
         for (let i = -divisions; i <= divisions; i++) {
-            const lineGeometry = new THREE.BufferGeometry();
-            const vertices = [];
+            const y = i * gridStep; // Локальная координата Y в плоскости
+            const xStart = -gridSize;
+            const xEnd = gridSize;
 
-            const pos1 = axis1.clone().multiplyScalar((i * size) / divisions);
-            const pos2 = axis2.clone().multiplyScalar(-size);
-            const pos3 = axis2.clone().multiplyScalar(size);
+            const start = new THREE.Vector3(xStart, y, 0.05); // Z = 0.05 для отображения над плоскостью
+            const end = new THREE.Vector3(xEnd, y, 0.05);
 
-            const start = new THREE.Vector3()
-                .addVectors(pos1, pos2)
-                .add(new THREE.Vector3(0, 0, 0.05));
-            const end = new THREE.Vector3()
-                .addVectors(pos1, pos3)
-                .add(new THREE.Vector3(0, 0, 0.05));
-
-            vertices.push(start.x, start.y, start.z);
-            vertices.push(end.x, end.y, end.z);
-
-            lineGeometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
-
-            const color = (i === 0) ? centerColor : gridColor;
-            const lineMaterial = new THREE.LineBasicMaterial({
-                color: color,
+            const geometry = new THREE.BufferGeometry().setFromPoints([start, end]);
+            const material = new THREE.LineBasicMaterial({
+                color: (i === 0) ? centerColor : gridColor,
                 linewidth: 1,
                 transparent: true,
                 opacity: 0.6
             });
 
-            const line = new THREE.Line(lineGeometry, lineMaterial);
+            const line = new THREE.Line(geometry, material);
             line.userData.isGrid = true;
             this.currentPlane.add(line);
 
@@ -134,36 +107,24 @@ class SketchTools {
             this.grid.push(line);
         }
 
-        // Горизонтальные линии
+        // Вертикальные линии (вдоль оси Y плоскости)
         for (let i = -divisions; i <= divisions; i++) {
-            const lineGeometry = new THREE.BufferGeometry();
-            const vertices = [];
+            const x = i * gridStep; // Локальная координата X в плоскости
+            const yStart = -gridSize;
+            const yEnd = gridSize;
 
-            const pos1 = axis2.clone().multiplyScalar((i * size) / divisions);
-            const pos2 = axis1.clone().multiplyScalar(-size);
-            const pos3 = axis1.clone().multiplyScalar(size);
+            const start = new THREE.Vector3(x, yStart, 0.05);
+            const end = new THREE.Vector3(x, yEnd, 0.05);
 
-            const start = new THREE.Vector3()
-                .addVectors(pos1, pos2)
-                .add(new THREE.Vector3(0, 0, 0.05));
-            const end = new THREE.Vector3()
-                .addVectors(pos1, pos3)
-                .add(new THREE.Vector3(0, 0, 0.05));
-
-            vertices.push(start.x, start.y, start.z);
-            vertices.push(end.x, end.y, end.z);
-
-            lineGeometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
-
-            const color = (i === 0) ? centerColor : gridColor;
-            const lineMaterial = new THREE.LineBasicMaterial({
-                color: color,
+            const geometry = new THREE.BufferGeometry().setFromPoints([start, end]);
+            const material = new THREE.LineBasicMaterial({
+                color: (i === 0) ? centerColor : gridColor,
                 linewidth: 1,
                 transparent: true,
                 opacity: 0.6
             });
 
-            const line = new THREE.Line(lineGeometry, lineMaterial);
+            const line = new THREE.Line(geometry, material);
             line.userData.isGrid = true;
             this.currentPlane.add(line);
 
@@ -171,6 +132,7 @@ class SketchTools {
             this.grid.push(line);
         }
     }
+
 
     removeSketchGrid() {
         if (this.grid) {
@@ -569,49 +531,85 @@ class SketchTools {
     }
 
     orientCameraToPlane(plane) {
-        const normal = new THREE.Vector3(0, 0, 1);
-        normal.applyQuaternion(plane.quaternion);
+        // Сохраняем исходные параметры камеры
+        this.originalCameraUp.copy(this.editor.camera.up);
+        this.originalCameraPosition.copy(this.editor.camera.position);
+        this.originalCameraTarget.copy(this.editor.controls.target);
 
+        // Получаем локальные оси плоскости
+        const localX = new THREE.Vector3(1, 0, 0).applyQuaternion(plane.quaternion);
+        const localY = new THREE.Vector3(0, 1, 0).applyQuaternion(plane.quaternion);
+        const normal = new THREE.Vector3(0, 0, 1).applyQuaternion(plane.quaternion);
+
+        // Получаем bounding box плоскости
         const bbox = new THREE.Box3().setFromObject(plane);
         const size = new THREE.Vector3();
         bbox.getSize(size);
         const maxSize = Math.max(size.x, size.y, size.z);
-        const distance = maxSize/2;
 
+        // Если плоскость маленькая, используем минимальный размер
+        const planeSize = Math.max(maxSize, 100);
+
+        // Позиция камеры - снаружи от плоскости
+        const distance = planeSize/2;
         const center = new THREE.Vector3();
         bbox.getCenter(center);
+
+        // Позиционируем камеру по нормали плоскости
         const cameraPosition = center.clone().add(normal.clone().multiplyScalar(distance));
 
         this.editor.camera.position.copy(cameraPosition);
         this.editor.camera.lookAt(center);
+
+        // Настраиваем up вектор камеры как локальный Y плоскости
+        this.editor.camera.up.copy(localY);
+        this.editor.camera.up.normalize();
 
         this.editor.controls.target.copy(center);
         this.editor.controls.update();
     }
 
     exitSketchMode() {
-        this.currentPlane = null;
-        this.currentSketch = null;
-        this.elements = [];
-        this.selectedElements = [];
-        this.currentTool = 'line';
-        this.tempElement = null;
-        this.isDrawing = false;
+    // Сохраняем текущий скетч перед выходом
+    // Восстанавливаем параметры камеры
+    this.restoreCamera();
 
-        this.clearTempGeometry();
-        this.clearDimensionObjects();
-        this.hideDimensionInput();
-        this.detachMouseHandlers();
+    this.currentPlane = null;
+    this.currentSketch = null;
+    this.elements = [];
+    this.selectedElements = [];
+    this.currentTool = 'line';
+    this.tempElement = null;
+    this.isDrawing = false;
 
-        // Добавьте эту строку:
-        this.removeSketchGrid();
+    this.clearTempGeometry();
+    this.clearDimensionObjects();
+    this.hideDimensionInput();
+    this.detachMouseHandlers();
 
-        this.editor.controls.enableRotate = true;
-        this.editor.controls.enablePan = true;
-        this.editor.controls.enableZoom = true;
+    this.removeSketchGrid();
 
-        this.updateToolButtons();
-        this.editor.showStatus('Режим чертежа завершен', 'info');
+    this.editor.controls.enableRotate = true;
+    this.editor.controls.enablePan = true;
+    this.editor.controls.enableZoom = true;
+
+    this.updateToolButtons();
+    this.editor.showStatus('Режим скетча завершен', 'info');
+}
+
+    // Добавьте метод для восстановления камеры:
+    restoreCamera() {
+        // Восстанавливаем исходный up вектор камеры
+        this.editor.camera.up.copy(this.originalCameraUp);
+        this.editor.camera.up.normalize();
+
+        // Можно также восстановить исходную позицию камеры, если нужно:
+         this.editor.camera.position.copy(this.originalCameraPosition);
+         this.editor.controls.target.copy(this.originalCameraTarget);
+
+        // Принудительно обновляем камеру и контролы
+        this.editor.camera.lookAt(this.editor.controls.target);
+        this.editor.controls.update();
     }
 
     attachMouseHandlers() {
@@ -1037,20 +1035,63 @@ class SketchTools {
         this.currentPlane.add(sprite);
     }
 
-    startText(position, event) {
-        // Сразу показываем окно ввода без временного элемента
-        const rect = this.editor.renderer.domElement.getBoundingClientRect();
+//    const TEXT_FONT = 'Arial'; // Используем стандартный шрифт
+//    const TEXT_SEGMENTS = 64; // Количество сегментов для кривых
 
-        // Создаем временный элемент только для хранения позиции
+    // Добавьте метод для создания текстовых контуров:
+    createTextContours(text, fontSize, position) {
+        if (!this.currentPlane) return [];
+
+        const localPos = this.currentPlane.worldToLocal(position.clone());
+        const contours = [];
+        const charWidth = fontSize * 0.6;
+        const charHeight = fontSize;
+        const spacing = fontSize * 0.1;
+
+        // Для простоты создаем прямоугольные контуры для каждого символа
+        // В реальном приложении нужно использовать текстовую геометрию Three.js
+        for (let i = 0; i < text.length; i++) {
+            const char = text[i];
+            const x = localPos.x + i * (charWidth + spacing);
+            const y = localPos.y;
+
+            // Создаем прямоугольный контур для символа
+            const points = [
+                new THREE.Vector3(x, y, 0),
+                new THREE.Vector3(x + charWidth, y, 0),
+                new THREE.Vector3(x + charWidth, y + charHeight, 0),
+                new THREE.Vector3(x, y + charHeight, 0),
+                new THREE.Vector3(x, y, 0)
+            ];
+
+            contours.push(points);
+        }
+
+        return contours;
+    }
+
+
+    startText(position, event) {
+        // Отменяем стандартную обработку
+        event.preventDefault();
+        event.stopPropagation();
+
+        // Создаем временный элемент текста как набор контуров
         this.tempElement = {
             type: 'text',
             position: position.clone(),
             content: this.currentText,
             fontSize: this.fontSize,
+            contours: this.createTextContours(this.currentText, this.fontSize, position),
             color: this.sketchColor,
-            isDrawing: false // Флаг, что это не обычное рисование
+            textMesh: null
         };
 
+        // Создаем временную геометрию для предпросмотра
+        this.createTempTextGeometry();
+
+        // Показываем окно ввода
+        const rect = this.editor.renderer.domElement.getBoundingClientRect();
         this.showDimensionInput(
             event.clientX,
             event.clientY,
@@ -1058,14 +1099,52 @@ class SketchTools {
             { value1: this.currentText }
         );
 
-        // Фокус на поле ввода
-        setTimeout(() => {
-            if (this.inputField1) {
-                this.inputField1.focus();
-                this.inputField1.select();
-            }
-        }, 50);
+        return false;
     }
+
+    // Метод для создания временной геометрии текста
+    createTempTextGeometry() {
+        this.clearTempGeometry();
+
+        if (!this.tempElement || this.tempElement.type !== 'text' || !this.tempElement.contours) {
+            return;
+        }
+
+        // Создаем группу для всех контуров текста
+        const textGroup = new THREE.Group();
+        textGroup.userData.isTempText = true;
+
+        // Создаем контуры для каждого символа
+        this.tempElement.contours.forEach(contourPoints => {
+            // Преобразуем локальные точки в мировые координаты
+            const worldPoints = contourPoints.map(p =>
+                this.currentPlane.localToWorld(p.clone())
+            );
+
+            // Создаем геометрию для контура
+            const geometry = new THREE.BufferGeometry();
+            const vertices = [];
+
+            worldPoints.forEach(point => {
+                const localPoint = this.currentPlane.worldToLocal(point.clone());
+                vertices.push(localPoint.x, localPoint.y, 0);
+            });
+
+            geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+
+            // Создаем замкнутый контур
+            const mesh = new THREE.LineLoop(geometry, new THREE.LineBasicMaterial({
+                color: this.tempElement.color,
+                linewidth: 2
+            }));
+
+            textGroup.add(mesh);
+        });
+
+        this.tempGeometry = textGroup;
+        this.currentPlane.add(textGroup);
+    }
+
 
     updateTextContent(text) {
         if (!this.tempElement || this.tempElement.type !== 'text') return;
@@ -1078,7 +1157,16 @@ class SketchTools {
         if (!this.tempElement || this.tempElement.type !== 'text') return;
 
         this.tempElement.fontSize = this.fontSize;
-        this.updateTempGeometry();
+
+        // Обновляем контуры с новыми параметрами
+        this.tempElement.contours = this.createTextContours(
+            this.tempElement.content,
+            this.tempElement.fontSize,
+            this.tempElement.position
+        );
+
+        // Обновляем геометрию
+        this.createTempTextGeometry();
     }
 
     // ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ
@@ -1765,47 +1853,56 @@ class SketchTools {
         }
 
         if (element.type === 'text') {
-            // Создаем текстовый элемент
-            const canvas = document.createElement('canvas');
-            const context = canvas.getContext('2d');
-            canvas.width = 512;
-            canvas.height = 128;
+            // Создаем группу для текстовых контуров
+            const textGroup = new THREE.Group();
 
-            context.clearRect(0, 0, canvas.width, canvas.height);
-            context.font = `bold ${element.fontSize}px Arial`;
-            context.fillStyle = '#AAAAAA';
-            context.textAlign = 'left';
-            context.textBaseline = 'top';
-            context.fillText(element.content, 10, 10);
+            // Сохраняем локальные контуры
+            const localContours = element.contours || [];
 
-            const texture = new THREE.CanvasTexture(canvas);
-            texture.minFilter = THREE.LinearFilter;
-            const material = new THREE.SpriteMaterial({
-                map: texture,
-                transparent: true
+            // Создаем меши для каждого контура
+            localContours.forEach((contour, index) => {
+                const geometry = new THREE.BufferGeometry();
+                const vertices = [];
+
+                contour.forEach(point => {
+                    vertices.push(point.x, point.y, point.z || 0);
+                });
+
+                geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+
+                const mesh = new THREE.LineLoop(geometry, new THREE.LineBasicMaterial({
+                    color: new THREE.Color(element.color),
+                    linewidth: 2
+                }));
+
+                mesh.userData = {
+                    isTextPart: true,
+                    textIndex: index,
+                    totalParts: localContours.length
+                };
+
+                textGroup.add(mesh);
             });
 
-            const sprite = new THREE.Sprite(material);
-            const localPos = this.currentPlane.worldToLocal(element.position.clone());
-            sprite.position.set(localPos.x, localPos.y, 0.1);
-            sprite.scale.set(50, 12.5, 1);
-
-            sprite.userData = {
+            textGroup.userData = {
                 type: 'sketch_element',
                 sketchId: this.currentSketch?.id,
                 elementType: element.type,
-                isClosed: false,
+                isClosed: true, // Текст состоит из замкнутых контуров
+                isText: true,
                 originalColor: new THREE.Color(element.color),
                 sketchPlaneId: this.currentPlane?.uuid,
-                localPosition: localPos,
                 content: element.content,
                 fontSize: element.fontSize,
+                localPosition: this.currentPlane.worldToLocal(element.position.clone()),
+                localContours: localContours,
                 createdAt: new Date().toISOString()
             };
 
-            this.currentPlane.add(sprite);
-            element.mesh = sprite;
+            this.currentPlane.add(textGroup);
+            element.mesh = textGroup;
             this.elements.push(element);
+
         } else {
             // Создаем геометрию для линий
             const localPoints = element.points.map(p => this.currentPlane.worldToLocal(p.clone()));

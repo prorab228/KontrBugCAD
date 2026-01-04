@@ -79,6 +79,35 @@ class ObjectsManager {
 
             const { icon, typeText } = this.getObjectIconAndType(obj, index);
 
+            // Проверяем, является ли объект плоскостью скетча
+            const isSketchPlane = obj.userData.type === 'sketch_plane' ||
+                                  obj.userData.type === 'work_plane';
+
+            // Проверяем, есть ли на плоскости элементы скетча
+            const hasSketchElements = isSketchPlane && this.editor.checkPlaneForSketchElements(obj);
+
+            // Создаем HTML для кнопок действий
+            let actionsHTML = `
+                <button class="scene-item-action" title="Скрыть/показать" data-action="toggle">
+                    <i class="fas fa-eye${obj.visible ? '' : '-slash'}"></i>
+                </button>
+            `;
+
+            // Добавляем кнопку редактирования скетча, если плоскость содержит элементы скетча
+            if (hasSketchElements) {
+                actionsHTML += `
+                    <button class="scene-item-action" title="Редактировать скетч" data-action="edit-sketch">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                `;
+            }
+
+            actionsHTML += `
+                <button class="scene-item-action" title="Удалить" data-action="delete">
+                    <i class="fas fa-trash"></i>
+                </button>
+            `;
+
             div.innerHTML = `
                 <i class="fas ${icon}"></i>
                 <div class="scene-item-info">
@@ -86,18 +115,26 @@ class ObjectsManager {
                     <div class="scene-item-type">${typeText}</div>
                 </div>
                 <div class="scene-item-actions">
-                    <button class="scene-item-action" title="Скрыть/показать" data-action="toggle">
-                        <i class="fas fa-eye${obj.visible ? '' : '-slash'}"></i>
-                    </button>
-                    <button class="scene-item-action" title="Удалить" data-action="delete">
-                        <i class="fas fa-trash"></i>
-                    </button>
+                    ${actionsHTML}
                 </div>
             `;
 
-            div.addEventListener('click', (e) => {
+            // Обработчик одинарного клика - выделение
+//            div.addEventListener('click', (e) => {
+//                if (!e.target.closest('.scene-item-action')) {
+//                    this.editor.selectObject(obj);
+//                }
+//            });
+
+            // Обработчик двойного клика - фокусировка камеры
+            div.addEventListener('dblclick', (e) => {
+                e.stopPropagation();
                 if (!e.target.closest('.scene-item-action')) {
+                    // Выделяем объект при двойном клике
                     this.editor.selectObject(obj);
+
+                    // Фокусируем камеру
+                    this.focusCameraOnObject(obj);
                 }
             });
 
@@ -108,6 +145,14 @@ class ObjectsManager {
                 icon.className = obj.visible ? 'fas fa-eye' : 'fas fa-eye-slash';
             });
 
+            // Обработчик для кнопки редактирования скетча
+            if (hasSketchElements) {
+                div.querySelector('[data-action="edit-sketch"]').addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    this.editor.editExistingSketch(obj);
+                });
+            }
+
             div.querySelector('[data-action="delete"]').addEventListener('click', (e) => {
                 e.stopPropagation();
                 this.editor.deleteObject(obj);
@@ -115,6 +160,78 @@ class ObjectsManager {
 
             container.appendChild(div);
         });
+    }
+
+    // Новый метод для фокусировки камеры на объекте
+    focusCameraOnObject(object) {
+        if (!object || !this.editor.camera) return;
+
+        // Выделяем объект, если он не выделен
+        if (!this.editor.selectedObjects.includes(object)) {
+            this.editor.selectObject(object);
+        }
+
+        // Вычисляем bounding box объекта
+        const boundingBox = new THREE.Box3().setFromObject(object);
+        const center = new THREE.Vector3();
+        boundingBox.getCenter(center);
+        const size = new THREE.Vector3();
+        boundingBox.getSize(size);
+
+        // Если объект очень маленький (например, точка или линия), используем дефолтный размер
+        const maxSize = Math.max(size.x, size.y, size.z);
+        const targetDistance = maxSize > 0 ? maxSize * 2 : 100;
+
+        // Вычисляем новую позицию камеры
+        const direction = new THREE.Vector3();
+        this.editor.camera.getWorldDirection(direction);
+
+        // Сохраняем текущий взгляд камеры (направление)
+        const cameraDirection = direction.clone();
+
+        // Новая позиция камеры - от центра объекта отступим по направлению камеры
+        const newPosition = new THREE.Vector3();
+        newPosition.copy(center);
+
+        // Отодвигаем камеру назад по направлению ее взгляда
+        newPosition.add(cameraDirection.multiplyScalar(-targetDistance));
+
+        // Создаем анимацию плавного перемещения камеры
+        const animationDuration = 800; // мс
+        const startPosition = this.editor.camera.position.clone();
+        const startTarget = this.editor.controls.target.clone();
+
+        const startTime = Date.now();
+
+        const animateCamera = () => {
+            const elapsed = Date.now() - startTime;
+            const progress = Math.min(elapsed / animationDuration, 1);
+
+            // Используем easeOutCubic для плавного замедления
+            const easedProgress = 1 - Math.pow(1 - progress, 3);
+
+            // Интерполируем позицию камеры
+            this.editor.camera.position.lerpVectors(startPosition, newPosition, easedProgress);
+
+            // Интерполируем цель камеры
+            this.editor.controls.target.lerpVectors(startTarget, center, easedProgress);
+
+            // Обновляем контролы
+            this.editor.controls.update();
+
+            if (progress < 1) {
+                requestAnimationFrame(animateCamera);
+            } else {
+                // После завершения анимации центрируем камеру точно на объекте
+                this.editor.controls.target.copy(center);
+                this.editor.controls.update();
+
+                this.editor.showStatus(`Камера сфокусирована на объекте`, 'info');
+            }
+        };
+
+        // Запускаем анимацию
+        animateCamera();
     }
 
     highlightObject(object) {

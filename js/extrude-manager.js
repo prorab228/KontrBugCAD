@@ -178,6 +178,7 @@ class ExtrudeManager {
 
     // Создание стрелки направления
     createExtrudeDirectionIndicator(contours) {
+        // Удаляем старую стрелку
         if (this.editor.extrudeArrow) {
             if (this.editor.extrudeArrow.parent) {
                 this.editor.extrudeArrow.parent.remove(this.editor.extrudeArrow);
@@ -195,54 +196,67 @@ class ExtrudeManager {
         planeNormal.applyQuaternion(sketchPlane.quaternion);
         planeNormal.normalize();
 
+        // Создаем группу для стрелки
         this.editor.extrudeArrow = new THREE.Group();
         this.editor.extrudeArrow.userData.isExtrudeArrow = true;
+        this.editor.extrudeArrow.userData.isDraggable = true;
 
-        const arrowLength = 30;
+        // Отключаем raycast для всей группы стрелки
+        this.editor.extrudeArrow.raycast = () => {};
+
+        // Параметры стрелки
+        const arrowLength = 25;
         const arrowHeadLength = 8;
         const arrowHeadWidth = 4;
 
         // Линия стрелки
-        const lineGeometry = new THREE.CylinderGeometry(0.5, 0.5, arrowLength, 8);
+        const lineGeometry = new THREE.CylinderGeometry(0.8, 0.8, arrowLength, 8);
         const lineMaterial = new THREE.MeshBasicMaterial({
             color: 0x00FF00,
             transparent: true,
-            opacity: 0.8
+            opacity: 0.9
         });
         const line = new THREE.Mesh(lineGeometry, lineMaterial);
         line.position.y = arrowLength / 2;
+        line.userData.isArrowPart = true;
+        line.userData.isDraggable = false; // Линия не перетаскиваемая
+        line.raycast = () => {}; // Отключаем raycast для линии
         this.editor.extrudeArrow.add(line);
 
-        // Наконечник стрелки
+        // Наконечник стрелки - делаем его перетаскиваемым
         const coneGeometry = new THREE.ConeGeometry(arrowHeadWidth, arrowHeadLength, 8);
         const coneMaterial = new THREE.MeshBasicMaterial({
             color: 0x00FF00,
             transparent: true,
-            opacity: 0.8
+            opacity: 0.9
         });
         const cone = new THREE.Mesh(coneGeometry, coneMaterial);
         cone.position.y = arrowLength + arrowHeadLength / 2;
-        this.editor.extrudeArrow.add(cone);
+        cone.userData.isArrowPart = true;
+        cone.userData.isArrowHandle = true; // Кончик стрелки - это ручка
+        cone.userData.isDraggable = true;
 
-        // Создаем большую сферу для перехвата событий
-        const sphereGeometry = new THREE.SphereGeometry(10, 16, 16); // Увеличили радиус до 10
-        const sphereMaterial = new THREE.MeshBasicMaterial({
-            color: 0x00FF00,
+        // Добавляем на кончик большую невидимую сферу для лучшего захвата
+        const handleGeometry = new THREE.SphereGeometry(arrowHeadWidth * 1.5, 8, 8);
+        const handleMaterial = new THREE.MeshBasicMaterial({
+            color: 0xFF0000,
             transparent: true,
-            opacity: 0.3,
+            opacity: 0.2,
             visible: true,
-            depthTest: false,  // Отключаем проверку глубины
-            depthWrite: false  // Отключаем запись в буфер глубины
+            depthTest: true,
+            depthWrite: false
         });
 
-        this.arrowHandle = new THREE.Mesh(sphereGeometry, sphereMaterial);
-        this.arrowHandle.position.y = arrowLength / 2;
+        this.arrowHandle = new THREE.Mesh(handleGeometry, handleMaterial);
+        this.arrowHandle.position.y = arrowLength + arrowHeadLength;
         this.arrowHandle.userData.isArrowHandle = true;
+        this.arrowHandle.userData.isDraggable = true;
+
+        // Добавляем конус и ручку в группу стрелки
+        this.editor.extrudeArrow.add(cone);
         this.editor.extrudeArrow.add(this.arrowHandle);
 
-        this.updateArrowPosition();
-
-        // Ориентируем стрелку
+        // Ориентируем стрелку по нормали плоскости
         const up = new THREE.Vector3(0, 1, 0);
         const rotationQuaternion = new THREE.Quaternion().setFromUnitVectors(
             up,
@@ -250,17 +264,20 @@ class ExtrudeManager {
         );
         this.editor.extrudeArrow.quaternion.copy(rotationQuaternion);
 
+        // Добавляем стрелку в сцену
         this.editor.scene.add(this.editor.extrudeArrow);
 
-        // Убедимся, что стрелка добавлена в сцену и видна
-        console.log('Стрелка создана и добавлена в сцену:', {
-            position: this.editor.extrudeArrow.position,
-            parent: this.editor.extrudeArrow.parent
+        console.log('Стрелка создана с перетаскиванием за кончик:', {
+            cone: cone,
+            arrowHandle: this.arrowHandle,
+            coneWorldPos: cone.getWorldPosition(new THREE.Vector3()),
+            handleWorldPos: this.arrowHandle.getWorldPosition(new THREE.Vector3())
         });
     }
 
+
     updateArrowPosition() {
-        if (!this.editor.extrudeArrow || !this.extrudePreviewGroup) return;
+        if (!this.editor.extrudeArrow) return;
 
         const height = parseFloat(document.getElementById('extrudeHeight')?.value) || 10;
         const direction = document.getElementById('extrudeDirection')?.value || 'positive';
@@ -271,65 +288,103 @@ class ExtrudeManager {
         const sketchPlane = this.findSketchPlaneForElement(selectedContours[0]);
         if (!sketchPlane) return;
 
+        // Получаем нормаль плоскости
         const planeNormal = new THREE.Vector3(0, 0, 1);
         planeNormal.applyQuaternion(sketchPlane.quaternion);
         planeNormal.normalize();
 
-        let offsetDistance = 0;
-        if (direction === 'positive') {
-            offsetDistance = height / 2;
-        } else if (direction === 'negative') {
-            offsetDistance = -height / 2;
-        }
-
+        // Получаем позицию контура в мировых координатах
         const contour = selectedContours[0];
         const contourPos = new THREE.Vector3();
         contour.getWorldPosition(contourPos);
 
-        const arrowOffset = 2;
-        const arrowPos = contourPos.clone().add(
-            planeNormal.clone().multiplyScalar(offsetDistance + arrowOffset)
+        // Позиция плоскости в мировых координатах
+        const planePos = new THREE.Vector3();
+        sketchPlane.getWorldPosition(planePos);
+
+        // Вектор от плоскости до контура
+        const offsetVector = new THREE.Vector3().subVectors(contourPos, planePos);
+
+        // Базовое положение стрелки (на плоскости)
+        const basePos = planePos.clone().add(offsetVector);
+
+        // Рассчитываем смещение стрелки в зависимости от направления
+        let previewCenterOffset = 0;
+
+        if (direction === 'positive') {
+            // Для положительного направления: центр Preview на height/2
+            previewCenterOffset = height / 2;
+        } else if (direction === 'negative') {
+            // Для отрицательного направления: центр Preview на -height/2
+            previewCenterOffset = -height / 2;
+        } else if (direction === 'both') {
+            // Для обоих направлений: центр Preview на 0
+            previewCenterOffset = 0;
+        }
+
+        // Центр стрелки должен совпадать с центром Preview
+        // Позиция стрелки = базовое положение + смещение центра Preview
+        const arrowPos = basePos.clone().add(
+            planeNormal.clone().multiplyScalar(previewCenterOffset)
         );
 
+        // Обновляем позицию стрелки
         this.editor.extrudeArrow.position.copy(arrowPos);
 
-        // Отладка
-        console.log('Обновлена позиция стрелки:', {
-            arrowPos: {x: arrowPos.x.toFixed(2), y: arrowPos.y.toFixed(2), z: arrowPos.z.toFixed(2)},
-            contourPos: {x: contourPos.x.toFixed(2), y: contourPos.y.toFixed(2), z: contourPos.z.toFixed(2)},
+        // Обновляем мировую матрицу
+        this.editor.extrudeArrow.updateMatrixWorld(true);
+
+        console.log('Позиция стрелки обновлена:', {
+            direction: direction,
             height: height,
-            direction: direction
+            arrowPos: arrowPos.toArray().map(v => v.toFixed(2)),
+            previewCenterOffset: previewCenterOffset
         });
     }
 
+
+
     handleArrowDragStart(event) {
-        if (!this.editor.extrudeArrow || !this.arrowHandle) {
-            console.log('Нет стрелки или ручки');
+        console.log('Попытка начать перетаскивание кончика стрелки');
+
+        if (!this.editor.extrudeArrow) {
+            console.log('Нет стрелки');
             return false;
         }
 
-        // Обновляем позицию мыши в редакторе
+        // Обновляем позицию мыши
         this.editor.updateMousePosition(event);
+        this.editor.raycaster.setFromCamera(this.editor.mouse, this.editor.camera);
 
-        // Создаем отдельный рейкастер для более точного определения
-        const dragRaycaster = new THREE.Raycaster();
-        dragRaycaster.setFromCamera(this.editor.mouse, this.editor.camera);
-        dragRaycaster.params.Line.threshold = 0.1;
-        dragRaycaster.params.Points.threshold = 0.1;
+        // Собираем все перетаскиваемые части стрелки
+        const draggableParts = [];
 
-        // Проверяем пересечение с ручкой стрелки
-        const intersects = dragRaycaster.intersectObject(this.arrowHandle, true);
+        this.editor.extrudeArrow.traverse((child) => {
+            if (child.userData && child.userData.isDraggable) {
+                draggableParts.push(child);
+            }
+        });
 
-        console.log('Проверка перетаскивания стрелки:', {
+        if (draggableParts.length === 0) {
+            console.log('Нет перетаскиваемых частей стрелки');
+            return false;
+        }
+
+        // Обновляем мировые матрицы
+        draggableParts.forEach(part => part.updateMatrixWorld(true));
+
+        // Проверяем пересечение с перетаскиваемыми частями
+        const intersects = this.editor.raycaster.intersectObjects(draggableParts, true);
+
+        console.log('Результаты проверки пересечения:', {
             mouse: this.editor.mouse,
-            cameraPosition: this.editor.camera.position,
-            arrowPosition: this.arrowHandle.getWorldPosition(new THREE.Vector3()),
+            draggableParts: draggableParts.length,
             intersectsCount: intersects.length,
-            arrowHandle: this.arrowHandle
+            intersectedObject: intersects.length > 0 ? intersects[0].object.userData : 'none'
         });
 
         if (intersects.length > 0) {
-            console.log('Начато перетаскивание стрелки');
+            console.log('Пересечение с кончиком стрелки обнаружено, начинаем перетаскивание');
             this.dragging = true;
             this.startMouseY = event.clientY;
             this.startHeight = parseFloat(document.getElementById('extrudeHeight').value) || 10;
@@ -338,14 +393,29 @@ class ExtrudeManager {
             // Привязываем глобальные обработчики
             this.bindGlobalDragHandlers();
 
-            // Останавливаем дальнейшую обработку события
             event.stopPropagation();
             event.preventDefault();
             return true;
         }
 
+        console.log('Пересечение с кончиком стрелки не обнаружено');
         return false;
     }
+
+w
+    // Добавьте этот метод для отключения raycast на частях стрелки:
+    disableArrowRaycast() {
+        if (!this.editor.extrudeArrow) return;
+
+        this.editor.extrudeArrow.traverse((child) => {
+            if (child.isMesh || child.isLine) {
+                if (child !== this.arrowHandle) {
+                    child.raycast = () => {};
+                }
+            }
+        });
+    }
+
 
     // Добавьте этот новый метод для визуализации позиции стрелки (для отладки):
     debugArrowPosition() {
@@ -407,31 +477,54 @@ class ExtrudeManager {
     handleArrowDrag(event) {
         if (!this.dragging) return;
 
-        // Рассчитываем изменение высоты на основе движения мыши
-        const deltaY = this.startMouseY - event.clientY; // Инвертируем для интуитивного управления
-        const heightChange = deltaY * 0.5; // Множитель для чувствительности
-        const newHeight = Math.max(0.1, this.startHeight + heightChange);
+        // ИСПРАВЛЕНО: инвертируем направление
+        // При движении мыши ВВЕРХ (меньший clientY) - увеличиваем высоту
+        // При движении мыши ВНИЗ (больший clientY) - уменьшаем высоту
+        const deltaY = event.clientY - this.startMouseY; // Было: this.startMouseY - event.clientY
+        const sensitivity = 0.5;
+        let heightChange = deltaY * sensitivity;
 
+        // Инвертируем изменение высоты
+        const direction = document.getElementById('extrudeDirection')?.value || 'positive';
+        if (direction === 'negative') heightChange = -heightChange;
+        let newHeight = this.startHeight + heightChange; // Было: this.startHeight + heightChange
+
+        // Ограничиваем минимальную высоту
+        newHeight = Math.max(0.1, newHeight);
+
+        // Округляем до одного десятичного знака
+        newHeight = Math.round(newHeight * 10) / 10;
+
+        console.log('Изменение высоты:', {
+            startMouseY: this.startMouseY,
+            currentMouseY: event.clientY,
+            deltaY: deltaY,
+            heightChange: heightChange,
+            oldHeight: this.startHeight,
+            newHeight: newHeight
+        });
+
+        // Обновляем поле ввода высоты
         const heightInput = document.getElementById('extrudeHeight');
         if (heightInput) {
-            heightInput.value = newHeight.toFixed(1);
+            heightInput.value = newHeight;
 
-            // Запускаем событие input для обновления предпросмотра
-            heightInput.dispatchEvent(new Event('input'));
+            // Генерируем событие input для обновления предпросмотра
+            const inputEvent = new Event('input', { bubbles: true });
+            heightInput.dispatchEvent(inputEvent);
 
+            // Обновляем текст кнопки
             const btn = document.getElementById('performExtrude');
             if (btn) {
                 btn.innerHTML = `<i class="fas fa-check"></i> Выполнить (${newHeight.toFixed(1)} мм)`;
             }
         }
 
-        // Обновляем стартовые значения для плавного перетаскивания
-        this.startMouseY = event.clientY;
-        this.startHeight = newHeight;
-
+        // Предотвращаем стандартное поведение
         event.preventDefault();
         return false;
     }
+
 
 
     handleArrowDragEnd(event) {
@@ -470,10 +563,6 @@ class ExtrudeManager {
         if (shapes.length === 0) return null;
 
         let extrudeDepth = height;
-        if (direction === 'both') {
-            extrudeDepth = height;
-        }
-
         const extrudeSettings = {
             depth: extrudeDepth,
             bevelEnabled: false,
@@ -482,7 +571,35 @@ class ExtrudeManager {
 
         try {
             const geometry = new THREE.ExtrudeGeometry(shapes, extrudeSettings);
-            geometry.center();
+
+            // Применяем трансформации для направления вытягивания
+            if (direction === 'negative') {
+                // Для отрицательного направления вращаем геометрию на 180 градусов
+                geometry.translate(0, 0, -height);
+            } else if (direction === 'both') {
+                // Для обоих направлений сдвигаем геометрию на половину высоты вниз
+                geometry.translate(0, 0, -height / 2);
+            }
+
+            if (contours.length > 0) {
+                const firstContour = contours[0];
+                const sketchPlane = this.findSketchPlaneForElement(firstContour);
+
+                if (sketchPlane) {
+                    // Получаем позицию контура в локальных координатах плоскости
+                    const contourPos = new THREE.Vector3();
+                    firstContour.getWorldPosition(contourPos);
+
+                    const localPos = sketchPlane.worldToLocal(contourPos.clone());
+
+                    // Смещаем геометрию в позицию контура
+                    geometry.translate(localPos.x, localPos.y, 0);
+
+                    // Также обновляем bounding box
+                    geometry.computeBoundingBox();
+                }
+            }
+
             return geometry;
         } catch (error) {
             console.error('Ошибка создания геометрии выдавливания:', error);
@@ -497,6 +614,7 @@ class ExtrudeManager {
         const height = parseFloat(document.getElementById('extrudeHeight')?.value) || 10;
         const direction = document.getElementById('extrudeDirection')?.value || 'positive';
 
+        // Удаляем старый предпросмотр
         if (this.extrudePreviewGroup) {
             this.editor.objectsGroup.remove(this.extrudePreviewGroup);
             this.extrudePreviewGroup.traverse(child => {
@@ -506,6 +624,7 @@ class ExtrudeManager {
             this.extrudePreviewGroup = null;
         }
 
+        // Создаем новый предпросмотр
         const geometry = this.createExtrusionGeometry(selectedContours, height, direction);
         if (!geometry) return;
 
@@ -524,28 +643,23 @@ class ExtrudeManager {
         const sketchPlane = this.findSketchPlaneForElement(firstContour);
 
         if (sketchPlane) {
+            const planeWorldPos = new THREE.Vector3();
+            sketchPlane.getWorldPosition(planeWorldPos);
+
+            previewMesh.position.copy(planeWorldPos);
+            previewMesh.quaternion.copy(sketchPlane.quaternion);
+
+            // Применяем небольшое смещение для видимости
             const planeNormal = new THREE.Vector3(0, 0, 1);
             planeNormal.applyQuaternion(sketchPlane.quaternion);
             planeNormal.normalize();
 
-            const contourPos = new THREE.Vector3();
-            firstContour.getWorldPosition(contourPos);
-
-            const planeWorldPos = new THREE.Vector3();
-            sketchPlane.getWorldPosition(planeWorldPos);
-
-            const offsetVector = new THREE.Vector3().subVectors(contourPos, planeWorldPos);
-
-            previewMesh.position.copy(planeWorldPos);
-            previewMesh.position.add(offsetVector);
-            previewMesh.quaternion.copy(sketchPlane.quaternion);
-
             if (direction === 'negative') {
-                previewMesh.position.sub(planeNormal.clone().multiplyScalar(height / 2));
+                previewMesh.position.add(planeNormal.clone().multiplyScalar(0.1));
             } else if (direction === 'both') {
-                previewMesh.position.add(planeNormal.clone().multiplyScalar(0));
+                // Ничего не делаем
             } else {
-                previewMesh.position.add(planeNormal.clone().multiplyScalar(height / 2));
+                previewMesh.position.add(planeNormal.clone().multiplyScalar(0.1));
             }
         }
 
@@ -555,6 +669,8 @@ class ExtrudeManager {
 
         this.updateArrowPosition();
     }
+
+
 
     performExtrude() {
         const selectedContours = this.getSelectedContours();
@@ -567,7 +683,7 @@ class ExtrudeManager {
         const direction = document.getElementById('extrudeDirection')?.value || 'positive';
         const operation = document.getElementById('extrudeOperation')?.value || 'new';
 
-        if (isNaN(height) || height <= 0) {
+        if (isNaN(height) /*|| height <= 0*/) {
             this.editor.showStatus('Введите корректную высоту (больше 0)', 'error');
             return;
         }
@@ -782,28 +898,26 @@ class ExtrudeManager {
         const sketchPlane = this.findSketchPlaneForElement(firstContour);
 
         if (sketchPlane) {
+            // Позиционируем меш на плоскости
+            const planeWorldPos = new THREE.Vector3();
+            sketchPlane.getWorldPosition(planeWorldPos);
+
+            mesh.position.copy(planeWorldPos);
+            mesh.quaternion.copy(sketchPlane.quaternion);
+
+            // Применяем небольшое смещение для корректного отображения
             const planeNormal = new THREE.Vector3(0, 0, 1);
             planeNormal.applyQuaternion(sketchPlane.quaternion);
             planeNormal.normalize();
 
-            const contourPos = new THREE.Vector3();
-            firstContour.getWorldPosition(contourPos);
-
-            const planeWorldPos = new THREE.Vector3();
-            sketchPlane.getWorldPosition(planeWorldPos);
-
-            const offsetVector = new THREE.Vector3().subVectors(contourPos, planeWorldPos);
-
-            mesh.position.copy(planeWorldPos);
-            mesh.position.add(offsetVector);
-            mesh.quaternion.copy(sketchPlane.quaternion);
-
             if (direction === 'negative') {
-                mesh.position.sub(planeNormal.clone().multiplyScalar(height / 2));
+                // Для отрицательного направления немного поднимаем
+                mesh.position.add(planeNormal.clone().multiplyScalar(0.1));
             } else if (direction === 'both') {
-                mesh.position.add(planeNormal.clone().multiplyScalar(0));
+                // Для обоих направлений оставляем как есть
             } else {
-                mesh.position.add(planeNormal.clone().multiplyScalar(height / 2));
+                // Для положительного направления немного опускаем
+                mesh.position.add(planeNormal.clone().multiplyScalar(0.1));
             }
         }
 
@@ -821,6 +935,7 @@ class ExtrudeManager {
 
         return mesh;
     }
+
 
     showExtrudeUI() {
         const oldUI = document.getElementById('extrudeUI');
@@ -841,7 +956,7 @@ class ExtrudeManager {
             <div class="extrude-controls">
                 <div class="control-group">
                     <label>Высота (мм):</label>
-                    <input type="number" id="extrudeHeight" value="10" min="0.1" step="0.1" style="width: 100px;">
+                    <input type="number" id="extrudeHeight" value="10" step="0.1" style="width: 100px;">
                     <button id="dragHeightBtn" class="btn-small" title="Перетащите стрелку для изменения">
                         <i class="fas fa-arrows-alt-v"></i>
                     </button>
@@ -990,28 +1105,34 @@ class ExtrudeManager {
         this.editor.updateMousePosition(event);
         this.editor.raycaster.setFromCamera(this.editor.mouse, this.editor.camera);
 
-        // Сначала проверяем, не навели ли мы на ручку стрелки
-        if (this.arrowHandle) {
-            // Создаем копию рейкастера с меньшим порогом для более точного определения
-            const arrowRaycaster = new THREE.Raycaster();
-            arrowRaycaster.setFromCamera(this.editor.mouse, this.editor.camera);
-            arrowRaycaster.params.Line.threshold = 0.1;
-            arrowRaycaster.params.Points.threshold = 0.1;
+        // Сначала проверяем, не навели ли мы на кончик стрелки (конус или ручку)
+        if (this.editor.extrudeArrow) {
+            // Собираем все перетаскиваемые части стрелки
+            const draggableParts = [];
 
-            const intersects = arrowRaycaster.intersectObject(this.arrowHandle, true);
+            this.editor.extrudeArrow.traverse((child) => {
+                if (child.userData && child.userData.isDraggable) {
+                    draggableParts.push(child);
+                }
+            });
 
-            if (intersects.length > 0) {
-                console.log('Наведение на стрелку обнаружено');
-                document.body.style.cursor = 'move';
-                return; // Не проверяем контуры, если навели на стрелку
+            if (draggableParts.length > 0) {
+                // Проверяем пересечение с перетаскиваемыми частями
+                const intersects = this.editor.raycaster.intersectObjects(draggableParts, true);
+
+                if (intersects.length > 0) {
+                    console.log('Наведение на кончик стрелки обнаружено');
+                    document.body.style.cursor = 'move';
+                    return; // Не проверяем контуры, если навели на стрелку
+                }
             }
         }
 
-        // Проверяем скетч-элементы (остальной код остается)
+        // Проверяем скетч-элементы
         const allSketchElements = this.editor.objectsManager.getAllSketchElements();
         const selectedContours = this.getSelectedContours();
 
-        // Убираем подсветку с элементов, которые не выделены и не под курсором
+        // Убираем подсветку с элементов
         allSketchElements.forEach(element => {
             if (!selectedContours.includes(element) && element.userData.hoverHighlighted) {
                 if (element.userData.originalColor) {
@@ -1053,22 +1174,19 @@ class ExtrudeManager {
     }
 
 
+
+
     cancelExtrudeMode() {
         this.editor.extrudeMode = false;
 
         this.clearContourSelection();
 
         if (this.editor.extrudeArrow) {
-            // Удаляем из массива объектов
-            const arrowIndex = this.editor.objects.indexOf(this.editor.extrudeArrow);
-            if (arrowIndex > -1) {
-                this.editor.objects.splice(arrowIndex, 1);
-            }
-
             if (this.editor.extrudeArrow.parent) {
                 this.editor.extrudeArrow.parent.remove(this.editor.extrudeArrow);
             }
             this.editor.extrudeArrow = null;
+            this.arrowHandle = null;
         }
 
         if (this.extrudePreviewGroup) {

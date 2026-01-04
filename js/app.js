@@ -76,6 +76,8 @@ class CADEditor {
         this.lastTime = performance.now();
         this.fps = 60;
 
+        this.focusCameraOnObject = this.focusCameraOnObject.bind(this);
+
         this.init();
     }
 
@@ -153,6 +155,13 @@ class CADEditor {
         this.worldGroup.add(this.sketchGroup);
 
         this.renderer.domElement.addEventListener('contextmenu', (e) => e.preventDefault());
+    }
+
+    focusCameraOnObject(object) {
+        // Делегируем вызов менеджеру объектов
+        if (this.objectsManager && object) {
+            this.objectsManager.focusCameraOnObject(object);
+        }
     }
 
     configureOrbitControls() {
@@ -703,16 +712,60 @@ class CADEditor {
             document.body.style.cursor = 'default';
         }
 
-
-
         if (e.button === 0) {
-
             // Если было перетаскивание, завершаем его
             if (this.dragManager && this.dragManager.isDragging) {
                 this.dragManager.onMouseUp(e);
                 return;
             }
+
+            // Сохранение transform операций в историю
             if (this.transformControls && this.transformControls.isDragging) {
+                const obj = this.transformControls.attachedObject;
+                if (obj) {
+                    // Определяем тип операции
+                    const mode = this.transformControls.getMode();
+                    let actionType = '';
+                    let actionData = {};
+
+                    switch(mode) {
+                        case 'translate':
+                            actionType = 'modify_position';
+                            actionData = {
+                                position: obj.position.toArray(),
+                                previousPosition: obj.userData.lastPosition || [0, 0, 0]
+                            };
+                            obj.userData.lastPosition = obj.position.toArray();
+                            break;
+
+                        case 'rotate':
+                            actionType = 'modify_rotation';
+                            actionData = {
+                                rotation: [obj.rotation.x, obj.rotation.y, obj.rotation.z],
+                                previousRotation: obj.userData.lastRotation || [0, 0, 0]
+                            };
+                            obj.userData.lastRotation = [obj.rotation.x, obj.rotation.y, obj.rotation.z];
+                            break;
+
+                        case 'scale':
+                            actionType = 'modify_scale';
+                            actionData = {
+                                scale: obj.scale.toArray(),
+                                previousScale: obj.userData.lastScale || [1, 1, 1]
+                            };
+                            obj.userData.lastScale = obj.scale.toArray();
+                            break;
+                    }
+
+                    if (actionType) {
+                        this.history.addAction({
+                            type: actionType,
+                            object: obj.uuid,
+                            data: actionData
+                        });
+                    }
+                }
+
                 this.transformControls.onMouseUp();
                 return;
             }
@@ -721,7 +774,7 @@ class CADEditor {
                 this.sketchTools.onMouseUp(e);
             }
 
-            if (this.extrudeManager.dragging) {
+            if (this.extrudeManager && this.extrudeManager.dragging) {
                 this.extrudeManager.handleArrowDragEnd();
                 return;
             }
@@ -845,15 +898,40 @@ class CADEditor {
         this.currentTool = tool;
         this.updateToolUI(tool);
 
+        // Для инструментов трансформации
+        if (['move', 'scale', 'rotate'].includes(tool) && this.selectedObjects.length === 1) {
+            const mode = tool === 'move' ? 'translate' :
+                        tool === 'scale' ? 'scale' : 'rotate';
 
+            // Сохраняем текущее состояние перед изменением
+            const obj = this.selectedObjects[0];
+            if (obj) {
+                switch(mode) {
+                    case 'translate':
+                        if (!obj.userData.lastPosition) {
+                            obj.userData.lastPosition = obj.position.toArray();
+                        }
+                        break;
+                    case 'rotate':
+                        if (!obj.userData.lastRotation) {
+                            obj.userData.lastRotation = [obj.rotation.x, obj.rotation.y, obj.rotation.z];
+                        }
+                        break;
+                    case 'scale':
+                        if (!obj.userData.lastScale) {
+                            obj.userData.lastScale = obj.scale.toArray();
+                        }
+                        break;
+                }
+            }
 
-        if (this.transformControls) {
-            if (['move', 'scale', 'rotate'].includes(tool) && this.selectedObjects.length === 1) {
-                const mode = tool === 'move' ? 'translate' :
-                            tool === 'scale' ? 'scale' : 'rotate';
-                this.transformControls.attach(this.selectedObjects[0]);
-                this.transformControls.updateMode(mode);
-            } else {
+            if (this.transformControls) {
+                this.transformControls.attach(obj);
+                this.transformControls.setMode(mode);
+                this.transformControls.show();
+            }
+        } else {
+            if (this.transformControls) {
                 this.transformControls.detach();
                 this.transformControls.hide();
             }
@@ -1066,10 +1144,35 @@ class CADEditor {
         if (this.selectedObjects.length !== 1) return;
 
         const object = this.selectedObjects[0];
+
+        // Проверяем, что объект имеет материал
+        let material = object.material;
+
+        // Если material не существует, создаем его
+        if (!material) {
+            console.warn('Объект не имеет материала, создаем новый');
+            material = new THREE.MeshStandardMaterial({
+                color: 0x808080,
+                side: THREE.FrontSide
+            });
+            object.material = material;
+
+            // Сохраняем в userData
+            if (!object.userData.originalMaterial) {
+                object.userData.originalMaterial = material.clone();
+            }
+        }
+
+        // Проверяем, что материал имеет свойство color
+        if (!material.color) {
+            this.showStatus('Материал объекта не поддерживает изменение цвета', 'error');
+            return;
+        }
+
         const newColor = e.target.value;
 
         // Сохраняем предыдущий цвет для истории
-        const previousColor = object.material.color.getHex();
+        const previousColor = material.color.getHex ? material.color.getHex() : 0x808080;
 
         // Обновляем цвет
         this.setObjectColor(object, newColor);
@@ -1085,14 +1188,35 @@ class CADEditor {
         });
     }
 
+
     onObjectOpacityChange(e) {
         if (this.selectedObjects.length !== 1) return;
 
         const object = this.selectedObjects[0];
+
+        // Проверяем, что объект имеет материал
+        let material = object.material;
+
+        // Если material не существует, создаем его
+        if (!material) {
+            console.warn('Объект не имеет материала, создаем новый');
+            material = new THREE.MeshStandardMaterial({
+                color: 0x808080,
+                side: THREE.FrontSide,
+                transparent: true
+            });
+            object.material = material;
+
+            // Сохраняем в userData
+            if (!object.userData.originalMaterial) {
+                object.userData.originalMaterial = material.clone();
+            }
+        }
+
         const opacity = parseFloat(e.target.value);
 
         // Сохраняем предыдущую прозрачность для истории
-        const previousOpacity = object.material.opacity;
+        const previousOpacity = material.opacity !== undefined ? material.opacity : 1.0;
 
         // Обновляем прозрачность
         this.setObjectOpacity(object, opacity);
@@ -1109,10 +1233,24 @@ class CADEditor {
     }
 
     setObjectColor(object, colorValue) {
-        if (!object || !object.material) return;
+        if (!object) return;
 
         // Создаем новый цвет
         const newColor = new THREE.Color(colorValue);
+
+        // Если у объекта нет материала, создаем его
+        if (!object.material) {
+            object.material = new THREE.MeshStandardMaterial({
+                color: newColor,
+                side: THREE.FrontSide
+            });
+            object.material.needsUpdate = true;
+
+            // Сохраняем в userData
+            object.userData.originalMaterial = object.material.clone();
+            object.userData.currentColor = colorValue;
+            return;
+        }
 
         // Если объект выделен, обновляем и оригинальный материал
         if (object.userData.originalMaterial) {
@@ -1120,20 +1258,40 @@ class CADEditor {
             const originalClone = object.userData.originalMaterial.clone();
             originalClone.color.copy(newColor);
 
-            // Обновляем userData, чтобы при снятии выделения использовался новый цвет
+            // Обновляем userData
             object.userData.originalMaterial = originalClone;
+        } else {
+            // Сохраняем текущий материал как оригинальный
+            object.userData.originalMaterial = object.material.clone();
+            object.userData.originalMaterial.color.copy(newColor);
         }
 
         // Меняем цвет текущего материала
         object.material.color.copy(newColor);
         object.material.needsUpdate = true;
 
-        // Сохраняем новый цвет в userData для восстановления при повторном выделении
+        // Сохраняем новый цвет в userData
         object.userData.currentColor = colorValue;
     }
 
     setObjectOpacity(object, opacity) {
-        if (!object || !object.material) return;
+        if (!object) return;
+
+        // Если у объекта нет материала, создаем его
+        if (!object.material) {
+            object.material = new THREE.MeshStandardMaterial({
+                color: 0x808080,
+                side: THREE.FrontSide,
+                transparent: opacity < 1.0,
+                opacity: opacity
+            });
+            object.material.needsUpdate = true;
+
+            // Сохраняем в userData
+            object.userData.originalMaterial = object.material.clone();
+            object.userData.currentOpacity = opacity;
+            return;
+        }
 
         // Если объект выделен, обновляем и оригинальный материал
         if (object.userData.originalMaterial) {
@@ -1144,6 +1302,11 @@ class CADEditor {
 
             // Обновляем userData
             object.userData.originalMaterial = originalClone;
+        } else {
+            // Сохраняем текущий материал как оригинальный
+            object.userData.originalMaterial = object.material.clone();
+            object.userData.originalMaterial.opacity = opacity;
+            object.userData.originalMaterial.transparent = opacity < 1.0;
         }
 
         // Меняем прозрачность текущего материала
@@ -1558,21 +1721,20 @@ class CADEditor {
         return vertices > 0;
     }
 
+
+
     addBooleanResult(result, operation) {
         // Сохраняем копии исходных объектов перед удалением
         const originalObjects = this.selectedObjects.map(obj => {
             return {
                 uuid: obj.uuid,
-                data: {
-                    userData: { ...obj.userData },
-                    position: obj.position.toArray(),
-                    rotation: obj.rotation.toArray(),
-                    scale: obj.scale.toArray(),
-                    type: obj.userData.type,
-                    name: obj.userData.name
-                }
+                data: this.projectManager.serializeObjectForHistory(obj)
             };
         });
+
+        const sourceObjectIds = this.selectedObjects.map(obj => obj.uuid);
+        const keepOriginal = document.getElementById('boolKeepOriginal') ?
+            document.getElementById('boolKeepOriginal').checked : false;
 
         // Анимация результата
         result.userData.animation = {
@@ -1589,10 +1751,6 @@ class CADEditor {
             .easing(TWEEN.Easing.Elastic.Out)
             .start();
 
-        const sourceObjectIds = this.selectedObjects.map(obj => obj.uuid);
-        const keepOriginal = document.getElementById('boolKeepOriginal') ?
-            document.getElementById('boolKeepOriginal').checked : false;
-
         if (!keepOriginal && this.selectedObjects.length > 0) {
             const objectsToRemove = [...this.selectedObjects];
 
@@ -1603,65 +1761,46 @@ class CADEditor {
                     this.objectsGroup.remove(obj);
                 }
 
-                const index = this.objects.indexOf(obj);
-                if (index > -1) {
-                    this.objects.splice(index, 1);
+                    const index = this.objects.indexOf(obj);
+                    if (index > -1) {
+                        this.objects.splice(index, 1);
 
-                    // Удаляем из специальных массивов
-                    if (obj.userData.type === 'sketch_plane') {
-                        this.sketchPlanes = this.sketchPlanes.filter(p => p.uuid !== obj.uuid);
-                    } else if (obj.userData.type === 'work_plane') {
-                        this.workPlanes = this.workPlanes.filter(p => p.uuid !== obj.uuid);
-                    }
-
-                    try {
-                        if (obj.geometry) obj.geometry.dispose();
-                        if (obj.material) {
-                            const materialInUse = this.objects.some(otherObj =>
-                                otherObj !== obj && otherObj.material === obj.material);
-                            if (!materialInUse) {
-                                obj.material.dispose();
-                            }
+                        // Удаляем из специальных массивов
+                        if (obj.userData.type === 'sketch_plane') {
+                            this.sketchPlanes = this.sketchPlanes.filter(p => p.uuid !== obj.uuid);
+                        } else if (obj.userData.type === 'work_plane') {
+                            this.workPlanes = this.workPlanes.filter(p => p.uuid !== obj.uuid);
                         }
-                    } catch (error) {
-                        console.warn('Ошибка при освобождении ресурсов:', error);
                     }
                 }
+
+                this.selectedObjects = [];
+                this.objectsManager.updateSceneList();
             }
 
-            this.selectedObjects = [];
-            this.objectsManager.updateSceneList();
+            this.selectObject(result);
+            this.objectsManager.updateSceneStats();
+
+            // Записываем в историю с сохранением исходных объектов
+            this.history.addAction({
+                type: 'boolean',
+                operation: operation,
+                result: result.uuid,
+                sourceObjects: sourceObjectIds,
+                originalObjects: originalObjects,
+                data: this.projectManager.serializeObjectForHistory(result)
+            });
+
+            setTimeout(() => {
+                const stats = this.booleanOps ? this.booleanOps.getOperationStats(result) : null;
+                if (stats) {
+                    this.showStatus(
+                        `Операция "${operation}" завершена. Вершин: ${stats.vertices}, Полигонов: ${stats.faces}`,
+                        'success'
+                    );
+                }
+            }, 100);
         }
-
-        this.selectObject(result);
-        this.objectsManager.updateSceneStats();
-
-        // Записываем в историю с сохранением исходных объектов
-        this.history.addAction({
-            type: 'boolean',
-            operation: operation,
-            result: result.uuid,
-            sourceObjects: sourceObjectIds,
-            originalObjects: originalObjects, // Сохраняем копии для восстановления
-            data: {
-                userData: { ...result.userData },
-                position: result.position.toArray(),
-                rotation: result.rotation.toArray(),
-                scale: result.scale.toArray(),
-                name: this.getObjectName(operation)
-            }
-        });
-
-        setTimeout(() => {
-            const stats = this.booleanOps ? this.booleanOps.getOperationStats(result) : null;
-            if (stats) {
-                this.showStatus(
-                    `Операция "${operation}" завершена. Вершин: ${stats.vertices}, Полигонов: ${stats.faces}`,
-                    'success'
-                );
-            }
-        }, 100);
-    }
 
     showLoadingIndicator(message) {
         let indicator = document.getElementById('boolLoadingIndicator');
@@ -1799,6 +1938,10 @@ class CADEditor {
                             this.workPlanes = this.workPlanes.filter(p => p.uuid !== action.object);
                         }
 
+                        // Освобождаем ресурсы
+                        if (obj.geometry) obj.geometry.dispose();
+                        if (obj.material) obj.material.dispose();
+
                         this.objectsManager.updateSceneStats();
                         this.objectsManager.updateSceneList();
                     }
@@ -1806,17 +1949,14 @@ class CADEditor {
                     // Восстанавливаем объект
                     if (action.data && this.projectManager) {
                         const objData = {
+                            uuid: action.object,
                             userData: action.data,
-                            position: [action.data.position?.x || 0,
-                                      action.data.position?.y || 0,
-                                      action.data.position?.z || 0],
-                            rotation: [action.data.rotation?.x || 0,
-                                      action.data.rotation?.y || 0,
-                                      action.data.rotation?.z || 0],
-                            scale: [1, 1, 1]
+                            position: action.data.position || [0, 0, 0],
+                            rotation: action.data.rotation || [0, 0, 0],
+                            scale: action.data.scale || [1, 1, 1]
                         };
 
-                        const obj = this.projectManager.deserializeObject(objData);
+                        const obj = this.projectManager.deserializeObjectOptimized(objData);
                         if (obj) {
                             this.objectsGroup.add(obj);
                             this.objects.push(obj);
@@ -1838,15 +1978,27 @@ class CADEditor {
                 if (isUndo) {
                     // Восстанавливаем удаленные объекты
                     action.objects.forEach(objData => {
-                        const obj = this.projectManager.deserializeObject(objData.data);
-                        if (obj) {
-                            this.objectsGroup.add(obj);
-                            this.objects.push(obj);
+                        if (objData.data && this.projectManager) {
+                            // Для STL и сложных объектов восстанавливаем из сохраненных данных
+                            const fullData = {
+                                uuid: objData.uuid,
+                                userData: objData.data.userData,
+                                position: objData.data.position || [0, 0, 0],
+                                rotation: objData.data.rotation || [0, 0, 0],
+                                scale: objData.data.scale || [1, 1, 1],
+                                type: objData.data.type || 'object'
+                            };
 
-                            if (obj.userData.type === 'sketch_plane') {
-                                this.sketchPlanes.push(obj);
-                            } else if (obj.userData.type === 'work_plane') {
-                                this.workPlanes.push(obj);
+                            const obj = this.projectManager.deserializeObjectOptimized(fullData);
+                            if (obj) {
+                                this.objectsGroup.add(obj);
+                                this.objects.push(obj);
+
+                                if (obj.userData.type === 'sketch_plane') {
+                                    this.sketchPlanes.push(obj);
+                                } else if (obj.userData.type === 'work_plane') {
+                                    this.workPlanes.push(obj);
+                                }
                             }
                         }
                     });
@@ -1866,6 +2018,9 @@ class CADEditor {
                             } else if (obj.userData.type === 'work_plane') {
                                 this.workPlanes = this.workPlanes.filter(p => p.uuid !== objData.uuid);
                             }
+
+                            if (obj.geometry) obj.geometry.dispose();
+                            if (obj.material) obj.material.dispose();
                         }
                     });
                     this.objectsManager.updateSceneStats();
@@ -1877,9 +2032,9 @@ class CADEditor {
                 const posObj = this.findObjectByUuid(action.object);
                 if (posObj) {
                     if (isUndo) {
-                        posObj.position.copy(action.data.previousPosition || new THREE.Vector3());
+                        posObj.position.fromArray(action.data.previousPosition || [0, 0, 0]);
                     } else {
-                        posObj.position.copy(action.data.position || new THREE.Vector3());
+                        posObj.position.fromArray(action.data.position || [0, 0, 0]);
                     }
                     this.updatePropertiesPanel();
                 }
@@ -1889,9 +2044,9 @@ class CADEditor {
                 const scaleObj = this.findObjectByUuid(action.object);
                 if (scaleObj) {
                     if (isUndo) {
-                        scaleObj.scale.copy(action.data.previousScale || new THREE.Vector3(1, 1, 1));
+                        scaleObj.scale.fromArray(action.data.previousScale || [1, 1, 1]);
                     } else {
-                        scaleObj.scale.copy(action.data.scale || new THREE.Vector3(1, 1, 1));
+                        scaleObj.scale.fromArray(action.data.scale || [1, 1, 1]);
                     }
                     this.updatePropertiesPanel();
                 }
@@ -1901,9 +2056,9 @@ class CADEditor {
                 const rotObj = this.findObjectByUuid(action.object);
                 if (rotObj) {
                     if (isUndo) {
-                        rotObj.rotation.copy(action.data.previousRotation || new THREE.Euler());
+                        rotObj.rotation.fromArray(action.data.previousRotation || [0, 0, 0]);
                     } else {
-                        rotObj.rotation.copy(action.data.rotation || new THREE.Euler());
+                        rotObj.rotation.fromArray(action.data.rotation || [0, 0, 0]);
                     }
                     this.updatePropertiesPanel();
                 }
@@ -1922,6 +2077,30 @@ class CADEditor {
                 }
                 break;
 
+            case 'modify_color':
+                const colorObj = this.findObjectByUuid(action.object);
+                if (colorObj && colorObj.material) {
+                    if (isUndo) {
+                        this.setObjectColor(colorObj, action.data.previousColor);
+                    } else {
+                        this.setObjectColor(colorObj, action.data.color);
+                    }
+                    this.updatePropertiesPanel();
+                }
+                break;
+
+            case 'modify_opacity':
+                const opacityObj = this.findObjectByUuid(action.object);
+                if (opacityObj && opacityObj.material) {
+                    if (isUndo) {
+                        this.setObjectOpacity(opacityObj, action.data.previousOpacity);
+                    } else {
+                        this.setObjectOpacity(opacityObj, action.data.opacity);
+                    }
+                    this.updatePropertiesPanel();
+                }
+                break;
+
             case 'boolean':
                 console.log('Boolean action:', action.operation, isUndo ? 'undo' : 'redo');
 
@@ -1932,27 +2111,41 @@ class CADEditor {
                         this.objectsGroup.remove(resultObj);
                         this.objects = this.objects.filter(o => o.uuid !== action.result);
                         this.selectedObjects = this.selectedObjects.filter(o => o.uuid !== action.result);
+
+                        if (resultObj.geometry) resultObj.geometry.dispose();
+                        if (resultObj.material) resultObj.material.dispose();
                     }
 
-                    // Восстанавливаем исходные объекты
-                    if (action.sourceObjects && action.sourceObjects.length > 0) {
-                        action.sourceObjects.forEach(sourceUuid => {
-                            const sourceObj = this.findObjectByUuid(sourceUuid);
-                            if (!sourceObj) {
-                                // Если объекта нет в сцене, восстанавливаем из сохраненных данных
-                                const objData = action.originalObjects?.find(o => o.uuid === sourceUuid);
-                                if (objData && this.projectManager) {
-                                    const restoredObj = this.projectManager.deserializeObject(objData);
-                                    if (restoredObj) {
-                                        this.objectsGroup.add(restoredObj);
-                                        this.objects.push(restoredObj);
+                    // Восстанавливаем исходные объекты из originalObjects
+                    if (action.originalObjects && action.originalObjects.length > 0) {
+                        action.originalObjects.forEach(objData => {
+                            if (objData && objData.data && this.projectManager) {
+                                const fullData = {
+                                    uuid: objData.uuid,
+                                    userData: objData.data.userData || {},
+                                    position: objData.data.position || [0, 0, 0],
+                                    rotation: objData.data.rotation || [0, 0, 0],
+                                    scale: objData.data.scale || [1, 1, 1],
+                                    type: objData.data.type || 'object'
+                                };
+
+                                const restoredObj = this.projectManager.deserializeObjectOptimized(fullData);
+                                if (restoredObj) {
+                                    this.objectsGroup.add(restoredObj);
+                                    this.objects.push(restoredObj);
+
+                                    // Восстанавливаем специальные массивы
+                                    if (restoredObj.userData.type === 'sketch_plane') {
+                                        this.sketchPlanes.push(restoredObj);
+                                    } else if (restoredObj.userData.type === 'work_plane') {
+                                        this.workPlanes.push(restoredObj);
                                     }
                                 }
                             }
                         });
                     }
                 } else {
-                    // Удаляем исходные объекты
+                    // Redo: снова удаляем исходные объекты
                     if (action.sourceObjects && action.sourceObjects.length > 0) {
                         action.sourceObjects.forEach(sourceUuid => {
                             const sourceObj = this.findObjectByUuid(sourceUuid);
@@ -1960,6 +2153,16 @@ class CADEditor {
                                 this.objectsGroup.remove(sourceObj);
                                 this.objects = this.objects.filter(o => o.uuid !== sourceUuid);
                                 this.selectedObjects = this.selectedObjects.filter(o => o.uuid !== sourceUuid);
+
+                                // Удаляем из специальных массивов
+                                if (sourceObj.userData.type === 'sketch_plane') {
+                                    this.sketchPlanes = this.sketchPlanes.filter(p => p.uuid !== sourceUuid);
+                                } else if (sourceObj.userData.type === 'work_plane') {
+                                    this.workPlanes = this.workPlanes.filter(p => p.uuid !== sourceUuid);
+                                }
+
+                                if (sourceObj.geometry) sourceObj.geometry.dispose();
+                                if (sourceObj.material) sourceObj.material.dispose();
                             }
                         });
                     }
@@ -1967,29 +2170,53 @@ class CADEditor {
                     // Создаем результат булевой операции
                     const resultObj = this.findObjectByUuid(action.result);
                     if (!resultObj && action.data && this.projectManager) {
-                        // Если результат удален, воссоздаем его
                         const resultData = {
-                            userData: action.data,
+                            uuid: action.result,
+                            userData: action.data.userData || {},
                             position: action.data.position || [0, 0, 0],
                             rotation: action.data.rotation || [0, 0, 0],
-                            scale: action.data.scale || [1, 1, 1]
+                            scale: action.data.scale || [1, 1, 1],
+                            type: action.data.type || 'boolean_result'
                         };
 
-                        const newResult = this.projectManager.deserializeObject(resultData);
+                        const newResult = this.projectManager.deserializeObjectOptimized(resultData);
                         if (newResult) {
                             this.objectsGroup.add(newResult);
                             this.objects.push(newResult);
                             this.selectObject(newResult);
                         }
-                    } else if (resultObj && !resultObj.parent) {
-                        // Если результат есть, но не в сцене
-                        this.objectsGroup.add(resultObj);
+                    } else if (resultObj) {
+                        // Если объект уже существует, но не в сцене
+                        if (!resultObj.parent) {
+                            this.objectsGroup.add(resultObj);
+                            this.objects.push(resultObj);
+                        }
                         this.selectObject(resultObj);
                     }
                 }
 
                 this.objectsManager.updateSceneStats();
                 this.objectsManager.updateSceneList();
+                break;
+
+            case 'import':
+                if (isUndo) {
+                    const importedObj = this.findObjectByUuid(action.object);
+                    if (importedObj) {
+                        this.objectsGroup.remove(importedObj);
+                        this.objects = this.objects.filter(o => o.uuid !== action.object);
+                        this.selectedObjects = this.selectedObjects.filter(o => o.uuid !== action.object);
+
+                        if (importedObj.geometry) importedObj.geometry.dispose();
+                        if (importedObj.material) importedObj.material.dispose();
+
+                        this.objectsManager.updateSceneStats();
+                        this.objectsManager.updateSceneList();
+                    }
+                } else {
+                    // Повторно импортируем объект (нужно реализовать, если требуется)
+                    this.showStatus('Повторный импорт не реализован', 'warning');
+                }
                 break;
 
             default:
@@ -2088,10 +2315,20 @@ class CADEditor {
             document.getElementById('sizeYInput').value = dimensions.y.toFixed(1);
             document.getElementById('sizeZInput').value = dimensions.z.toFixed(1);
 
-            // Внешний вид
-            const color = new THREE.Color(obj.material.color);
-            document.getElementById('objectColor').value = color.getStyle();
-            document.getElementById('objectOpacity').value = obj.material.opacity;
+            // Внешний вид - ТОЛЬКО ЕСЛИ ОБЪЕКТ ИМЕЕТ МАТЕРИАЛ
+            if (obj.material) {
+                const color = new THREE.Color(obj.material.color);
+                document.getElementById('objectColor').value = color.getStyle();
+                document.getElementById('objectOpacity').value = obj.material.opacity;
+                document.getElementById('objectColor').disabled = false;
+                document.getElementById('objectOpacity').disabled = false;
+            } else {
+                // Если объект не имеет материала, отключаем поля
+                document.getElementById('objectColor').value = '#ffffff';
+                document.getElementById('objectOpacity').value = 1.0;
+                document.getElementById('objectColor').disabled = true;
+                document.getElementById('objectOpacity').disabled = true;
+            }
 
             // Показываем все группы свойств для единичного выделения
             document.querySelectorAll('.property-group').forEach(group => {
@@ -2141,6 +2378,15 @@ class CADEditor {
             if (field) {
                 // Поля доступны только если есть ровно один выделенный объект
                 field.disabled = !enabled || this.selectedObjects.length !== 1;
+
+                // Дополнительно для цветных полей проверяем наличие материала
+                if (id === 'objectColor' || id === 'objectOpacity') {
+                    if (this.selectedObjects.length === 1 && this.selectedObjects[0].material) {
+                        field.disabled = false;
+                    } else {
+                        field.disabled = true;
+                    }
+                }
             }
         });
 

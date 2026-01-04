@@ -73,8 +73,30 @@ class BooleanOperations {
                 resultBrush = this.evaluator.evaluate(resultBrush, brushes[i], operation);
             }
 
+             // Берем материал из первого объекта, если он существует
+            let material;
+            if (objects[0] && objects[0].material) {
+                // Клонируем материал, чтобы не изменять оригинал
+                material = objects[0].material.clone();
+
+                // Сбрасываем свойства выделения
+                material.emissive = new THREE.Color(0x000000);
+                material.emissiveIntensity = 0;
+                material.transparent = false;
+                material.opacity = 1.0;
+                material.wireframe = false;
+            } else {
+                // Иначе создаем новый материал
+                material = new THREE.MeshStandardMaterial({
+                    color: 0x808080, // Серый цвет по умолчанию
+                    side: THREE.FrontSide,
+                    transparent: false,
+                    wireframe: false
+                });
+            }
+
             // Конвертируем Brush обратно в стандартный THREE.Mesh для сцены
-            const resultMesh = new THREE.Mesh(resultBrush.geometry, resultBrush.material);
+            const resultMesh = new THREE.Mesh(resultBrush.geometry, material);
             resultMesh.position.copy(resultBrush.position);
             resultMesh.rotation.copy(resultBrush.rotation);
             resultMesh.scale.copy(resultBrush.scale);
