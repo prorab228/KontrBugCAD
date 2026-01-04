@@ -1,4 +1,4 @@
-// project-manager.js - полностью переработанный для сохранения вытянутых объектов и скетчей
+// project-manager.js - сохраняет проекты только в файлы, хранит геометрию для всех объектов
 class ProjectManager {
     constructor(cadEditor) {
         this.editor = cadEditor;
@@ -6,9 +6,7 @@ class ProjectManager {
             name: 'Новый проект',
             description: '',
             created: new Date().toISOString(),
-            modified: new Date().toISOString(),
-            objects: [],
-            sketches: []
+            modified: new Date().toISOString()
         };
     }
 
@@ -19,7 +17,6 @@ class ProjectManager {
             return;
         }
 
-        // Безопасно очищаем сцену
         this.safeClearScene();
 
         // Очищаем массивы
@@ -28,22 +25,14 @@ class ProjectManager {
         this.editor.sketchPlanes = [];
         this.editor.selectedObjects = [];
 
-        if (this.editor.history) {
-            this.editor.history.clear();
-        }
+        if (this.editor.history) this.editor.history.clear();
+        if (this.editor.transformControls) this.editor.transformControls.detach();
 
-        if (this.editor.transformControls) {
-            this.editor.transformControls.detach();
-        }
-
-        // Сбрасываем текущий проект
         this.currentProject = {
             name: 'Новый проект',
             description: '',
             created: new Date().toISOString(),
-            modified: new Date().toISOString(),
-            objects: [],
-            sketches: []
+            modified: new Date().toISOString()
         };
 
         document.getElementById('projectName').textContent = 'Новый проект';
@@ -57,14 +46,14 @@ class ProjectManager {
         this.editor.showStatus('Создан новый проект', 'info');
     }
 
+
     // БЕЗОПАСНАЯ ОЧИСТКА СЦЕНЫ
     safeClearScene() {
-        const objectsToRemove = [...this.editor.objects];
+        // Удаляем все объекты из сцены
+        const removeObjects = [...this.editor.objects];
 
-        objectsToRemove.forEach(obj => {
-            if (obj.parent) {
-                obj.parent.remove(obj);
-            }
+        removeObjects.forEach(obj => {
+            if (obj.parent) obj.parent.remove(obj);
             this.safeDisposeObject(obj);
         });
 
@@ -84,98 +73,107 @@ class ProjectManager {
                 this.safeDisposeObject(child);
             }
         }
+
+        this.editor.objects = [];
+        this.editor.workPlanes = [];
+        this.editor.sketchPlanes = [];
+        this.editor.selectedObjects = [];
     }
 
     safeDisposeObject(object) {
         if (!object) return;
 
-        const disposeRecursive = (obj) => {
-            try {
-                if (obj.geometry && typeof obj.geometry.dispose === 'function') {
-                    obj.geometry.dispose();
-                }
-
-                if (obj.material) {
-                    if (Array.isArray(obj.material)) {
-                        obj.material.forEach(material => {
-                            if (material && typeof material.dispose === 'function') {
-                                material.dispose();
-                            }
-                        });
-                    } else if (typeof obj.material.dispose === 'function') {
-                        obj.material.dispose();
-                    }
-                }
-
-                // Обрабатываем дочерние объекты
-                if (obj.children) {
-                    for (let i = obj.children.length - 1; i >= 0; i--) {
-                        disposeRecursive(obj.children[i]);
-                    }
-                }
-            } catch (error) {
-                console.warn('Ошибка при освобождении ресурсов объекта:', error);
+        try {
+            if (object.geometry && typeof object.geometry.dispose === 'function') {
+                object.geometry.dispose();
             }
-        };
 
-        disposeRecursive(object);
+            if (object.material) {
+                if (Array.isArray(object.material)) {
+                    object.material.forEach(material => {
+                        if (material && typeof material.dispose === 'function') {
+                            material.dispose();
+                        }
+                    });
+                } else if (typeof object.material.dispose === 'function') {
+                    object.material.dispose();
+                }
+            }
+
+            // Рекурсивно удаляем дочерние объекты
+            if (object.children) {
+                for (let i = object.children.length - 1; i >= 0; i--) {
+                    this.safeDisposeObject(object.children[i]);
+                    if (object.children[i].parent) {
+                        object.children[i].parent.remove(object.children[i]);
+                    }
+                }
+            }
+        } catch (error) {
+            console.warn('Ошибка при освобождении ресурсов объекта:', error);
+        }
     }
 
     // СОХРАНЕНИЕ ПРОЕКТА
     showSaveModal() {
         document.getElementById('saveModal').classList.add('active');
-        this.loadSavedProjects();
     }
 
     saveProject() {
         const name = document.getElementById('projectNameInput').value || 'Без названия';
         const description = document.getElementById('projectDescription').value;
 
-        // Обновляем информацию о проекте
-        this.currentProject.name = name;
-        this.currentProject.description = description;
-        this.currentProject.modified = new Date().toISOString();
-        this.currentProject.objects = this.serializeScene();
-        this.currentProject.sketches = this.serializeSketches();
+        this.currentProject = {
+            metadata: {
+                version: '3.0',
+                type: 'cad-project',
+                generator: 'КонтрБагCAD',
+                createdAt: new Date().toISOString(),
+                appVersion: this.editor.APP_VERSION
+            },
+            name: name,
+            description: description,
+            scene: this.serializeScene(),
+            modified: new Date().toISOString()
+        };
 
         try {
-            // Сохраняем в localStorage
-            this.saveToLocalStorage(this.currentProject);
-
-            // Скачиваем файл
+            // Только сохраняем в файл, не в localStorage
             this.downloadProjectFile(this.currentProject);
 
             document.getElementById('projectName').textContent = name;
-            this.editor.showStatus(`Проект "${name}" сохранен и скачан`, 'success');
+            document.getElementById('saveModal').classList.remove('active');
+            this.editor.showStatus(`Проект "${name}" сохранен в файл`, 'success');
 
         } catch (error) {
             console.error('Ошибка сохранения:', error);
-
-            if (error.name === 'QuotaExceededError') {
-                this.downloadProjectFile(this.currentProject);
-                this.editor.showStatus('Проект сохранен в файл (localStorage переполнен)', 'warning');
-            } else {
-                this.editor.showStatus('Ошибка сохранения: ' + error.message, 'error');
-            }
+            this.editor.showStatus('Ошибка сохранения: ' + error.message, 'error');
         }
     }
 
     // СЕРИАЛИЗАЦИЯ СЦЕНЫ
     serializeScene() {
-        const objects = [];
+        const sceneData = {
+            objects: [],
+            sketches: []
+        };
 
+        // Сериализуем все объекты
         this.editor.objects.forEach(obj => {
             try {
                 const objData = this.serializeObject(obj);
                 if (objData) {
-                    objects.push(objData);
+                    sceneData.objects.push(objData);
                 }
             } catch (error) {
                 console.warn('Ошибка сериализации объекта:', error, obj);
             }
         });
 
-        return objects;
+        // Сериализуем скетчи отдельно
+        sceneData.sketches = this.serializeAllSketches();
+
+        return sceneData;
     }
 
     serializeObject(object) {
@@ -189,7 +187,8 @@ class ProjectManager {
             rotation: [object.rotation.x, object.rotation.y, object.rotation.z],
             scale: object.scale.toArray(),
             visible: object.visible,
-            name: object.userData.name || 'Объект'
+            castShadow: object.castShadow,
+            receiveShadow: object.receiveShadow
         };
 
         // Сохраняем материал
@@ -197,58 +196,12 @@ class ProjectManager {
             objData.material = this.serializeMaterial(object.material);
         }
 
-        // Сохраняем геометрию для сложных объектов
-        if (object.geometry && this.shouldSerializeGeometry(object)) {
+        // Сохраняем геометрию для ВСЕХ объектов
+        if (object.geometry) {
             objData.geometry = this.serializeGeometry(object.geometry);
         }
 
-        // Специальные типы объектов
-        switch (object.userData.type) {
-            case 'extrude':
-                objData.extrudeParams = {
-                    height: object.userData.height || 10,
-                    depth: object.userData.depth || 10,
-                    segments: object.userData.segments || 1,
-                    bevelEnabled: object.userData.bevelEnabled || false,
-                    bevelThickness: object.userData.bevelThickness || 0.1,
-                    bevelSize: object.userData.bevelSize || 0.1,
-                    bevelSegments: object.userData.bevelSegments || 1,
-                    sketchPlaneId: object.userData.sketchPlaneId,
-                    sketchElements: object.userData.sketchElements || []
-                };
-                break;
-
-            case 'sketch_plane':
-            case 'work_plane':
-                objData.sketchElements = this.serializeSketchElements(object);
-                break;
-
-            case 'boolean_result':
-                objData.booleanOperation = object.userData.operation || 'union';
-                objData.sourceObjects = object.userData.sourceObjects || [];
-                break;
-
-            case 'stl':
-                objData.filename = object.userData.filename || 'model.stl';
-                break;
-        }
-
         return objData;
-    }
-
-    shouldSerializeGeometry(object) {
-        const skipTypes = [
-            'sketch_plane',
-            'work_plane',
-            'sketch_element',
-            'base_plane'
-        ];
-
-        if (skipTypes.includes(object.userData.type)) {
-            return false;
-        }
-
-        return true;
     }
 
     cleanUserData(userData) {
@@ -256,8 +209,7 @@ class ProjectManager {
 
         for (const key in userData) {
             // Пропускаем временные данные и Three.js объекты
-            if (key.startsWith('_') ||
-                key === 'originalMaterial' ||
+            if (key === 'originalMaterial' ||
                 key === 'isHighlighted' ||
                 key === 'arrow' ||
                 key === 'transformControls' ||
@@ -275,15 +227,14 @@ class ProjectManager {
                 typeof value === 'string' ||
                 typeof value === 'number' ||
                 typeof value === 'boolean' ||
-                Array.isArray(value) ||
-                (typeof value === 'object' && !(value instanceof THREE.Vector3))) {
+                (Array.isArray(value) && !value.some(item => item instanceof THREE.Vector3))) {
 
+                cleaned[key] = value;
+            } else if (value instanceof THREE.Vector3) {
+                cleaned[key] = value.toArray();
+            } else if (typeof value === 'object' && !Array.isArray(value)) {
                 // Рекурсивно очищаем вложенные объекты
-                if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
-                    cleaned[key] = this.cleanUserData(value);
-                } else {
-                    cleaned[key] = value;
-                }
+                cleaned[key] = this.cleanUserData(value);
             }
         }
 
@@ -308,148 +259,141 @@ class ProjectManager {
             return null;
         }
 
-        const geomData = {
-            type: geometry.type,
-            positions: Array.from(geometry.attributes.position.array),
-            normals: geometry.attributes.normal ?
-                Array.from(geometry.attributes.normal.array) : [],
-            uvs: geometry.attributes.uv ?
-                Array.from(geometry.attributes.uv.array) : [],
-            indices: geometry.index ?
-                Array.from(geometry.index.array) : [],
-            boundingBox: geometry.boundingBox ? {
-                min: geometry.boundingBox.min.toArray(),
-                max: geometry.boundingBox.max.toArray()
-            } : null
-        };
+        // Оптимизация: для некоторых типов геометрии сохраняем только параметры
+        if (geometry.type === 'BoxGeometry') {
+            return {
+                type: 'BoxGeometry',
+                width: geometry.parameters.width || 25,
+                height: geometry.parameters.height || 25,
+                depth: geometry.parameters.depth || 25,
+                widthSegments: geometry.parameters.widthSegments || 1,
+                heightSegments: geometry.parameters.heightSegments || 1,
+                depthSegments: geometry.parameters.depthSegments || 1
+            };
+        } else if (geometry.type === 'SphereGeometry') {
+            return {
+                type: 'SphereGeometry',
+                radius: geometry.parameters.radius || 12.5,
+                widthSegments: geometry.parameters.widthSegments || 32,
+                heightSegments: geometry.parameters.heightSegments || 32
+            };
+        } else if (geometry.type === 'CylinderGeometry') {
+            return {
+                type: 'CylinderGeometry',
+                radiusTop: geometry.parameters.radiusTop || 12.5,
+                radiusBottom: geometry.parameters.radiusBottom || 12.5,
+                height: geometry.parameters.height || 25,
+                radialSegments: geometry.parameters.radialSegments || 32
+            };
+        } else if (geometry.type === 'ConeGeometry') {
+            return {
+                type: 'ConeGeometry',
+                radius: geometry.parameters.radius || 12.5,
+                height: geometry.parameters.height || 25,
+                radialSegments: geometry.parameters.radialSegments || 32
+            };
+        } else if (geometry.type === 'TorusGeometry') {
+            return {
+                type: 'TorusGeometry',
+                radius: geometry.parameters.radius || 25,
+                tube: geometry.parameters.tube || 5,
+                radialSegments: geometry.parameters.radialSegments || 16,
+                tubularSegments: geometry.parameters.tubularSegments || 100
+            };
+        } else if (geometry.type === 'PlaneGeometry') {
+            return {
+                type: 'PlaneGeometry',
+                width: geometry.parameters.width || 100,
+                height: geometry.parameters.height || 100,
+                widthSegments: geometry.parameters.widthSegments || 1,
+                heightSegments: geometry.parameters.heightSegments || 1
+            };
+        } else {
+            // Для сложных геометрий сохраняем все вершины
+            const positions = geometry.attributes.position.array;
+            const normals = geometry.attributes.normal ? geometry.attributes.normal.array : [];
+            const indices = geometry.index ? Array.from(geometry.index.array) : [];
 
-        return geomData;
+            return {
+                type: geometry.type,
+                positions: Array.from(positions),
+                normals: normals.length > 0 ? Array.from(normals) : [],
+                indices: indices,
+                boundingBox: geometry.boundingBox ? {
+                    min: geometry.boundingBox.min.toArray(),
+                    max: geometry.boundingBox.max.toArray()
+                } : null
+            };
+        }
     }
 
     // СЕРИАЛИЗАЦИЯ СКЕТЧЕЙ
-    serializeSketches() {
+    serializeAllSketches() {
         const sketches = [];
 
-        // Собираем все плоскости скетчей
+        // Находим все плоскости скетчей
         const sketchPlanes = this.editor.objects.filter(obj =>
             obj.userData.type === 'sketch_plane' || obj.userData.type === 'work_plane'
         );
 
         sketchPlanes.forEach(plane => {
-            const sketchData = {
-                planeId: plane.uuid,
-                planeType: plane.userData.type,
-                position: plane.position.toArray(),
-                rotation: [plane.rotation.x, plane.rotation.y, plane.rotation.z],
-                scale: plane.scale.toArray(),
-                elements: this.serializeSketchElements(plane),
-                properties: {
-                    gridVisible: plane.userData.gridVisible || true,
-                    snapEnabled: plane.userData.snapEnabled || true,
-                    snapGrid: plane.userData.snapGrid || 1
-                }
-            };
-
-            sketches.push(sketchData);
+            const sketchData = this.serializeSketch(plane);
+            if (sketchData) {
+                sketches.push(sketchData);
+            }
         });
 
         return sketches;
     }
 
-    serializeSketchElements(parentObject) {
-        if (!parentObject || !parentObject.children) return [];
+    serializeSketch(plane) {
+        if (!plane || !plane.children) return null;
 
         const elements = [];
 
-        parentObject.children.forEach(child => {
+        plane.children.forEach(child => {
             if (child.userData && child.userData.type === 'sketch_element') {
-                const elementData = {
-                    elementType: child.userData.elementType,
-                    id: child.userData.id || THREE.MathUtils.generateUUID(),
-                    position: child.position.toArray(),
-                    rotation: [child.rotation.x, child.rotation.y, child.rotation.z],
-                    scale: child.scale.toArray(),
-                    visible: child.visible,
-                    material: this.serializeMaterial(child.material)
-                };
-
-                // Сохраняем данные в зависимости от типа элемента
-                switch (child.userData.elementType) {
-                    case 'line':
-                    case 'polyline':
-                        if (child.geometry && child.geometry.attributes.position) {
-                            elementData.points = this.extractPointsFromGeometry(child.geometry);
-                            elementData.isClosed = child.userData.isClosed || false;
-                        }
-                        break;
-
-                    case 'circle':
-                        elementData.radius = child.userData.radius || 10;
-                        elementData.segments = child.userData.segments || 32;
-                        break;
-
-                    case 'rectangle':
-                        elementData.width = child.userData.width || 20;
-                        elementData.height = child.userData.height || 20;
-                        break;
-
-                    case 'polygon':
-                        elementData.radius = child.userData.radius || 10;
-                        elementData.sides = child.userData.sides || 6;
-                        break;
-
-                    case 'text':
-                        elementData.content = child.userData.content || 'Текст';
-                        elementData.fontSize = child.userData.fontSize || 20;
-                        break;
+                const elementData = this.serializeSketchElement(child);
+                if (elementData) {
+                    elements.push(elementData);
                 }
-
-                elements.push(elementData);
             }
         });
 
-        return elements;
+        return {
+            planeId: plane.uuid,
+            planeType: plane.userData.type,
+            planeData: this.serializeObject(plane),
+            elements: elements
+        };
     }
 
-    extractPointsFromGeometry(geometry) {
-        const positions = geometry.attributes.position.array;
-        const points = [];
+    serializeSketchElement(element) {
+        const elementData = {
+            uuid: element.uuid,
+            type: element.type,
+            userData: this.cleanUserData(element.userData),
+            position: element.position.toArray(),
+            rotation: [element.rotation.x, element.rotation.y, element.rotation.z],
+            scale: element.scale.toArray(),
+            visible: element.visible
+        };
 
-        for (let i = 0; i < positions.length; i += 3) {
-            points.push([
-                positions[i],
-                positions[i + 1],
-                positions[i + 2]
-            ]);
+        // Сохраняем материал
+        if (element.material) {
+            elementData.material = this.serializeMaterial(element.material);
         }
 
-        return points;
-    }
-
-    // СОХРАНЕНИЕ В LOCALSTORAGE
-    saveToLocalStorage(project) {
-        const projects = this.editor.storage.getProjects();
-
-        // Проверяем, существует ли проект с таким именем
-        const existingIndex = projects.findIndex(p => p.name === project.name);
-
-        if (existingIndex > -1) {
-            projects[existingIndex] = project;
-        } else {
-            projects.push(project);
-
-            // Ограничиваем количество проектов
-            if (projects.length > 10) {
-                projects.shift();
-            }
+        // Сохраняем геометрию для всех элементов скетча
+        if (element.geometry && element.geometry.attributes && element.geometry.attributes.position) {
+            const positions = element.geometry.attributes.position.array;
+            elementData.geometry = {
+                positions: Array.from(positions),
+                type: element.geometry.type
+            };
         }
 
-        try {
-            localStorage.setItem(this.editor.storage.storageKey, JSON.stringify(projects));
-            localStorage.setItem(this.editor.storage.currentProjectKey, JSON.stringify(project));
-        } catch (error) {
-            throw error;
-        }
+        return elementData;
     }
 
     // ЗАГРУЗКА ПРОЕКТА
@@ -478,7 +422,7 @@ class ProjectManager {
     }
 
     loadProject(project) {
-        if (!project || !project.objects) {
+        if (!project || !project.scene) {
             alert('Неверный формат проекта');
             return;
         }
@@ -489,32 +433,34 @@ class ProjectManager {
         let loadedCount = 0;
         let errorCount = 0;
 
-        // Загружаем объекты
-        project.objects.forEach(objData => {
-            try {
-                const obj = this.deserializeObject(objData);
-                if (obj) {
-                    this.editor.objectsGroup.add(obj);
-                    this.editor.objects.push(obj);
+        // Сначала загружаем все объекты (включая примитивы и вытянутые объекты)
+        if (project.scene.objects && Array.isArray(project.scene.objects)) {
+            project.scene.objects.forEach(objData => {
+                try {
+                    const obj = this.deserializeObject(objData);
+                    if (obj) {
+                        this.editor.objectsGroup.add(obj);
+                        this.editor.objects.push(obj);
 
-                    // Восстанавливаем типы плоскостей
-                    if (obj.userData.type === 'sketch_plane') {
-                        this.editor.sketchPlanes.push(obj);
-                    } else if (obj.userData.type === 'work_plane') {
-                        this.editor.workPlanes.push(obj);
+                        // Регистрируем специальные типы
+                        if (obj.userData.type === 'sketch_plane') {
+                            this.editor.sketchPlanes.push(obj);
+                        } else if (obj.userData.type === 'work_plane') {
+                            this.editor.workPlanes.push(obj);
+                        }
+
+                        loadedCount++;
                     }
-
-                    loadedCount++;
+                } catch (error) {
+                    console.error('Ошибка при загрузке объекта:', error, objData);
+                    errorCount++;
                 }
-            } catch (error) {
-                console.error('Ошибка при загрузке объекта:', error, objData);
-                errorCount++;
-            }
-        });
+            });
+        }
 
-        // Загружаем скетчи
-        if (project.sketches && Array.isArray(project.sketches)) {
-            project.sketches.forEach(sketchData => {
+        // Затем загружаем скетчи
+        if (project.scene.sketches && Array.isArray(project.scene.sketches)) {
+            project.scene.sketches.forEach(sketchData => {
                 try {
                     this.restoreSketch(sketchData);
                 } catch (error) {
@@ -526,7 +472,7 @@ class ProjectManager {
 
         // Обновляем информацию о проекте
         this.currentProject = project;
-        document.getElementById('projectName').textContent = project.name;
+        document.getElementById('projectName').textContent = project.name || 'Проект';
 
         // Обновляем интерфейс
         if (this.editor.objectsManager) {
@@ -536,7 +482,7 @@ class ProjectManager {
 
         this.editor.updateStatus();
 
-        const message = `Проект "${project.name}" загружен (${loadedCount} объектов`;
+        const message = `Проект "${project.name || 'Проект'}" загружен (${loadedCount} объектов`;
         if (errorCount > 0) {
             this.editor.showStatus(`${message}, ошибок: ${errorCount})`, 'warning');
         } else {
@@ -546,43 +492,51 @@ class ProjectManager {
 
     // ДЕСЕРИАЛИЗАЦИЯ ОБЪЕКТА
     deserializeObject(data) {
-        let geometry, material;
+        let geometry = null;
+        let material = null;
 
-        // Восстанавливаем материал
+        // Создаем материал
         if (data.material) {
             material = this.deserializeMaterial(data.material);
+        } else {
+            // Материал по умолчанию
+            const colorHex = data.userData.currentColor || data.userData.color || 0xAAAAAA;
+            const opacity = data.userData.currentOpacity || data.userData.opacity || 0.9;
+
+            if (data.userData.type === 'sketch_plane') {
+                material = new THREE.MeshBasicMaterial({
+                    color: new THREE.Color(colorHex),
+                    transparent: true,
+                    opacity: 0.3,
+                    side: THREE.DoubleSide,
+                    depthWrite: false
+                });
+            } else if (data.userData.type === 'work_plane') {
+                material = new THREE.MeshBasicMaterial({
+                    color: new THREE.Color(colorHex),
+                    transparent: true,
+                    opacity: 0.2,
+                    side: THREE.DoubleSide,
+                    depthWrite: false
+                });
+            } else {
+                material = new THREE.MeshPhongMaterial({
+                    color: new THREE.Color(colorHex),
+                    transparent: opacity < 1.0,
+                    opacity: opacity,
+                    shininess: 30
+                });
+            }
         }
 
-        // Восстанавливаем геометрию в зависимости от типа
-        switch (data.userData.type) {
-            case 'extrude':
-                if (data.geometry) {
-                    geometry = this.deserializeGeometry(data.geometry);
-                } else {
-                    // Создаем геометрию выдавливания из параметров
-                    geometry = this.createExtrudeGeometry(data);
-                }
-                break;
-
-            case 'boolean_result':
-            case 'stl':
-                if (data.geometry) {
-                    geometry = this.deserializeGeometry(data.geometry);
-                }
-                break;
-
-            default:
-                geometry = this.createGeometryForType(data.userData.type, data.userData);
+        // Создаем геометрию из сохраненных данных
+        if (data.geometry) {
+            geometry = this.deserializeGeometry(data.geometry);
         }
 
-        // Если нет материала, создаем стандартный
-        if (!material) {
-            material = this.createMaterialForType(data.userData.type, data.userData);
-        }
-
-        // Если нет геометрии, используем куб по умолчанию
-        if (!geometry) {
-            geometry = new THREE.BoxGeometry(25, 25, 25);
+        if (!geometry || !material) {
+            console.warn('Не удалось создать объект:', data.userData.type);
+            return null;
         }
 
         const mesh = new THREE.Mesh(geometry, material);
@@ -591,93 +545,20 @@ class ProjectManager {
 
         // Восстанавливаем трансформации
         if (data.position) mesh.position.fromArray(data.position);
-        if (data.rotation) {
-            if (data.rotation.length === 3) {
-                mesh.rotation.set(data.rotation[0], data.rotation[1], data.rotation[2]);
-            } else if (data.rotation.length === 4) {
-                // Quaternion
-                mesh.quaternion.set(data.rotation[0], data.rotation[1], data.rotation[2], data.rotation[3]);
-            }
+        if (data.rotation && data.rotation.length === 3) {
+            mesh.rotation.set(data.rotation[0], data.rotation[1], data.rotation[2]);
         }
         if (data.scale) mesh.scale.fromArray(data.scale);
         if (data.visible !== undefined) mesh.visible = data.visible;
-        if (data.name) mesh.userData.name = data.name;
+        if (data.castShadow !== undefined) mesh.castShadow = data.castShadow;
+        if (data.receiveShadow !== undefined) mesh.receiveShadow = data.receiveShadow;
 
-        // Восстанавливаем параметры выдавливания
-        if (data.userData.type === 'extrude' && data.extrudeParams) {
-            mesh.userData.height = data.extrudeParams.height;
-            mesh.userData.depth = data.extrudeParams.depth;
-            mesh.userData.segments = data.extrudeParams.segments;
-            mesh.userData.bevelEnabled = data.extrudeParams.bevelEnabled;
-            mesh.userData.bevelThickness = data.extrudeParams.bevelThickness;
-            mesh.userData.bevelSize = data.extrudeParams.bevelSize;
-            mesh.userData.bevelSegments = data.extrudeParams.bevelSegments;
-            mesh.userData.sketchPlaneId = data.extrudeParams.sketchPlaneId;
-            mesh.userData.sketchElements = data.extrudeParams.sketchElements || [];
-        }
-
-        // Настраиваем тени для твердых тел
-        if (data.userData.type !== 'sketch_plane' &&
-            data.userData.type !== 'work_plane' &&
-            data.userData.type !== 'sketch_element') {
-
-            mesh.castShadow = true;
-            mesh.receiveShadow = true;
+        // Восстанавливаем оригинальный цвет
+        if (data.userData.currentColor && mesh.material.color) {
+            mesh.material.color.set(new THREE.Color(data.userData.currentColor));
         }
 
         return mesh;
-    }
-
-    createExtrudeGeometry(data) {
-        const extrudeParams = data.extrudeParams || {};
-        const shape = this.createShapeFromSketchData(extrudeParams.sketchElements);
-
-        if (!shape) {
-            console.warn('Не удалось создать форму для выдавливания');
-            return new THREE.BoxGeometry(10, 10, extrudeParams.height || 10);
-        }
-
-        const extrudeSettings = {
-            depth: extrudeParams.depth || extrudeParams.height || 10,
-            steps: extrudeParams.segments || 1,
-            bevelEnabled: extrudeParams.bevelEnabled || false,
-            bevelThickness: extrudeParams.bevelThickness || 0.1,
-            bevelSize: extrudeParams.bevelSize || 0.1,
-            bevelSegments: extrudeParams.bevelSegments || 1
-        };
-
-        return new THREE.ExtrudeGeometry(shape, extrudeSettings);
-    }
-
-    createShapeFromSketchData(sketchElements) {
-        if (!sketchElements || !Array.isArray(sketchElements) || sketchElements.length === 0) {
-            return null;
-        }
-
-        // Для простоты создаем форму из первого замкнутого контура
-        const closedContour = sketchElements.find(el =>
-            el.elementType === 'polyline' && el.isClosed
-        );
-
-        if (!closedContour || !closedContour.points || closedContour.points.length < 3) {
-            return null;
-        }
-
-        const shape = new THREE.Shape();
-        const points = closedContour.points;
-
-        // Начинаем с первой точки
-        shape.moveTo(points[0][0], points[0][1]);
-
-        // Добавляем остальные точки
-        for (let i = 1; i < points.length; i++) {
-            shape.lineTo(points[i][0], points[i][1]);
-        }
-
-        // Замыкаем контур
-        shape.closePath();
-
-        return shape;
     }
 
     deserializeMaterial(matData) {
@@ -692,11 +573,8 @@ class ProjectManager {
             case 'MeshPhongMaterial':
                 material = new THREE.MeshPhongMaterial();
                 break;
-            case 'MeshLambertMaterial':
-                material = new THREE.MeshLambertMaterial();
-                break;
-            case 'MeshStandardMaterial':
-                material = new THREE.MeshStandardMaterial();
+            case 'LineBasicMaterial':
+                material = new THREE.LineBasicMaterial();
                 break;
             default:
                 material = new THREE.MeshPhongMaterial();
@@ -708,13 +586,72 @@ class ProjectManager {
         if (matData.transparent !== undefined) material.transparent = matData.transparent;
         if (matData.side !== undefined) material.side = matData.side;
         if (matData.wireframe !== undefined) material.wireframe = matData.wireframe;
-        if (matData.shininess !== undefined) material.shininess = matData.shininess;
+        if (matData.linewidth !== undefined) material.linewidth = matData.linewidth;
 
         return material;
     }
 
     deserializeGeometry(geomData) {
-        if (!geomData || !geomData.positions) return null;
+        if (!geomData) return null;
+
+        // Восстанавливаем геометрию по типу
+        switch (geomData.type) {
+            case 'BoxGeometry':
+                return new THREE.BoxGeometry(
+                    geomData.width || 25,
+                    geomData.height || 25,
+                    geomData.depth || 25,
+                    geomData.widthSegments || 1,
+                    geomData.heightSegments || 1,
+                    geomData.depthSegments || 1
+                );
+
+            case 'SphereGeometry':
+                return new THREE.SphereGeometry(
+                    geomData.radius || 12.5,
+                    geomData.widthSegments || 32,
+                    geomData.heightSegments || 32
+                );
+
+            case 'CylinderGeometry':
+                return new THREE.CylinderGeometry(
+                    geomData.radiusTop || 12.5,
+                    geomData.radiusBottom || 12.5,
+                    geomData.height || 25,
+                    geomData.radialSegments || 32
+                );
+
+            case 'ConeGeometry':
+                return new THREE.ConeGeometry(
+                    geomData.radius || 12.5,
+                    geomData.height || 25,
+                    geomData.radialSegments || 32
+                );
+
+            case 'TorusGeometry':
+                return new THREE.TorusGeometry(
+                    geomData.radius || 25,
+                    geomData.tube || 5,
+                    geomData.radialSegments || 16,
+                    geomData.tubularSegments || 100
+                );
+
+            case 'PlaneGeometry':
+                return new THREE.PlaneGeometry(
+                    geomData.width || 100,
+                    geomData.height || 100,
+                    geomData.widthSegments || 1,
+                    geomData.heightSegments || 1
+                );
+
+            default:
+                // Для сложных геометрий создаем из сохраненных данных
+                return this.deserializeComplexGeometry(geomData);
+        }
+    }
+
+    deserializeComplexGeometry(geomData) {
+        if (!geomData.positions) return null;
 
         const geometry = new THREE.BufferGeometry();
 
@@ -730,16 +667,9 @@ class ProjectManager {
             geometry.computeVertexNormals();
         }
 
-        // Восстанавливаем UV
-        if (geomData.uvs && geomData.uvs.length > 0) {
-            geometry.setAttribute('uv',
-                new THREE.Float32BufferAttribute(geomData.uvs, 2));
-        }
-
         // Восстанавливаем индексы
         if (geomData.indices && geomData.indices.length > 0) {
-            geometry.setIndex(new THREE.BufferAttribute(
-                new Uint32Array(geomData.indices), 1));
+            geometry.setIndex(geomData.indices);
         }
 
         // Восстанавливаем bounding box
@@ -753,100 +683,48 @@ class ProjectManager {
         return geometry;
     }
 
-    createGeometryForType(type, userData) {
-        switch (type) {
-            case 'cube':
-                const size = userData.originalSize || 25;
-                return new THREE.BoxGeometry(size, size, size);
-
-            case 'sphere':
-                return new THREE.SphereGeometry(12.5, 32, 32);
-
-            case 'cylinder':
-                return new THREE.CylinderGeometry(12.5, 12.5, 25, 32);
-
-            case 'cone':
-                return new THREE.ConeGeometry(12.5, 25, 32);
-
-            case 'torus':
-                return new THREE.TorusGeometry(25, 5, 16, 100);
-
-            case 'sketch_plane':
-            case 'work_plane':
-                return new THREE.PlaneGeometry(100, 100);
-
-            default:
-                return new THREE.BoxGeometry(25, 25, 25);
-        }
-    }
-
-    createMaterialForType(type, userData) {
-        const colorHex = userData.currentColor || userData.color || 0xAAAAAA;
-        const opacity = userData.currentOpacity || userData.opacity || 0.9;
-
-        switch (type) {
-            case 'sketch_plane':
-                return new THREE.MeshBasicMaterial({
-                    color: new THREE.Color(colorHex),
-                    transparent: true,
-                    opacity: 0.3,
-                    side: THREE.DoubleSide,
-                    depthWrite: false
-                });
-
-            case 'work_plane':
-                return new THREE.MeshBasicMaterial({
-                    color: new THREE.Color(colorHex),
-                    transparent: true,
-                    opacity: 0.2,
-                    side: THREE.DoubleSide,
-                    depthWrite: false
-                });
-
-            case 'sketch_element':
-                return new THREE.LineBasicMaterial({
-                    color: new THREE.Color(colorHex),
-                    linewidth: 2
-                });
-
-            default:
-                return new THREE.MeshPhongMaterial({
-                    color: new THREE.Color(colorHex),
-                    transparent: opacity < 1.0,
-                    opacity: opacity,
-                    shininess: 30
-                });
-        }
-    }
-
     // ВОССТАНОВЛЕНИЕ СКЕТЧЕЙ
     restoreSketch(sketchData) {
-        // Находим плоскость
-        const plane = this.findObjectByUuid(sketchData.planeId);
-        if (!plane) {
-            console.warn('Плоскость скетча не найдена:', sketchData.planeId);
+        if (!sketchData || !sketchData.planeData) {
+            console.warn('Некорректные данные скетча:', sketchData);
             return;
         }
 
-        // Восстанавливаем элементы скетча
+        // Сначала создаем или находим плоскость
+        let plane = this.findObjectByUuid(sketchData.planeId);
+
+        if (!plane && sketchData.planeData) {
+            // Создаем плоскость из сохраненных данных
+            plane = this.deserializeObject(sketchData.planeData);
+            if (plane) {
+                this.editor.objectsGroup.add(plane);
+                this.editor.objects.push(plane);
+                this.editor.sketchPlanes.push(plane);
+            }
+        }
+
+        if (!plane) {
+            console.warn('Не удалось создать плоскость для скетча');
+            return;
+        }
+
+        // Затем восстанавливаем элементы скетча
         if (sketchData.elements && Array.isArray(sketchData.elements)) {
             sketchData.elements.forEach(elementData => {
                 this.restoreSketchElement(plane, elementData);
             });
         }
 
-        // Восстанавливаем свойства скетча
-        if (sketchData.properties) {
-            plane.userData.gridVisible = sketchData.properties.gridVisible;
-            plane.userData.snapEnabled = sketchData.properties.snapEnabled;
-            plane.userData.snapGrid = sketchData.properties.snapGrid;
-        }
+        // Сохраняем ссылку на скетч в плоскости
+        plane.userData.hasSketch = true;
+        plane.userData.sketchElementsCount = sketchData.elements ? sketchData.elements.length : 0;
     }
 
     restoreSketchElement(plane, elementData) {
-        let geometry, material;
+        let geometry = null;
+        let material = null;
 
-        // Восстанавливаем материал
+        // Создаем материал
         if (elementData.material) {
             material = this.deserializeMaterial(elementData.material);
         } else {
@@ -856,61 +734,21 @@ class ProjectManager {
             });
         }
 
-        // Создаем геометрию в зависимости от типа элемента
-        switch (elementData.elementType) {
-            case 'line':
-            case 'polyline':
-                if (elementData.points && elementData.points.length >= 2) {
-                    const vectors = elementData.points.map(p =>
-                        new THREE.Vector3(p[0], p[1], p[2] || 0)
-                    );
-                    geometry = new THREE.BufferGeometry().setFromPoints(vectors);
-                }
-                break;
-
-            case 'circle':
-                if (elementData.radius) {
-                    geometry = new THREE.CircleGeometry(
-                        elementData.radius,
-                        elementData.segments || 32
-                    );
-                }
-                break;
-
-            case 'rectangle':
-                if (elementData.width && elementData.height) {
-                    const shape = new THREE.Shape();
-                    shape.moveTo(-elementData.width / 2, -elementData.height / 2);
-                    shape.lineTo(elementData.width / 2, -elementData.height / 2);
-                    shape.lineTo(elementData.width / 2, elementData.height / 2);
-                    shape.lineTo(-elementData.width / 2, elementData.height / 2);
-                    shape.lineTo(-elementData.width / 2, -elementData.height / 2);
-                    geometry = new THREE.ShapeGeometry(shape);
-                }
-                break;
-
-            case 'polygon':
-                if (elementData.radius && elementData.sides) {
-                    geometry = new THREE.CircleGeometry(
-                        elementData.radius,
-                        elementData.sides
-                    );
-                }
-                break;
-
-            case 'text':
-                // Для текста создаем спрайт
-                this.createTextElement(plane, elementData);
-                return;
-        }
-
-        if (!geometry) {
-            console.warn('Не удалось создать геометрию для элемента:', elementData);
+        // Создаем геометрию
+        if (elementData.geometry && elementData.geometry.positions) {
+            geometry = new THREE.BufferGeometry();
+            geometry.setAttribute('position',
+                new THREE.Float32BufferAttribute(elementData.geometry.positions, 3));
+        } else {
+            console.warn('Нет данных геометрии для элемента скетча:', elementData);
             return;
         }
 
         let mesh;
-        if (elementData.elementType === 'circle' || elementData.elementType === 'rectangle' || elementData.elementType === 'polygon') {
+
+        // Определяем тип меша на основе данных
+        if (elementData.userData && elementData.userData.elementType === 'circle' ||
+            elementData.userData && elementData.userData.isClosed) {
             mesh = new THREE.LineLoop(geometry, material);
         } else {
             mesh = new THREE.Line(geometry, material);
@@ -924,122 +762,18 @@ class ProjectManager {
         if (elementData.scale) mesh.scale.fromArray(elementData.scale);
         if (elementData.visible !== undefined) mesh.visible = elementData.visible;
 
-        // Сохраняем данные элемента
-        mesh.userData = {
-            type: 'sketch_element',
-            elementType: elementData.elementType,
-            id: elementData.id,
-            isClosed: elementData.isClosed || false,
-            sketchPlaneId: plane.uuid
-        };
+        // Восстанавливаем userData
+        mesh.userData = elementData.userData || {};
+        mesh.userData.type = 'sketch_element';
+        mesh.userData.sketchPlaneId = plane.uuid;
 
-        // Сохраняем параметры в зависимости от типа
-        switch (elementData.elementType) {
-            case 'circle':
-                mesh.userData.radius = elementData.radius;
-                mesh.userData.segments = elementData.segments;
-                break;
-            case 'rectangle':
-                mesh.userData.width = elementData.width;
-                mesh.userData.height = elementData.height;
-                break;
-            case 'polygon':
-                mesh.userData.radius = elementData.radius;
-                mesh.userData.sides = elementData.sides;
-                break;
-        }
-
+        // Добавляем элемент к плоскости
         plane.add(mesh);
-    }
-
-    createTextElement(plane, elementData) {
-        const canvas = document.createElement('canvas');
-        const context = canvas.getContext('2d');
-        canvas.width = 512;
-        canvas.height = 128;
-
-        context.clearRect(0, 0, canvas.width, canvas.height);
-        context.font = `bold ${elementData.fontSize || 20}px Arial`;
-        context.fillStyle = '#AAAAAA';
-        context.textAlign = 'left';
-        context.textBaseline = 'top';
-        context.fillText(elementData.content || 'Текст', 10, 10);
-
-        const texture = new THREE.CanvasTexture(canvas);
-        texture.minFilter = THREE.LinearFilter;
-        const material = new THREE.SpriteMaterial({
-            map: texture,
-            transparent: true
-        });
-
-        const sprite = new THREE.Sprite(material);
-        if (elementData.position) sprite.position.fromArray(elementData.position);
-        sprite.scale.set(50, 12.5, 1);
-
-        sprite.userData = {
-            type: 'sketch_element',
-            elementType: 'text',
-            id: elementData.id,
-            content: elementData.content,
-            fontSize: elementData.fontSize,
-            sketchPlaneId: plane.uuid
-        };
-
-        plane.add(sprite);
     }
 
     // ПОИСК ОБЪЕКТА ПО UUID
     findObjectByUuid(uuid) {
         return this.editor.objects.find(obj => obj.uuid === uuid) || null;
-    }
-
-    // ЗАГРУЗКА СОХРАНЕННЫХ ПРОЕКТОВ
-    loadSavedProjects() {
-        const projects = this.editor.storage.getProjects();
-        const container = document.getElementById('savedProjects');
-        if (!container) return;
-
-        container.innerHTML = '';
-
-        if (projects.length === 0) {
-            container.innerHTML = '<p style="color: #666; text-align: center;">Нет сохраненных проектов</p>';
-            return;
-        }
-
-        projects.sort((a, b) => {
-            const dateA = a.modified ? new Date(a.modified) : new Date(0);
-            const dateB = b.modified ? new Date(b.modified) : new Date(0);
-            return dateB - dateA;
-        });
-
-        projects.forEach(project => {
-            const div = document.createElement('div');
-            div.className = 'project-item';
-
-            const date = project.modified ?
-                new Date(project.modified).toLocaleDateString() :
-                'Неизвестно';
-
-            const objectCount = project.objects?.length || 0;
-
-            div.innerHTML = `
-                <div>
-                    <strong>${project.name}</strong><br>
-                    <small>${date} • ${objectCount} объектов</small>
-                </div>
-                <button class="load-project-btn" data-name="${project.name}">
-                    <i class="fas fa-folder-open"></i>
-                </button>
-            `;
-
-            container.appendChild(div);
-
-            div.querySelector('.load-project-btn').addEventListener('click', (e) => {
-                e.stopPropagation();
-                this.loadProject(project);
-                document.getElementById('saveModal').classList.remove('active');
-            });
-        });
     }
 
     // СКАЧИВАНИЕ ФАЙЛА ПРОЕКТА
@@ -1110,8 +844,6 @@ class ProjectManager {
             sceneToExport = new THREE.Group();
             objects.forEach(obj => {
                 const clone = obj.clone();
-                // Удаляем временные данные и пользовательские свойства
-                clone.userData = {};
                 sceneToExport.add(clone);
             });
         }
@@ -1144,7 +876,7 @@ class ProjectManager {
     exportJSON(objects, fileName) {
         const exportData = {
             metadata: {
-                version: '2.0',
+                version: '3.0',
                 type: 'cad-export',
                 exportDate: new Date().toISOString(),
                 appVersion: this.editor.APP_VERSION
@@ -1164,7 +896,191 @@ class ProjectManager {
         this.editor.showStatus('Экспорт SVG в разработке', 'info');
     }
 
-    // ДЕЛЕГИРОВАННЫЕ МЕТОДЫ
+    // ОТКРЫТИЕ STL ФАЙЛОВ
+    openSTL() {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.stl';
+
+        input.onchange = (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                this.loadSTLFromBuffer(event.target.result, file.name);
+            };
+            reader.readAsArrayBuffer(file);
+        };
+
+        input.click();
+    }
+
+    loadSTLFromBuffer(buffer, filename) {
+        try {
+            const isBinary = this.isBinarySTL(buffer);
+            const geometry = isBinary ? this.parseBinarySTL(buffer) : this.parseASCIISTL(buffer);
+
+            if (!geometry) {
+                this.editor.showStatus('Ошибка при чтении STL файла', 'error');
+                return;
+            }
+
+            // Поворачиваем геометрию для нашей системы координат (Y-up)
+            geometry.rotateX(-Math.PI / 2);
+
+            const material = new THREE.MeshPhongMaterial({
+                color: new THREE.Color('#AAAAAA'),
+                transparent: true,
+                opacity: 0.9,
+                side: THREE.DoubleSide
+            });
+
+            const mesh = new THREE.Mesh(geometry, material);
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+
+            // Центрируем объект
+            geometry.computeBoundingBox();
+            const box = geometry.boundingBox;
+            const center = new THREE.Vector3();
+            box.getCenter(center);
+            mesh.position.sub(center);
+
+            mesh.userData = {
+                id: 'stl_' + Date.now(),
+                name: filename.replace('.stl', ''),
+                type: 'stl',
+                createdAt: new Date().toISOString(),
+                unit: 'mm',
+                filename: filename
+            };
+
+            this.editor.objectsGroup.add(mesh);
+            this.editor.objects.push(mesh);
+
+            this.editor.clearSelection();
+            this.editor.selectObject(mesh);
+
+            if (this.editor.objectsManager) {
+                this.editor.objectsManager.updateSceneStats();
+                this.editor.objectsManager.updateSceneList();
+            }
+
+            this.editor.showStatus(`Загружен STL: ${filename}`, 'success');
+
+            this.editor.history.addAction({
+                type: 'import',
+                format: 'stl',
+                object: mesh.uuid,
+                data: {
+                    filename: filename,
+                    userData: { ...mesh.userData },
+                    position: mesh.position.toArray(),
+                    rotation: mesh.rotation.toArray(),
+                    scale: mesh.scale.toArray()
+                }
+            });
+
+        } catch (error) {
+            console.error('STL loading error:', error);
+            this.editor.showStatus(`Ошибка загрузки STL: ${error.message}`, 'error');
+        }
+    }
+
+    isBinarySTL(buffer) {
+        const dataView = new DataView(buffer);
+        const triangleCount = dataView.getUint32(80, true);
+        const expectedSize = 84 + (triangleCount * 50);
+        return buffer.byteLength === expectedSize;
+    }
+
+    parseBinarySTL(buffer) {
+        const geometry = new THREE.BufferGeometry();
+        const vertices = [];
+        const normals = [];
+
+        const dataView = new DataView(buffer);
+        const triangleCount = dataView.getUint32(80, true);
+        let offset = 84;
+
+        for (let i = 0; i < triangleCount; i++) {
+            const normal = [
+                dataView.getFloat32(offset, true),
+                dataView.getFloat32(offset + 4, true),
+                dataView.getFloat32(offset + 8, true)
+            ];
+            offset += 12;
+
+            for (let j = 0; j < 3; j++) {
+                vertices.push(
+                    dataView.getFloat32(offset, true),
+                    dataView.getFloat32(offset + 4, true),
+                    dataView.getFloat32(offset + 8, true)
+                );
+                normals.push(...normal);
+                offset += 12;
+            }
+
+            offset += 2;
+        }
+
+        geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+        geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
+        geometry.computeBoundingBox();
+
+        return geometry;
+    }
+
+    parseASCIISTL(buffer) {
+        const text = new TextDecoder().decode(buffer);
+        const geometry = new THREE.BufferGeometry();
+        const vertices = [];
+        const normals = [];
+
+        const lines = text.split('\n');
+        let currentNormal = null;
+
+        for (const line of lines) {
+            const trimmed = line.trim();
+
+            if (trimmed.startsWith('facet normal')) {
+                const parts = trimmed.split(/\s+/);
+                currentNormal = [
+                    parseFloat(parts[2]),
+                    parseFloat(parts[3]),
+                    parseFloat(parts[4])
+                ];
+            } else if (trimmed.startsWith('vertex')) {
+                const parts = trimmed.split(/\s+/);
+                vertices.push(
+                    parseFloat(parts[1]),
+                    parseFloat(parts[2]),
+                    parseFloat(parts[3])
+                );
+                if (currentNormal) {
+                    normals.push(...currentNormal);
+                }
+            }
+        }
+
+        if (vertices.length === 0) return null;
+
+        geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+
+        if (normals.length === vertices.length) {
+            geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
+        } else {
+            geometry.computeVertexNormals();
+        }
+
+        geometry.computeBoundingBox();
+
+        return geometry;
+    }
+
+
+    // ИСТОРИЯ
     serializeObjectForHistory(obj) {
         return this.serializeObject(obj);
     }

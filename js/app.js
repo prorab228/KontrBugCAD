@@ -287,7 +287,7 @@ class CADEditor {
         this.initEnvironmentControls();
 
 
-        this.loadSavedProjects();
+    //    this.loadSavedProjects();
     }
 
     initThemeControls() {
@@ -927,7 +927,7 @@ class CADEditor {
 
             if (this.transformControls) {
                 this.transformControls.attach(obj);
-                this.transformControls.setMode(mode);
+                this.transformControls.updateMode(mode);
                 this.transformControls.show();
             }
         } else {
@@ -1454,7 +1454,9 @@ class CADEditor {
 
         if (positions[view]) {
             this.camera.position.set(...positions[view]);
+            //this.controls.target.copy(new THREE.Vector3(1, 0, 0));
             this.camera.lookAt(0, 0, 0);
+
         }
 
         if (view === 'perspective') {
@@ -1878,9 +1880,9 @@ class CADEditor {
         return this.projectManager.loadProject(project);
     }
 
-    loadSavedProjects() {
-        return this.projectManager.loadSavedProjects();
-    }
+//    loadSavedProjects() {
+//        return this.projectManager.loadSavedProjects();
+//    }
 
     showExportModal() {
         return this.projectManager.showExportModal();

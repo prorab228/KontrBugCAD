@@ -73,26 +73,28 @@ class ExtrudeManager {
                this.editor.workPlanes[0] : null;
     }
 
+
+
     // Подсветка доступных контуров
     highlightExtrudableContours() {
         const allElements = this.editor.objectsManager.getAllSketchElements();
 
+        // Сначала обнуляем подсветку
         allElements.forEach(element => {
             this.editor.objectsManager.safeRestoreElementColor(element);
         });
 
-        let foundClosed = false;
-        allElements.forEach(element => {
-            if (this.isSketchElementClosed(element)) {
-                foundClosed = true;
-                if (!element.userData.originalColor) {
-                    element.userData.originalColor = element.material.color.clone();
-                }
-                this.editor.objectsManager.safeSetElementColor(element, 0x2196F3);
+        // Получаем замкнутые контуры
+        const closedContours = this.getClosedContoursFromElements();
+
+        // Подсвечиваем элементы, входящие в замкнутые контуры
+        closedContours.forEach(contour => {
+            if (contour.element) {
+                this.editor.objectsManager.safeSetElementColor(contour.element, 0x2196F3);
             }
         });
 
-        if (!foundClosed) {
+        if (closedContours.length === 0) {
             this.editor.showStatus('Нет замкнутых контуров для вытягивания', 'warning');
         }
     }
@@ -141,9 +143,28 @@ class ExtrudeManager {
         }
     }
 
+    getClosedContoursFromElements() {
+        const contours = [];
+
+        // Используем детектор контуров из SketchTools
+        if (this.editor.sketchTools && this.editor.sketchTools.closedContours) {
+            return this.editor.sketchTools.closedContours;
+        }
+
+        // Альтернативный метод: собираем все линии и проверяем
+        const allElements = this.editor.objectsManager.getAllSketchElements();
+        const lines = allElements.filter(el => el.userData.elementType === 'line');
+
+        // Простой алгоритм поиска замкнутых контуров
+        // (Здесь нужен более сложный алгоритм для реального использования)
+
+        return contours;
+    }
+
+
     selectContour(element) {
         element.userData.isSelected = true;
-        this.editor.objectsManager.safeSetElementColor(element, 0xff0000);
+        this.editor.objectsManager.safeSetElementColor(element, 0x0066FF);
 
         if (!this.selectedContours.includes(element)) {
             this.selectedContours.push(element);
@@ -402,7 +423,7 @@ class ExtrudeManager {
         return false;
     }
 
-w
+
     // Добавьте этот метод для отключения raycast на частях стрелки:
     disableArrowRaycast() {
         if (!this.editor.extrudeArrow) return;
@@ -957,9 +978,7 @@ w
                 <div class="control-group">
                     <label>Высота (мм):</label>
                     <input type="number" id="extrudeHeight" value="10" step="0.1" style="width: 100px;">
-                    <button id="dragHeightBtn" class="btn-small" title="Перетащите стрелку для изменения">
-                        <i class="fas fa-arrows-alt-v"></i>
-                    </button>
+
                 </div>
                 <div class="control-group">
                     <label>Направление:</label>
@@ -1006,14 +1025,14 @@ w
             this.performExtrude();
         });
 
-        container.querySelector('#dragHeightBtn').addEventListener('click', () => {
-            const heightInput = document.getElementById('extrudeHeight');
-            const newHeight = prompt('Введите высоту (мм):', heightInput.value);
-            if (newHeight && !isNaN(parseFloat(newHeight))) {
-                heightInput.value = parseFloat(newHeight).toFixed(1);
-                this.updateExtrudePreview();
-            }
-        });
+//        container.querySelector('#dragHeightBtn').addEventListener('click', () => {
+//            const heightInput = document.getElementById('extrudeHeight');
+//            const newHeight = prompt('Введите высоту (мм):', heightInput.value);
+//            if (newHeight && !isNaN(parseFloat(newHeight))) {
+//                heightInput.value = parseFloat(newHeight).toFixed(1);
+//                this.updateExtrudePreview();
+//            }
+//        });
 
         const heightInput = container.querySelector('#extrudeHeight');
         heightInput.addEventListener('input', (e) => {

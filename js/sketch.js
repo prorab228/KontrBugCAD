@@ -53,10 +53,17 @@ class SketchTools {
         //сетка
         this.gridVisible = true;
         this.grid = null;
+        this.cursorCross = null;
+        this.cursorCrossVisible = false;
 
         this.originalCameraUp = new THREE.Vector3(0, 1, 0);
         this.originalCameraPosition = new THREE.Vector3();
         this.originalCameraTarget = new THREE.Vector3();
+
+        this.closedContours = [];
+        this.currentContour = null;
+
+
 
         this.initialize();
     }
@@ -65,6 +72,47 @@ class SketchTools {
         this.createDimensionInput();
         this.updateToolButtons();
     }
+
+    updateCursorCross(position) {
+        if (!this.currentPlane || !this.cursorCrossVisible) return;
+
+        if (!this.cursorCross) {
+            // Создаем крест
+            const crossSize = 1; // Размер в мм
+
+            // Горизонтальная линия
+            const geometry1 = new THREE.BufferGeometry().setFromPoints([
+                new THREE.Vector3(-crossSize, 0, 0.2),
+                new THREE.Vector3(crossSize, 0, 0.2)
+            ]);
+
+            // Вертикальная линия
+            const geometry2 = new THREE.BufferGeometry().setFromPoints([
+                new THREE.Vector3(0, -crossSize, 0.2),
+                new THREE.Vector3(0, crossSize, 0.2)
+            ]);
+
+            const material = new THREE.LineBasicMaterial({
+                color: 0xFFFF00,
+                linewidth: 2,
+                transparent: true,
+                opacity: 0.7
+            });
+
+            const line1 = new THREE.Line(geometry1, material);
+            const line2 = new THREE.Line(geometry2, material);
+
+            this.cursorCross = new THREE.Group();
+            this.cursorCross.add(line1, line2);
+            this.cursorCross.userData.isCursorCross = true;
+            this.currentPlane.add(this.cursorCross);
+        }
+
+        // Обновляем позицию
+        const localPos = this.currentPlane.worldToLocal(position.clone());
+        this.cursorCross.position.set(localPos.x, localPos.y, 0.2);
+    }
+
 
     // СЕТКА
     createSketchGrid() {
@@ -149,6 +197,7 @@ class SketchTools {
 
     toggleGrid() {
         this.gridVisible = !this.gridVisible;
+        this.snapEnabled = !this.snapEnabled;
         if (this.gridVisible) {
             this.createSketchGrid();
         } else {
@@ -570,32 +619,38 @@ class SketchTools {
     }
 
     exitSketchMode() {
-    // Сохраняем текущий скетч перед выходом
-    // Восстанавливаем параметры камеры
-    this.restoreCamera();
+        // Сохраняем текущий скетч перед выходом
+        // Восстанавливаем параметры камеры
+        this.restoreCamera();
 
-    this.currentPlane = null;
-    this.currentSketch = null;
-    this.elements = [];
-    this.selectedElements = [];
-    this.currentTool = 'line';
-    this.tempElement = null;
-    this.isDrawing = false;
+        this.currentPlane = null;
+        this.currentSketch = null;
+        this.elements = [];
+        this.selectedElements = [];
+        this.currentTool = 'line';
+        this.tempElement = null;
+        this.isDrawing = false;
 
-    this.clearTempGeometry();
-    this.clearDimensionObjects();
-    this.hideDimensionInput();
-    this.detachMouseHandlers();
+        this.clearTempGeometry();
+        this.clearDimensionObjects();
+        this.hideDimensionInput();
+        this.detachMouseHandlers();
 
-    this.removeSketchGrid();
+        this.removeSketchGrid();
 
-    this.editor.controls.enableRotate = true;
-    this.editor.controls.enablePan = true;
-    this.editor.controls.enableZoom = true;
+        this.editor.controls.enableRotate = true;
+        this.editor.controls.enablePan = true;
+        this.editor.controls.enableZoom = true;
 
-    this.updateToolButtons();
-    this.editor.showStatus('Режим скетча завершен', 'info');
-}
+        this.updateToolButtons();
+
+        if (this.cursorCross) {
+            this.currentPlane.remove(this.cursorCross);
+            this.cursorCross = null;
+        }
+
+        this.editor.showStatus('Режим скетча завершен', 'info');
+    }
 
     // Добавьте метод для восстановления камеры:
     restoreCamera() {
@@ -703,7 +758,7 @@ class SketchTools {
             this.updateTempElement(point, event);
         }
 
-        this.showCursorPreview(point);
+        this.updateCursorCross(point);
     }
 
     onMouseUp(event) {
@@ -1167,6 +1222,116 @@ class SketchTools {
 
         // Обновляем геометрию
         this.createTempTextGeometry();
+    }
+
+    // метод для проверки замкнутости контура:
+    isContourClosed(points, threshold = 0.1) {
+        if (points.length < 3) return false;
+
+        const firstPoint = points[0];
+        const lastPoint = points[points.length - 1];
+
+        // Проверяем, совпадает ли первая и последняя точка
+        const distance = firstPoint.distanceTo(lastPoint);
+        return distance < threshold;
+    }
+
+    // Метод для поиска пересечений между линиями
+    findLineIntersections(lines) {
+        const intersections = [];
+
+        for (let i = 0; i < lines.length; i++) {
+            for (let j = i + 1; j < lines.length; j++) {
+                const line1 = lines[i];
+                const line2 = lines[j];
+
+                // Для простоты проверяем пересечение отрезков
+                const intersection = this.lineIntersection(
+                    line1.start, line1.end,
+                    line2.start, line2.end
+                );
+
+                if (intersection) {
+                    intersections.push({
+                        point: intersection,
+                        lines: [line1, line2]
+                    });
+                }
+            }
+        }
+
+        return intersections;
+    }
+
+    // Алгоритм нахождения пересечения двух отрезков
+    lineIntersection(p1, p2, p3, p4) {
+        const denominator = (p4.y - p3.y) * (p2.x - p1.x) - (p4.x - p3.x) * (p2.y - p1.y);
+
+        if (denominator === 0) return null;
+
+        const ua = ((p4.x - p3.x) * (p1.y - p3.y) - (p4.y - p3.y) * (p1.x - p3.x)) / denominator;
+        const ub = ((p2.x - p1.x) * (p1.y - p3.y) - (p2.y - p1.y) * (p1.x - p3.x)) / denominator;
+
+        if (ua >= 0 && ua <= 1 && ub >= 0 && ub <= 1) {
+            return new THREE.Vector3(
+                p1.x + ua * (p2.x - p1.x),
+                p1.y + ua * (p2.y - p1.y),
+                0
+            );
+        }
+
+        return null;
+    }
+
+    // Метод для автоматического определения замкнутых контуров
+    detectClosedContours() {
+        this.closedContours = [];
+
+        // Собираем все линии
+        const lines = this.elements.filter(el => el.type === 'line');
+        const polylines = this.elements.filter(el => el.type === 'polyline');
+
+        // Ищем пересечения
+        const intersections = this.findLineIntersections(lines);
+
+        // Для каждой полилинии проверяем замкнутость
+        polylines.forEach(polyline => {
+            if (this.isContourClosed(polyline.points)) {
+                this.closedContours.push({
+                    type: 'polyline',
+                    points: polyline.points,
+                    element: polyline
+                });
+            }
+        });
+
+        // Проверяем комбинации линий
+        // Это упрощенный алгоритм - в реальности нужен более сложный
+        for (const inter of intersections) {
+            // Начинаем строить контур от пересечения
+            const contour = this.buildContourFromIntersection(inter, lines);
+            if (contour && contour.length > 2) {
+                if (this.isContourClosed(contour)) {
+                    this.closedContours.push({
+                        type: 'composite',
+                        points: contour
+                    });
+                }
+            }
+        }
+
+        // Также добавляем прямоугольники, круги и полигоны как замкнутые контуры
+        this.elements.forEach(element => {
+            if (['rectangle', 'circle', 'polygon'].includes(element.type)) {
+                this.closedContours.push({
+                    type: element.type,
+                    points: element.points,
+                    element: element
+                });
+            }
+        });
+
+        return this.closedContours;
     }
 
     // ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ
@@ -1951,6 +2116,12 @@ class SketchTools {
        // this.elements.push(element);
         this.saveToHistory();
         this.editor.showStatus(`Добавлен элемент: ${this.getToolName(element.type)}`, 'success');
+
+        // После добавления элемента проверяем замкнутые контуры
+        setTimeout(() => {
+            this.detectClosedContours();
+            console.log('Найдено замкнутых контуров:', this.closedContours.length);
+        }, 0);
     }
 
     removeLastPoint() {
@@ -1992,15 +2163,21 @@ class SketchTools {
         }
     }
 
-    showCursorPreview(point) {
-        // Можно добавить визуальную подсказку при наведении
-    }
+
 
     setCurrentTool(tool) {
         this.currentTool = tool;
         this.clearSelection();
         this.cancelCurrentOperation();
         this.updateToolButtons();
+
+        // Показываем крест для инструментов рисования, кроме выбора
+        this.cursorCrossVisible = (tool !== 'select' && tool !== 'ruler');
+
+        if (!this.cursorCrossVisible && this.cursorCross) {
+            this.currentPlane.remove(this.cursorCross);
+            this.cursorCross = null;
+        }
     }
 
     getToolName(tool) {
