@@ -834,6 +834,8 @@ body.dark-theme {
 }
 
 .modal-body {
+   /* background: var(--bg-primary);
+    color: var(--text-primary);*/
     padding: 20px;
     max-height: calc(90vh - 140px);
     overflow-y: auto;

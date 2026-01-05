@@ -30,7 +30,7 @@ class SketchTools {
         this.currentHeight = 0;
         this.currentDiameter = 0;
         this.currentSides = 6;
-        this.currentText = 'Текст';
+        this.currentText = 'TEXT';
         this.fontSize = 20;
 
         // Настройки
@@ -623,6 +623,12 @@ class SketchTools {
         // Восстанавливаем параметры камеры
         this.restoreCamera();
 
+        if (this.cursorCross) {
+            this.currentPlane.remove(this.cursorCross);
+            this.cursorCross = null;
+        }
+
+
         this.currentPlane = null;
         this.currentSketch = null;
         this.elements = [];
@@ -644,10 +650,6 @@ class SketchTools {
 
         this.updateToolButtons();
 
-        if (this.cursorCross) {
-            this.currentPlane.remove(this.cursorCross);
-            this.cursorCross = null;
-        }
 
         this.editor.showStatus('Режим скетча завершен', 'info');
     }

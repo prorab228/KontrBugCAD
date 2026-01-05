@@ -44,24 +44,40 @@ class ObjectsManager {
         this.editor.objects.forEach(obj => {
             if (obj.isGroup) {
                 obj.traverse((child) => {
-                    if (child.isMesh && child.geometry) {
-                        vertices += child.geometry.attributes.position?.count || 0;
-                        faces += child.geometry.index ?
-                            child.geometry.index.count / 3 :
-                            child.geometry.attributes.position.count / 3;
+                    if (child.isMesh && child.geometry && child.geometry.attributes && child.geometry.attributes.position) {
+                        vertices += child.geometry.attributes.position.count || 0;
+                        if (child.geometry.index) {
+                            faces += child.geometry.index.count / 3;
+                        } else if (child.geometry.attributes.position) {
+                            faces += child.geometry.attributes.position.count / 3;
+                        }
                     }
                 });
-            } else if (obj.isMesh && obj.geometry) {
-                vertices += obj.geometry.attributes.position?.count || 0;
-                faces += obj.geometry.index ?
-                    obj.geometry.index.count / 3 :
-                    obj.geometry.attributes.position.count / 3;
+            } else if (obj.isMesh && obj.geometry && obj.geometry.attributes && obj.geometry.attributes.position) {
+                vertices += obj.geometry.attributes.position.count || 0;
+                if (obj.geometry.index) {
+                    faces += obj.geometry.index.count / 3;
+                } else if (obj.geometry.attributes.position) {
+                    faces += obj.geometry.attributes.position.count / 3;
+                }
             }
         });
 
         document.getElementById('objectCount').textContent = this.editor.objects.length;
         document.getElementById('vertexCount').textContent = vertices.toLocaleString();
         document.getElementById('faceCount').textContent = faces.toLocaleString();
+    }
+
+    checkPlaneForSketchElements(planeObject) {
+        if (!planeObject || !planeObject.children) return false;
+
+        for (const child of planeObject.children) {
+            if (child.userData && child.userData.type === 'sketch_element') {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     updateSceneList() {
@@ -84,7 +100,7 @@ class ObjectsManager {
                                   obj.userData.type === 'work_plane';
 
             // Проверяем, есть ли на плоскости элементы скетча
-            const hasSketchElements = isSketchPlane && this.editor.checkPlaneForSketchElements(obj);
+            const hasSketchElements = isSketchPlane && this.checkPlaneForSketchElements(obj);
 
             // Создаем HTML для кнопок действий
             let actionsHTML = `
@@ -149,7 +165,11 @@ class ObjectsManager {
             if (hasSketchElements) {
                 div.querySelector('[data-action="edit-sketch"]').addEventListener('click', (e) => {
                     e.stopPropagation();
-                    this.editor.editExistingSketch(obj);
+                    // Получаем инструмент скетча через toolManager
+                    const sketchTool = this.editor.toolManager.getTool('sketch');
+                    if (sketchTool) {
+                        sketchTool.editExistingSketch(obj);
+                    }
                 });
             }
 

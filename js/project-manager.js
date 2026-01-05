@@ -205,37 +205,69 @@ class ProjectManager {
     }
 
     cleanUserData(userData) {
+        if (!userData) return {};
+
         const cleaned = {};
 
+        // Сохраняем все простые свойства
         for (const key in userData) {
-            // Пропускаем временные данные и Three.js объекты
-            if (key === 'originalMaterial' ||
-                key === 'isHighlighted' ||
-                key === 'arrow' ||
-                key === 'transformControls' ||
-                key === 'originalContour' ||
-                key === 'tempGeometry' ||
-                typeof userData[key] === 'function' ||
-                userData[key] instanceof THREE.Object3D) {
+            const value = userData[key];
+
+            // Пропускаем функции и сложные объекты
+            if (typeof value === 'function') continue;
+
+            // Проверяем на THREE объекты - используем флаги is* вместо instanceof
+            if (value && (
+                value.isObject3D ||
+                value.isMaterial ||
+                value.isBufferGeometry || // Заменяем THREE.Geometry на isBufferGeometry
+                value.isTexture
+            )) {
                 continue;
             }
 
-            const value = userData[key];
+            // Для Vector3 сохраняем как массив
+            if (value && value.isVector3) {
+                cleaned[key] = value.toArray();
+                continue;
+            }
 
-            // Сохраняем только простые типы данных
+            // Сохраняем простые типы
             if (value === null ||
                 typeof value === 'string' ||
                 typeof value === 'number' ||
-                typeof value === 'boolean' ||
-                (Array.isArray(value) && !value.some(item => item instanceof THREE.Vector3))) {
-
+                typeof value === 'boolean') {
                 cleaned[key] = value;
-            } else if (value instanceof THREE.Vector3) {
-                cleaned[key] = value.toArray();
-            } else if (typeof value === 'object' && !Array.isArray(value)) {
-                // Рекурсивно очищаем вложенные объекты
+                continue;
+            }
+
+            // Сохраняем массивы простых типов
+            if (Array.isArray(value)) {
+                // Проверяем, что массив не содержит сложных объектов
+                const isSimpleArray = value.every(item =>
+                    item === null ||
+                    typeof item !== 'object' ||
+                    (item && item.isVector3) // Vector3 обрабатываем отдельно
+                );
+
+                if (isSimpleArray) {
+                    // Конвертируем Vector3 в массивы
+                    cleaned[key] = value.map(item =>
+                        item && item.isVector3 ? item.toArray() : item
+                    );
+                }
+                continue;
+            }
+
+            // Рекурсивно очищаем объекты
+            if (typeof value === 'object') {
                 cleaned[key] = this.cleanUserData(value);
             }
+        }
+
+        // Гарантируем наличие типа
+        if (!cleaned.type && userData.type) {
+            cleaned.type = userData.type;
         }
 
         return cleaned;
@@ -259,63 +291,14 @@ class ProjectManager {
             return null;
         }
 
-        // Оптимизация: для некоторых типов геометрии сохраняем только параметры
-        if (geometry.type === 'BoxGeometry') {
-            return {
-                type: 'BoxGeometry',
-                width: geometry.parameters.width || 25,
-                height: geometry.parameters.height || 25,
-                depth: geometry.parameters.depth || 25,
-                widthSegments: geometry.parameters.widthSegments || 1,
-                heightSegments: geometry.parameters.heightSegments || 1,
-                depthSegments: geometry.parameters.depthSegments || 1
-            };
-        } else if (geometry.type === 'SphereGeometry') {
-            return {
-                type: 'SphereGeometry',
-                radius: geometry.parameters.radius || 12.5,
-                widthSegments: geometry.parameters.widthSegments || 32,
-                heightSegments: geometry.parameters.heightSegments || 32
-            };
-        } else if (geometry.type === 'CylinderGeometry') {
-            return {
-                type: 'CylinderGeometry',
-                radiusTop: geometry.parameters.radiusTop || 12.5,
-                radiusBottom: geometry.parameters.radiusBottom || 12.5,
-                height: geometry.parameters.height || 25,
-                radialSegments: geometry.parameters.radialSegments || 32
-            };
-        } else if (geometry.type === 'ConeGeometry') {
-            return {
-                type: 'ConeGeometry',
-                radius: geometry.parameters.radius || 12.5,
-                height: geometry.parameters.height || 25,
-                radialSegments: geometry.parameters.radialSegments || 32
-            };
-        } else if (geometry.type === 'TorusGeometry') {
-            return {
-                type: 'TorusGeometry',
-                radius: geometry.parameters.radius || 25,
-                tube: geometry.parameters.tube || 5,
-                radialSegments: geometry.parameters.radialSegments || 16,
-                tubularSegments: geometry.parameters.tubularSegments || 100
-            };
-        } else if (geometry.type === 'PlaneGeometry') {
-            return {
-                type: 'PlaneGeometry',
-                width: geometry.parameters.width || 100,
-                height: geometry.parameters.height || 100,
-                widthSegments: geometry.parameters.widthSegments || 1,
-                heightSegments: geometry.parameters.heightSegments || 1
-            };
-        } else {
-            // Для сложных геометрий сохраняем все вершины
+        // Всегда работаем с BufferGeometry
+        if (geometry.isBufferGeometry) {
             const positions = geometry.attributes.position.array;
             const normals = geometry.attributes.normal ? geometry.attributes.normal.array : [];
             const indices = geometry.index ? Array.from(geometry.index.array) : [];
 
             return {
-                type: geometry.type,
+                type: 'BufferGeometry',
                 positions: Array.from(positions),
                 normals: normals.length > 0 ? Array.from(normals) : [],
                 indices: indices,
@@ -325,6 +308,16 @@ class ProjectManager {
                 } : null
             };
         }
+
+        // Для совместимости с примитивами
+        if (geometry.parameters) {
+            return {
+                type: geometry.type,
+                parameters: { ...geometry.parameters }
+            };
+        }
+
+        return null;
     }
 
     // СЕРИАЛИЗАЦИЯ СКЕТЧЕЙ
@@ -492,6 +485,13 @@ class ProjectManager {
 
     // ДЕСЕРИАЛИЗАЦИЯ ОБЪЕКТА
     deserializeObject(data) {
+        if (!data || !data.userData) {
+            console.warn('Invalid object data for deserialization:', data);
+            return null;
+        }
+
+        console.log('Deserializing object:', data.userData.type, data);
+
         let geometry = null;
         let material = null;
 
@@ -500,42 +500,65 @@ class ProjectManager {
             material = this.deserializeMaterial(data.material);
         } else {
             // Материал по умолчанию
-            const colorHex = data.userData.currentColor || data.userData.color || 0xAAAAAA;
-            const opacity = data.userData.currentOpacity || data.userData.opacity || 0.9;
+            const colorHex = data.userData.currentColor || data.userData.color || 0x808080;
+            const opacity = data.userData.currentOpacity || data.userData.opacity || 1.0;
 
-            if (data.userData.type === 'sketch_plane') {
-                material = new THREE.MeshBasicMaterial({
-                    color: new THREE.Color(colorHex),
-                    transparent: true,
-                    opacity: 0.3,
-                    side: THREE.DoubleSide,
-                    depthWrite: false
-                });
-            } else if (data.userData.type === 'work_plane') {
-                material = new THREE.MeshBasicMaterial({
-                    color: new THREE.Color(colorHex),
-                    transparent: true,
-                    opacity: 0.2,
-                    side: THREE.DoubleSide,
-                    depthWrite: false
-                });
-            } else {
-                material = new THREE.MeshPhongMaterial({
-                    color: new THREE.Color(colorHex),
-                    transparent: opacity < 1.0,
-                    opacity: opacity,
-                    shininess: 30
-                });
+            material = new THREE.MeshPhongMaterial({
+                color: new THREE.Color(colorHex),
+                transparent: opacity < 1.0,
+                opacity: opacity,
+                shininess: 30
+            });
+        }
+
+        // Создаем геометрию
+        if (data.geometry) {
+            try {
+                geometry = this.deserializeGeometry(data.geometry);
+                if (!geometry) {
+                    console.warn('Failed to deserialize geometry, creating default');
+                    geometry = this.createDefaultGeometry(data.userData.type);
+                }
+            } catch (error) {
+                console.error('Error deserializing geometry:', error);
+                geometry = this.createDefaultGeometry(data.userData.type);
+            }
+        } else {
+            geometry = this.createDefaultGeometry(data.userData.type);
+        }
+
+        // ОБЯЗАТЕЛЬНО: Создаем bounding box и bounding sphere
+        if (geometry) {
+            try {
+                // Вычисляем bounding box если его нет
+                if (!geometry.boundingBox) {
+                    geometry.computeBoundingBox();
+                }
+
+                // Вычисляем bounding sphere если его нет
+                if (!geometry.boundingSphere) {
+                    geometry.computeBoundingSphere();
+                }
+
+                // Гарантируем, что есть атрибуты
+                if (!geometry.attributes.position) {
+                    console.warn('No position attributes, creating basic geometry');
+                    const tempGeometry = new THREE.BoxGeometry(25, 25, 25);
+                    tempGeometry.computeBoundingBox();
+                    tempGeometry.computeBoundingSphere();
+                    geometry = tempGeometry;
+                }
+            } catch (error) {
+                console.error('Error preparing geometry:', error);
+                // Создаем базовую безопасную геометрию
+                geometry = new THREE.BoxGeometry(25, 25, 25);
+                geometry.computeBoundingBox();
+                geometry.computeBoundingSphere();
             }
         }
 
-        // Создаем геометрию из сохраненных данных
-        if (data.geometry) {
-            geometry = this.deserializeGeometry(data.geometry);
-        }
-
         if (!geometry || !material) {
-            console.warn('Не удалось создать объект:', data.userData.type);
+            console.error('Failed to create object:', data.userData.type);
             return null;
         }
 
@@ -553,12 +576,74 @@ class ProjectManager {
         if (data.castShadow !== undefined) mesh.castShadow = data.castShadow;
         if (data.receiveShadow !== undefined) mesh.receiveShadow = data.receiveShadow;
 
-        // Восстанавливаем оригинальный цвет
-        if (data.userData.currentColor && mesh.material.color) {
-            mesh.material.color.set(new THREE.Color(data.userData.currentColor));
+        return mesh;
+    }
+
+
+    // Добавьте метод для создания геометрии по умолчанию:
+    createDefaultGeometry(type) {
+        if (!type) {
+            return this.createBoxGeometry();
         }
 
-        return mesh;
+        const typeLower = type.toLowerCase();
+
+        switch(typeLower) {
+            case 'cube':
+            case 'box':
+                return this.createBoxGeometry();
+            case 'sphere':
+                return this.createSphereGeometry();
+            case 'cylinder':
+                return this.createCylinderGeometry();
+            case 'cone':
+                return this.createConeGeometry();
+            case 'torus':
+                return this.createTorusGeometry();
+            case 'boolean':
+            case 'boolean_result':
+                // Для булевых результатов создаем простую геометрию
+                return this.createBoxGeometry();
+            default:
+                console.warn('Unknown geometry type:', type);
+                return this.createBoxGeometry();
+        }
+    }
+
+    // Вспомогательные методы для создания геометрий с bounding box
+    createBoxGeometry(width = 25, height = 25, depth = 25) {
+        const geometry = new THREE.BoxGeometry(width, height, depth);
+        geometry.computeBoundingBox();
+        geometry.computeBoundingSphere();
+        return geometry;
+    }
+
+    createSphereGeometry(radius = 12.5, segments = 32) {
+        const geometry = new THREE.SphereGeometry(radius, segments, segments);
+        geometry.computeBoundingBox();
+        geometry.computeBoundingSphere();
+        return geometry;
+    }
+
+    createCylinderGeometry(radiusTop = 12.5, radiusBottom = 12.5, height = 25, segments = 32) {
+        const geometry = new THREE.CylinderGeometry(radiusTop, radiusBottom, height, segments);
+        geometry.computeBoundingBox();
+        geometry.computeBoundingSphere();
+        return geometry;
+    }
+
+    createConeGeometry(radius = 12.5, height = 25, segments = 32) {
+        const geometry = new THREE.ConeGeometry(radius, height, segments);
+        geometry.computeBoundingBox();
+        geometry.computeBoundingSphere();
+        return geometry;
+    }
+
+    createTorusGeometry(radius = 25, tube = 5, radialSegments = 16, tubularSegments = 100) {
+        const geometry = new THREE.TorusGeometry(radius, tube, radialSegments, tubularSegments);
+        geometry.computeBoundingBox();
+        geometry.computeBoundingSphere();
+        return geometry;
     }
 
     deserializeMaterial(matData) {
@@ -592,95 +677,230 @@ class ProjectManager {
     }
 
     deserializeGeometry(geomData) {
-        if (!geomData) return null;
+        if (!geomData) {
+            console.warn('No geometry data provided');
+            return new THREE.BoxGeometry(25, 25, 25);
+        }
 
-        // Восстанавливаем геометрию по типу
-        switch (geomData.type) {
-            case 'BoxGeometry':
+        console.log('Deserializing geometry:', geomData);
+
+        try {
+            // Обработка BufferGeometry (современный формат)
+            if (geomData.type === 'BufferGeometry' || (geomData.positions && Array.isArray(geomData.positions))) {
+                console.log('Creating BufferGeometry from data');
+                const geometry = new THREE.BufferGeometry();
+
+                // Восстанавливаем позиции вершин
+                if (geomData.positions && geomData.positions.length > 0) {
+                    const positionsArray = new Float32Array(geomData.positions);
+                    geometry.setAttribute('position', new THREE.BufferAttribute(positionsArray, 3));
+                }
+
+                // Восстанавливаем нормали
+                if (geomData.normals && geomData.normals.length > 0) {
+                    const normalsArray = new Float32Array(geomData.normals);
+                    geometry.setAttribute('normal', new THREE.BufferAttribute(normalsArray, 3));
+                } else {
+                    // Вычисляем нормали если их нет
+                    geometry.computeVertexNormals();
+                }
+
+                // Восстанавливаем индексы
+                if (geomData.indices && geomData.indices.length > 0) {
+                    let indicesArray;
+                    if (geomData.indices instanceof Array) {
+                        indicesArray = new Uint32Array(geomData.indices);
+                    } else if (geomData.indices instanceof Uint32Array ||
+                              geomData.indices instanceof Uint16Array ||
+                              geomData.indices instanceof Uint8Array) {
+                        indicesArray = geomData.indices;
+                    } else {
+                        indicesArray = new Uint32Array(geomData.indices);
+                    }
+                    geometry.setIndex(new THREE.BufferAttribute(indicesArray, 1));
+                }
+
+                // Вычисляем bounding box и bounding sphere
+                geometry.computeBoundingBox();
+                geometry.computeBoundingSphere();
+
+                return geometry;
+            }
+
+            // Обработка параметрических геометрий (примитивы)
+            if (geomData.type === 'BoxGeometry' && geomData.parameters) {
                 return new THREE.BoxGeometry(
-                    geomData.width || 25,
-                    geomData.height || 25,
-                    geomData.depth || 25,
-                    geomData.widthSegments || 1,
-                    geomData.heightSegments || 1,
-                    geomData.depthSegments || 1
+                    geomData.parameters.width || 25,
+                    geomData.parameters.height || 25,
+                    geomData.parameters.depth || 25,
+                    geomData.parameters.widthSegments || 1,
+                    geomData.parameters.heightSegments || 1,
+                    geomData.parameters.depthSegments || 1
                 );
-
-            case 'SphereGeometry':
+            } else if (geomData.type === 'SphereGeometry' && geomData.parameters) {
                 return new THREE.SphereGeometry(
-                    geomData.radius || 12.5,
-                    geomData.widthSegments || 32,
-                    geomData.heightSegments || 32
+                    geomData.parameters.radius || 12.5,
+                    geomData.parameters.widthSegments || 32,
+                    geomData.parameters.heightSegments || 32,
+                    geomData.parameters.phiStart || 0,
+                    geomData.parameters.phiLength || Math.PI * 2,
+                    geomData.parameters.thetaStart || 0,
+                    geomData.parameters.thetaLength || Math.PI
                 );
-
-            case 'CylinderGeometry':
+            } else if (geomData.type === 'CylinderGeometry' && geomData.parameters) {
                 return new THREE.CylinderGeometry(
-                    geomData.radiusTop || 12.5,
-                    geomData.radiusBottom || 12.5,
-                    geomData.height || 25,
-                    geomData.radialSegments || 32
+                    geomData.parameters.radiusTop || 12.5,
+                    geomData.parameters.radiusBottom || 12.5,
+                    geomData.parameters.height || 25,
+                    geomData.parameters.radialSegments || 32,
+                    geomData.parameters.heightSegments || 1,
+                    geomData.parameters.openEnded || false,
+                    geomData.parameters.thetaStart || 0,
+                    geomData.parameters.thetaLength || Math.PI * 2
                 );
-
-            case 'ConeGeometry':
+            } else if (geomData.type === 'ConeGeometry' && geomData.parameters) {
                 return new THREE.ConeGeometry(
-                    geomData.radius || 12.5,
-                    geomData.height || 25,
-                    geomData.radialSegments || 32
+                    geomData.parameters.radius || 12.5,
+                    geomData.parameters.height || 25,
+                    geomData.parameters.radialSegments || 32,
+                    geomData.parameters.heightSegments || 1,
+                    geomData.parameters.openEnded || false,
+                    geomData.parameters.thetaStart || 0,
+                    geomData.parameters.thetaLength || Math.PI * 2
                 );
-
-            case 'TorusGeometry':
+            } else if (geomData.type === 'TorusGeometry' && geomData.parameters) {
                 return new THREE.TorusGeometry(
-                    geomData.radius || 25,
-                    geomData.tube || 5,
-                    geomData.radialSegments || 16,
-                    geomData.tubularSegments || 100
+                    geomData.parameters.radius || 25,
+                    geomData.parameters.tube || 5,
+                    geomData.parameters.radialSegments || 16,
+                    geomData.parameters.tubularSegments || 100,
+                    geomData.parameters.arc || Math.PI * 2
                 );
-
-            case 'PlaneGeometry':
+            } else if (geomData.type === 'PlaneGeometry' && geomData.parameters) {
                 return new THREE.PlaneGeometry(
-                    geomData.width || 100,
-                    geomData.height || 100,
-                    geomData.widthSegments || 1,
-                    geomData.heightSegments || 1
+                    geomData.parameters.width || 100,
+                    geomData.parameters.height || 100,
+                    geomData.parameters.widthSegments || 1,
+                    geomData.parameters.heightSegments || 1
                 );
+            } else if (geomData.type === 'CircleGeometry' && geomData.parameters) {
+                return new THREE.CircleGeometry(
+                    geomData.parameters.radius || 10,
+                    geomData.parameters.segments || 32,
+                    geomData.parameters.thetaStart || 0,
+                    geomData.parameters.thetaLength || Math.PI * 2
+                );
+            } else if (geomData.type === 'RingGeometry' && geomData.parameters) {
+                return new THREE.RingGeometry(
+                    geomData.parameters.innerRadius || 5,
+                    geomData.parameters.outerRadius || 10,
+                    geomData.parameters.thetaSegments || 32,
+                    geomData.parameters.phiSegments || 1,
+                    geomData.parameters.thetaStart || 0,
+                    geomData.parameters.thetaLength || Math.PI * 2
+                );
+            } else if (geomData.type === 'TorusKnotGeometry' && geomData.parameters) {
+                return new THREE.TorusKnotGeometry(
+                    geomData.parameters.radius || 10,
+                    geomData.parameters.tube || 3,
+                    geomData.parameters.tubularSegments || 64,
+                    geomData.parameters.radialSegments || 8,
+                    geomData.parameters.p || 2,
+                    geomData.parameters.q || 3
+                );
+            } else if (geomData.type === 'OctahedronGeometry' && geomData.parameters) {
+                return new THREE.OctahedronGeometry(
+                    geomData.parameters.radius || 10,
+                    geomData.parameters.detail || 0
+                );
+            } else if (geomData.type === 'TetrahedronGeometry' && geomData.parameters) {
+                return new THREE.TetrahedronGeometry(
+                    geomData.parameters.radius || 10,
+                    geomData.parameters.detail || 0
+                );
+            } else if (geomData.type === 'DodecahedronGeometry' && geomData.parameters) {
+                return new THREE.DodecahedronGeometry(
+                    geomData.parameters.radius || 10,
+                    geomData.parameters.detail || 0
+                );
+            } else if (geomData.type === 'IcosahedronGeometry' && geomData.parameters) {
+                return new THREE.IcosahedronGeometry(
+                    geomData.parameters.radius || 10,
+                    geomData.parameters.detail || 0
+                );
+            } else if (geomData.type === 'LatheGeometry' && geomData.parameters && geomData.parameters.points) {
+                const points = geomData.parameters.points.map(p => new THREE.Vector3(p[0], p[1], p[2]));
+                return new THREE.LatheGeometry(
+                    points,
+                    geomData.parameters.segments || 12,
+                    geomData.parameters.phiStart || 0,
+                    geomData.parameters.phiLength || Math.PI * 2
+                );
+            }
 
-            default:
-                // Для сложных геометрий создаем из сохраненных данных
-                return this.deserializeComplexGeometry(geomData);
+            // Если тип не распознан, создаем простую геометрию
+            console.warn('Unknown geometry type or format:', geomData.type, 'Using fallback BoxGeometry');
+            return new THREE.BoxGeometry(25, 25, 25);
+
+        } catch (error) {
+            console.error('Error deserializing geometry:', error);
+            // Возвращаем простую геометрию в случае ошибки
+            const fallbackGeometry = new THREE.BoxGeometry(25, 25, 25);
+            fallbackGeometry.computeBoundingBox();
+            fallbackGeometry.computeBoundingSphere();
+            return fallbackGeometry;
         }
     }
 
     deserializeComplexGeometry(geomData) {
-        if (!geomData.positions) return null;
+        if (!geomData) {
+            console.warn('No geometry data provided');
+            return this.createBoxGeometry();
+        }
+
+        // Если нет позиций, создаем дефолтную геометрию
+        if (!geomData.positions || !Array.isArray(geomData.positions) || geomData.positions.length === 0) {
+            console.warn('No positions in geometry data:', geomData);
+            return this.createBoxGeometry();
+        }
 
         const geometry = new THREE.BufferGeometry();
 
-        // Восстанавливаем вершины
-        geometry.setAttribute('position',
-            new THREE.Float32BufferAttribute(geomData.positions, 3));
+        try {
+            // Восстанавливаем вершины
+            const positionsArray = new Float32Array(geomData.positions);
+            geometry.setAttribute('position', new THREE.BufferAttribute(positionsArray, 3));
 
-        // Восстанавливаем нормали
-        if (geomData.normals && geomData.normals.length > 0) {
-            geometry.setAttribute('normal',
-                new THREE.Float32BufferAttribute(geomData.normals, 3));
-        } else {
-            geometry.computeVertexNormals();
+            // Восстанавливаем нормали если есть
+            if (geomData.normals && geomData.normals.length === geomData.positions.length) {
+                const normalsArray = new Float32Array(geomData.normals);
+                geometry.setAttribute('normal', new THREE.BufferAttribute(normalsArray, 3));
+            } else {
+                geometry.computeVertexNormals();
+            }
+
+            // Восстанавливаем индексы если есть
+            if (geomData.indices && geomData.indices.length > 0) {
+                const indicesArray = new Uint32Array(geomData.indices);
+                geometry.setIndex(new THREE.BufferAttribute(indicesArray, 1));
+            }
+
+            // ВЫЧИСЛЯЕМ bounding box И bounding sphere
+            geometry.computeBoundingBox();
+            geometry.computeBoundingSphere();
+
+            // Проверяем, что все создалось правильно
+            if (!geometry.boundingBox || !geometry.boundingSphere) {
+                console.warn('Failed to compute bounds, recreating geometry');
+                return this.createBoxGeometry();
+            }
+
+            return geometry;
+        } catch (error) {
+            console.error('Error deserializing complex geometry:', error);
+            // Возвращаем безопасную геометрию
+            return this.createBoxGeometry();
         }
-
-        // Восстанавливаем индексы
-        if (geomData.indices && geomData.indices.length > 0) {
-            geometry.setIndex(geomData.indices);
-        }
-
-        // Восстанавливаем bounding box
-        if (geomData.boundingBox) {
-            geometry.boundingBox = new THREE.Box3(
-                new THREE.Vector3().fromArray(geomData.boundingBox.min),
-                new THREE.Vector3().fromArray(geomData.boundingBox.max)
-            );
-        }
-
-        return geometry;
     }
 
     // ВОССТАНОВЛЕНИЕ СКЕТЧЕЙ
@@ -1082,8 +1302,197 @@ class ProjectManager {
 
     // ИСТОРИЯ
     serializeObjectForHistory(obj) {
-        return this.serializeObject(obj);
+        console.log('=== serializeObjectForHistory called for:', obj.userData?.type, obj);
+
+        if (!obj) {
+            console.warn('Attempt to serialize null object');
+            return null;
+        }
+
+        // Базовые данные
+        const data = {
+            uuid: obj.uuid,
+            type: obj.type,
+            userData: this.cleanUserData(obj.userData || {}),
+            position: obj.position.toArray(),
+            rotation: [obj.rotation.x, obj.rotation.y, obj.rotation.z],
+            scale: obj.scale.toArray(),
+            visible: obj.visible !== false,
+            castShadow: obj.castShadow || false,
+            receiveShadow: obj.receiveShadow || false
+        };
+
+        // Сохраняем материал
+        if (obj.material) {
+            try {
+                data.material = this.serializeMaterial(obj.material);
+            } catch (error) {
+                console.error('Error serializing material:', error);
+                data.material = this.serializeMaterial(new THREE.MeshPhongMaterial({ color: 0x808080 }));
+            }
+        }
+
+        // Сохраняем геометрию - ВАЖНО!
+        if (obj.geometry) {
+            try {
+                console.log('Object has geometry:', obj.geometry.type, obj.geometry);
+                data.geometry = this.serializeGeometryForHistory(obj.geometry);
+                console.log('Geometry serialized:', data.geometry);
+            } catch (error) {
+                console.error('Error serializing geometry:', error);
+                // Если не удалось сериализовать, создаем простую геометрию по типу
+                data.geometry = this.createFallbackGeometry(obj.userData?.type);
+            }
+        } else {
+            console.warn('Object has no geometry, creating fallback:', obj.userData?.type);
+            data.geometry = this.createFallbackGeometry(obj.userData?.type);
+        }
+
+        console.log('Final serialized data:', data);
+        return data;
     }
+
+
+// Создание запасной геометрии на основе типа
+    createFallbackGeometry(type) {
+        console.log('Creating fallback geometry for type:', type);
+
+        let geometry;
+        switch(type) {
+            case 'cube':
+                geometry = new THREE.BoxGeometry(25, 25, 25);
+                break;
+            case 'sphere':
+                geometry = new THREE.SphereGeometry(12.5, 32, 32);
+                break;
+            case 'cylinder':
+                geometry = new THREE.CylinderGeometry(12.5, 12.5, 25, 32);
+                break;
+            case 'cone':
+                geometry = new THREE.ConeGeometry(12.5, 25, 32);
+                break;
+            case 'torus':
+                geometry = new THREE.TorusGeometry(25, 5, 16, 100);
+                break;
+            case 'boolean':
+            case 'boolean_result':
+                geometry = new THREE.BoxGeometry(25, 25, 25);
+                break;
+            default:
+                geometry = new THREE.BoxGeometry(25, 25, 25);
+        }
+
+        geometry.computeBoundingBox();
+        geometry.computeBoundingSphere();
+
+        return this.serializeGeometryForHistory(geometry);
+    }
+
+    // Упрощенная сериализация геометрии
+    serializeGeometryForHistory(geometry) {
+        if (!geometry) return null;
+
+        try {
+            // Для простых геометрий сохраняем параметры
+            if (geometry.type === 'BoxGeometry' && geometry.parameters) {
+                return {
+                    type: 'BoxGeometry',
+                    parameters: geometry.parameters
+                };
+            } else if (geometry.type === 'SphereGeometry' && geometry.parameters) {
+                return {
+                    type: 'SphereGeometry',
+                    parameters: geometry.parameters
+                };
+            } else if (geometry.type === 'CylinderGeometry' && geometry.parameters) {
+                return {
+                    type: 'CylinderGeometry',
+                    parameters: geometry.parameters
+                };
+            } else if (geometry.type === 'ConeGeometry' && geometry.parameters) {
+                return {
+                    type: 'ConeGeometry',
+                    parameters: geometry.parameters
+                };
+            } else if (geometry.type === 'TorusGeometry' && geometry.parameters) {
+                return {
+                    type: 'TorusGeometry',
+                    parameters: geometry.parameters
+                };
+            } else if (geometry.type === 'PlaneGeometry' && geometry.parameters) {
+                return {
+                    type: 'PlaneGeometry',
+                    parameters: geometry.parameters
+                };
+            } else {
+                // Для BufferGeometry сохраняем вершины
+                const positions = geometry.attributes.position?.array;
+                if (positions) {
+                    return {
+                        type: geometry.type,
+                        positions: Array.from(positions)
+                    };
+                }
+            }
+        } catch (error) {
+            console.error('Error in serializeGeometryForHistory:', error);
+        }
+
+        return null;
+    }
+
+    // Создание геометрии из userData
+    createGeometryFromUserData(userData) {
+        if (!userData || !userData.type) return null;
+
+        let geometry;
+
+        switch(userData.type) {
+            case 'cube':
+            case 'box':
+                geometry = new THREE.BoxGeometry(
+                    userData.width || 25,
+                    userData.height || 25,
+                    userData.depth || 25
+                );
+                break;
+            case 'sphere':
+                geometry = new THREE.SphereGeometry(
+                    userData.radius || 12.5,
+                    userData.widthSegments || 32,
+                    userData.heightSegments || 32
+                );
+                break;
+            case 'cylinder':
+                geometry = new THREE.CylinderGeometry(
+                    userData.radiusTop || 12.5,
+                    userData.radiusBottom || 12.5,
+                    userData.height || 25,
+                    userData.radialSegments || 32
+                );
+                break;
+            case 'cone':
+                geometry = new THREE.ConeGeometry(
+                    userData.radius || 12.5,
+                    userData.height || 25,
+                    userData.radialSegments || 32
+                );
+                break;
+            case 'torus':
+                geometry = new THREE.TorusGeometry(
+                    userData.radius || 25,
+                    userData.tube || 5,
+                    userData.radialSegments || 16,
+                    userData.tubularSegments || 100
+                );
+                break;
+            default:
+                geometry = new THREE.BoxGeometry(25, 25, 25);
+        }
+
+        return this.serializeGeometryForHistory(geometry);
+    }
+
 
     deserializeObjectOptimized(data) {
         return this.deserializeObject(data);

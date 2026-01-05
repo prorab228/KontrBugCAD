@@ -752,6 +752,10 @@ class LibraryManager {
 
             console.log('STL geometry created, vertices:', geometry.attributes.position?.count || 0);
 
+
+            // Поворачиваем геометрию для нашей системы координат (Y-up)
+            geometry.rotateX(-Math.PI / 2);
+
             // Создаем материал
             const material = new THREE.MeshPhongMaterial({
                 color: 0x8BC34A, // Зеленый для STL моделей

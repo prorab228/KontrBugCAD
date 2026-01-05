@@ -1,4 +1,4 @@
-// drag-manager.js
+// drag-manager.js - исправленный код
 class DragManager {
     constructor(cadEditor) {
         this.editor = cadEditor;
@@ -54,8 +54,6 @@ class DragManager {
         // Только левая кнопка мыши
         if (e.button !== 0) return;
 
-
-
         // Если другой режим активен (скетч, вытягивание и т.д.)
         if (this.editor.sketchMode === 'drawing' ||
             this.editor.extrudeMode ||
@@ -97,27 +95,28 @@ class DragManager {
         if (this.editor.selectedObjects.includes(object)) {
             // Если объект уже выделен, перетаскиваем все выделенные объекты
             this.draggedObjects = [...this.editor.selectedObjects];
+        } else {
+            // Если объект не выделен, выделяем его и готовим к перетаскиванию
+            this.draggedObjects = [object];
         }
-//        else {
-//            // Если объект не выделен, выделяем его и готовим к перетаскиванию
-//            if (!e.ctrlKey && !e.metaKey) {
-//                this.editor.selectSingleObject(object);
-//            }
-//            this.draggedObjects = [object];
-//        }
 
-        // Сохраняем начальные позиции
+        // Сохраняем начальные позиции (ВСЕ координаты, включая Y)
         this.dragStartPositions = this.draggedObjects.map(obj => obj.position.clone());
 
         // Вычисляем смещения для множественного перетаскивания
         if (this.draggedObjects.length > 1) {
             const mainObject = object;
             this.dragOffsets = this.draggedObjects.map(obj =>
-                obj.position.clone().sub(mainObject.position)
+                new THREE.Vector3(
+                    obj.position.x - mainObject.position.x,
+                    0, // Y компонента всегда 0 - фиксируем высоту
+                    obj.position.z - mainObject.position.z
+                )
             );
         }
 
-        // Создаем плоскость для перетаскивания
+        // Создаем ГОРИЗОНТАЛЬНУЮ плоскость для перетаскивания (XZ плоскость)
+        // Нормаль направлена вверх (0, 1, 0), что означает движение только в плоскости XZ
         const normal = new THREE.Vector3(0, 1, 0);
         const constant = -intersectionPoint.y;
 
@@ -151,26 +150,35 @@ class DragManager {
             const newPosition = this.getDragPosition(e);
 
             if (newPosition) {
-                // Применяем снэппинг к сетке
-                let finalPosition = newPosition;
+                // Применяем снэппинг к сетке (только к X и Z)
+                let finalPosition = newPosition.clone();
                 if (this.snapToGrid) {
-                    finalPosition = this.snapToGridPosition(newPosition);
+                    finalPosition.x = Math.round(newPosition.x / this.gridSize) * this.gridSize;
+                    finalPosition.z = Math.round(newPosition.z / this.gridSize) * this.gridSize;
                 }
 
-                // Перемещаем объект(ы)
+                // Перемещаем объект(ы) - ТОЛЬКО В ПЛОСКОСТИ XZ
                 if (this.draggedObjects.length === 1) {
-                    // Одиночный объект
-                    this.draggedObjects[0].position.copy(finalPosition);
+                    // Одиночный объект - сохраняем исходную высоту (Y)
+                    const obj = this.draggedObjects[0];
+                    obj.position.x = finalPosition.x;
+                    obj.position.z = finalPosition.z;
+                    obj.position.y = this.dragStartPositions[0].y; // Фиксируем высоту
                 } else {
                     // Множественные объекты
                     const mainObject = this.draggedObjects[0];
-                    mainObject.position.copy(finalPosition);
 
-                    // Обновляем позиции остальных объектов
+                    // Перемещаем главный объект (сохраняя его высоту)
+                    mainObject.position.x = finalPosition.x;
+                    mainObject.position.z = finalPosition.z;
+                    mainObject.position.y = this.dragStartPositions[0].y; // Фиксируем высоту главного объекта
+
+                    // Обновляем позиции остальных объектов (также сохраняя их высоты)
                     for (let i = 1; i < this.draggedObjects.length; i++) {
-                        this.draggedObjects[i].position.copy(
-                            finalPosition.clone().add(this.dragOffsets[i])
-                        );
+                        const obj = this.draggedObjects[i];
+                        obj.position.x = finalPosition.x + this.dragOffsets[i].x;
+                        obj.position.z = finalPosition.z + this.dragOffsets[i].z;
+                        obj.position.y = this.dragStartPositions[i].y; // Фиксируем высоту каждого объекта
                     }
                 }
 
@@ -199,7 +207,7 @@ class DragManager {
         this.draggedObjects.forEach(obj => this.editor.objectsManager.highlightObject(obj));
 
         this.editor.showStatus(
-            `Перетаскивание: ${this.draggedObjects.length} объект(ов)`,
+            `Перетаскивание: ${this.draggedObjects.length} объект(ов) (только по XZ)`,
             'info'
         );
 
@@ -228,14 +236,6 @@ class DragManager {
         return null;
     }
 
-    snapToGridPosition(position) {
-        return new THREE.Vector3(
-            Math.round(position.x / this.gridSize) * this.gridSize,
-            Math.round(position.y / this.gridSize) * this.gridSize,
-            Math.round(position.z / this.gridSize) * this.gridSize
-        );
-    }
-
     updatePropertiesPanel() {
         if (this.draggedObjects.length === 1) {
             const obj = this.draggedObjects[0];
@@ -246,21 +246,13 @@ class DragManager {
     }
 
     updateCoordinates(position) {
+        // Показываем текущие координаты (Y остается неизменным)
+        const obj = this.draggedObjects[0];
         document.getElementById('coords').textContent =
-            `X: ${position.x.toFixed(2)}, Y: ${position.y.toFixed(2)}, Z: ${position.z.toFixed(2)}`;
+            `X: ${position.x.toFixed(2)}, Y: ${obj.position.y.toFixed(2)}, Z: ${position.z.toFixed(2)}`;
     }
 
     onMouseUp(e) {
-        // Если это был клик (не перетаскивание)
-        if (this.isClick && this.draggedObjects.length > 0) {
-            const clickDuration = Date.now() - this.clickStartTime;
-
-            // Если клик был короткий, обрабатываем выделение
-            if (clickDuration < 300) {
-                this.handleClick(e);
-            }
-        }
-
         // Если было перетаскивание
         if (this.isDragging) {
             this.finishDrag();
@@ -273,36 +265,36 @@ class DragManager {
         document.body.style.cursor = 'default';
     }
 
-    handleClick(e) {
-        // Находим объект под курсором
-        this.editor.updateMousePosition(e);
-        this.editor.raycaster.setFromCamera(this.editor.mouse, this.editor.camera);
-
-        const intersects = this.editor.raycaster.intersectObjects(
-            this.editor.objectsGroup.children,
-            true
-        );
-
-        if (intersects.length > 0) {
-            const object = this.editor.objectsManager.findTopParent(intersects[0].object);
-
-            // Если объект можно выделять
-            if (object.userData.type !== 'work_plane' &&
-                object.userData.type !== 'sketch_plane' &&
-                object.userData.type !== 'base_plane') {
-
-                // Обрабатываем выделение как в app.js
-                if (e.ctrlKey || e.metaKey) {
-                    this.editor.toggleObjectSelection(object);
-                } else {
-                    this.editor.selectSingleObject(object);
-                }
-
-                this.editor.updatePropertiesPanel();
-                this.editor.updateStatus();
-            }
-        }
-    }
+//    handleClick(e) {
+//        // Находим объект под курсором
+//        this.editor.updateMousePosition(e);
+//        this.editor.raycaster.setFromCamera(this.editor.mouse, this.editor.camera);
+//
+//        const intersects = this.editor.raycaster.intersectObjects(
+//            this.editor.objectsGroup.children,
+//            true
+//        );
+//
+//        if (intersects.length > 0) {
+//            const object = this.editor.objectsManager.findTopParent(intersects[0].object);
+//
+//            // Если объект можно выделять
+//            if (object.userData.type !== 'work_plane' &&
+//                object.userData.type !== 'sketch_plane' &&
+//                object.userData.type !== 'base_plane') {
+//
+//                // Обрабатываем выделение как в app.js
+//                if (e.ctrlKey || e.metaKey) {
+//                    this.editor.toggleObjectSelection(object);
+//                } else {
+//                    this.editor.selectSingleObject(object);
+//                }
+//
+//                this.editor.updatePropertiesPanel();
+//                this.editor.updateStatus();
+//            }
+//        }
+//    }
 
     onMouseLeave() {
         if (this.isDragging) {
@@ -345,7 +337,7 @@ class DragManager {
             });
 
             this.editor.showStatus(
-                `Перемещено ${this.draggedObjects.length} объект(ов)`,
+                `Перемещено ${this.draggedObjects.length} объект(ов) по горизонтали`,
                 'success'
             );
         }

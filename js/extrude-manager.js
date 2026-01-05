@@ -114,11 +114,22 @@ class ExtrudeManager {
         if (intersects.length > 0) {
             const element = intersects[0].object;
 
+            // Проверяем, является ли элемент вложенным
+            const isNested = this.isContourNested(element, closedElements);
+
             if (event.ctrlKey || event.metaKey) {
+                // Ctrl+клик - множественный выбор (включая вложенные)
                 this.toggleContourSelection(element);
             } else {
+                // Обычный клик
                 this.clearContourSelection();
-                this.selectSingleContour(element);
+
+                // Если это вложенный контур, предлагаем выбрать все вложенные контуры в этой группе
+                if (isNested) {
+                    this.selectContourGroup(element, closedElements);
+                } else {
+                    this.selectSingleContour(element);
+                }
             }
 
             const selectedContours = this.getSelectedContours();
@@ -133,6 +144,31 @@ class ExtrudeManager {
 
         return false;
     }
+
+    // 9. Метод для выбора группы контуров (внешний + все вложенные)
+    selectContourGroup(mainContour, allContours) {
+        if (!mainContour || !allContours) return;
+
+        // Очищаем текущее выделение
+        this.clearContourSelection();
+
+        // Добавляем основной контур
+        this.selectContour(mainContour);
+
+        // Находим все вложенные контуры внутри этого
+        for (let contour of allContours) {
+            if (contour === mainContour) continue;
+
+            const contourCenter = this.getContourCenter(contour);
+            if (this.isPointInsideContour(contourCenter, mainContour)) {
+                // Этот контур находится внутри основного
+                this.selectContour(contour);
+            }
+        }
+
+        this.editor.showStatus(`Выбрано ${this.getSelectedContours().length} контуров (включая вложенные)`, 'info');
+    }
+
 
     // Управление выделением контуров
     toggleContourSelection(element) {
@@ -159,6 +195,95 @@ class ExtrudeManager {
         // (Здесь нужен более сложный алгоритм для реального использования)
 
         return contours;
+    }
+
+
+    // 1. Метод для вычисления центра фигуры (контура)
+    getContourCenter(contour) {
+        if (!contour || !contour.userData || !contour.userData.localPoints) {
+            return new THREE.Vector3();
+        }
+
+        const localPoints = contour.userData.localPoints;
+        const center = new THREE.Vector3();
+
+        // Суммируем все точки
+        localPoints.forEach(point => {
+            center.add(point);
+        });
+
+        // Делим на количество точек
+        if (localPoints.length > 0) {
+            center.divideScalar(localPoints.length);
+        }
+
+        return center;
+    }
+
+    // 2. Метод для вычисления центра нескольких контуров
+    getContoursCenter(contours) {
+        if (!contours || contours.length === 0) {
+            return new THREE.Vector3();
+        }
+
+        const totalCenter = new THREE.Vector3();
+        let totalPoints = 0;
+
+        contours.forEach(contour => {
+            const contourCenter = this.getContourCenter(contour);
+            if (contourCenter.length() > 0) {
+                totalCenter.add(contourCenter);
+                totalPoints++;
+            }
+        });
+
+        if (totalPoints > 0) {
+            totalCenter.divideScalar(totalPoints);
+        }
+
+        return totalCenter;
+    }
+
+    // 5. Метод для проверки, является ли контур вложенным
+    isContourNested(contour, allContours) {
+        if (!contour || !allContours || allContours.length < 2) return false;
+
+        const contourCenter = this.getContourCenter(contour);
+        if (contourCenter.length() === 0) return false;
+
+        // Проверяем, находится ли центр этого контура внутри другого контура
+        for (let otherContour of allContours) {
+            if (otherContour === contour) continue;
+
+            if (this.isPointInsideContour(contourCenter, otherContour)) {
+                return true; // Этот контур вложен в другой
+            }
+        }
+
+        return false;
+    }
+
+    // 6. Метод для проверки, находится ли точка внутри контура
+    isPointInsideContour(point, contour) {
+        if (!contour || !contour.userData || !contour.userData.localPoints) return false;
+
+        const localPoints = contour.userData.localPoints;
+        if (localPoints.length < 3) return false;
+
+        // Используем алгоритм "луч"
+        let inside = false;
+
+        for (let i = 0, j = localPoints.length - 1; i < localPoints.length; j = i++) {
+            const xi = localPoints[i].x, yi = localPoints[i].y;
+            const xj = localPoints[j].x, yj = localPoints[j].y;
+
+            const intersect = ((yi > point.y) !== (yj > point.y)) &&
+                (point.x < (xj - xi) * (point.y - yi) / (yj - yi) + xi);
+
+            if (intersect) inside = !inside;
+        }
+
+        return inside;
     }
 
 
@@ -314,39 +439,36 @@ class ExtrudeManager {
         planeNormal.applyQuaternion(sketchPlane.quaternion);
         planeNormal.normalize();
 
-        // Получаем позицию контура в мировых координатах
-        const contour = selectedContours[0];
-        const contourPos = new THREE.Vector3();
-        contour.getWorldPosition(contourPos);
+        // Получаем СРЕДНЮЮ ТОЧКУ ВСЕХ ВЫБРАННЫХ КОНТУРОВ
+        const contoursCenter = this.getContoursCenter(selectedContours);
 
-        // Позиция плоскости в мировых координатах
+        // Преобразуем локальный центр в мировые координаты
+        const worldCenter = sketchPlane.localToWorld(contoursCenter.clone());
+
+        // Получаем позицию плоскости в мировых координатах
         const planePos = new THREE.Vector3();
         sketchPlane.getWorldPosition(planePos);
 
-        // Вектор от плоскости до контура
-        const offsetVector = new THREE.Vector3().subVectors(contourPos, planePos);
+        // Вектор от плоскости до центра контуров
+        const offsetVector = new THREE.Vector3().subVectors(worldCenter, planePos);
 
-        // Базовое положение стрелки (на плоскости)
+        // Базовое положение стрелки (на плоскости в центре контуров)
         const basePos = planePos.clone().add(offsetVector);
 
         // Рассчитываем смещение стрелки в зависимости от направления
         let previewCenterOffset = 0;
 
         if (direction === 'positive') {
-            // Для положительного направления: центр Preview на height/2
             previewCenterOffset = height / 2;
         } else if (direction === 'negative') {
-            // Для отрицательного направления: центр Preview на -height/2
             previewCenterOffset = -height / 2;
         } else if (direction === 'both') {
-            // Для обоих направлений: центр Preview на 0
             previewCenterOffset = 0;
         }
 
-        // Центр стрелки должен совпадать с центром Preview
-        // Позиция стрелки = базовое положение + смещение центра Preview
+        // Позиция стрелки = базовое положение + смещение по нормали
         const arrowPos = basePos.clone().add(
-            planeNormal.clone().multiplyScalar(previewCenterOffset)
+            planeNormal.clone().multiplyScalar(previewCenterOffset + 2) // +2 для видимости
         );
 
         // Обновляем позицию стрелки
@@ -358,15 +480,14 @@ class ExtrudeManager {
         console.log('Позиция стрелки обновлена:', {
             direction: direction,
             height: height,
+            basePos: basePos.toArray().map(v => v.toFixed(2)),
             arrowPos: arrowPos.toArray().map(v => v.toFixed(2)),
-            previewCenterOffset: previewCenterOffset
+            contoursCenter: contoursCenter.toArray().map(v => v.toFixed(2))
         });
     }
 
-
-
     handleArrowDragStart(event) {
-        console.log('Попытка начать перетаскивание кончика стрелки');
+        console.log('Попытка начать перетаскивание стрелки');
 
         if (!this.editor.extrudeArrow) {
             console.log('Нет стрелки');
@@ -380,11 +501,13 @@ class ExtrudeManager {
         // Собираем все перетаскиваемые части стрелки
         const draggableParts = [];
 
-        this.editor.extrudeArrow.traverse((child) => {
-            if (child.userData && child.userData.isDraggable) {
-                draggableParts.push(child);
-            }
-        });
+        if (this.editor.extrudeArrow) {
+            this.editor.extrudeArrow.traverse((child) => {
+                if (child.userData && child.userData.isDraggable) {
+                    draggableParts.push(child);
+                }
+            });
+        }
 
         if (draggableParts.length === 0) {
             console.log('Нет перетаскиваемых частей стрелки');
@@ -396,13 +519,6 @@ class ExtrudeManager {
 
         // Проверяем пересечение с перетаскиваемыми частями
         const intersects = this.editor.raycaster.intersectObjects(draggableParts, true);
-
-        console.log('Результаты проверки пересечения:', {
-            mouse: this.editor.mouse,
-            draggableParts: draggableParts.length,
-            intersectsCount: intersects.length,
-            intersectedObject: intersects.length > 0 ? intersects[0].object.userData : 'none'
-        });
 
         if (intersects.length > 0) {
             console.log('Пересечение с кончиком стрелки обнаружено, начинаем перетаскивание');
@@ -424,17 +540,73 @@ class ExtrudeManager {
     }
 
 
-    // Добавьте этот метод для отключения raycast на частях стрелки:
-    disableArrowRaycast() {
-        if (!this.editor.extrudeArrow) return;
+    handleArrowDrag(event) {
+        if (!this.dragging) return;
 
-        this.editor.extrudeArrow.traverse((child) => {
-            if (child.isMesh || child.isLine) {
-                if (child !== this.arrowHandle) {
-                    child.raycast = () => {};
-                }
-            }
+        const selectedContours = this.getSelectedContours();
+        if (selectedContours.length === 0) return;
+
+        const sketchPlane = this.findSketchPlaneForElement(selectedContours[0]);
+        if (!sketchPlane) return;
+
+        // Получаем нормаль плоскости
+        const planeNormal = new THREE.Vector3(0, 0, 1);
+        planeNormal.applyQuaternion(sketchPlane.quaternion);
+        planeNormal.normalize();
+
+        // Получаем вектор от камеры к стрелке
+        const arrowPos = this.editor.extrudeArrow.position;
+        const cameraToArrow = new THREE.Vector3().subVectors(arrowPos, this.editor.camera.position).normalize();
+
+        // Определяем, смотрит ли камера на стрелку с той же стороны, что и нормаль плоскости
+        const dotProduct = planeNormal.dot(cameraToArrow);
+
+        // Если скалярное произведение положительное, камера смотрит в направлении нормали
+        // Если отрицательное - камера с обратной стороны
+        const isCameraFacingNormal = dotProduct > 0;
+
+        // Рассчитываем изменение высоты
+        const deltaY = event.clientY - this.startMouseY;
+        const sensitivity = 0.5;
+        let heightChange = deltaY * sensitivity;
+
+        // ИНВЕРТИРУЕМ в зависимости от положения камеры
+        if (isCameraFacingNormal) {
+            // Камера смотрит в направлении нормали
+            // Движение мыши ВВЕРХ (от плоскости) должно УВЕЛИЧИВАТЬ высоту
+            // Движение мыши ВНИЗ (к плоскости) должно УМЕНЬШАТЬ высоту
+            heightChange = -heightChange;
+        }
+        // Если камера с обратной стороны, оставляем как есть
+
+        let newHeight = this.startHeight + heightChange;
+        newHeight = Math.max(0.1, newHeight);
+        newHeight = Math.round(newHeight * 10) / 10;
+
+        console.log('Изменение высоты:', {
+            deltaY: deltaY,
+            heightChange: heightChange,
+            oldHeight: this.startHeight,
+            newHeight: newHeight,
+            isCameraFacingNormal: isCameraFacingNormal,
+            dotProduct: dotProduct.toFixed(3)
         });
+
+        const heightInput = document.getElementById('extrudeHeight');
+        if (heightInput) {
+            heightInput.value = newHeight;
+
+            const inputEvent = new Event('input', { bubbles: true });
+            heightInput.dispatchEvent(inputEvent);
+
+            const btn = document.getElementById('performExtrude');
+            if (btn) {
+                btn.innerHTML = `<i class="fas fa-check"></i> Выполнить (${newHeight.toFixed(1)} мм)`;
+            }
+        }
+
+        event.preventDefault();
+        return false;
     }
 
 
@@ -1124,9 +1296,8 @@ class ExtrudeManager {
         this.editor.updateMousePosition(event);
         this.editor.raycaster.setFromCamera(this.editor.mouse, this.editor.camera);
 
-        // Сначала проверяем, не навели ли мы на кончик стрелки (конус или ручку)
+        // Сначала проверяем, не навели ли мы на кончик стрелки
         if (this.editor.extrudeArrow) {
-            // Собираем все перетаскиваемые части стрелки
             const draggableParts = [];
 
             this.editor.extrudeArrow.traverse((child) => {
@@ -1136,19 +1307,22 @@ class ExtrudeManager {
             });
 
             if (draggableParts.length > 0) {
-                // Проверяем пересечение с перетаскиваемыми частями
                 const intersects = this.editor.raycaster.intersectObjects(draggableParts, true);
 
                 if (intersects.length > 0) {
                     console.log('Наведение на кончик стрелки обнаружено');
                     document.body.style.cursor = 'move';
-                    return; // Не проверяем контуры, если навели на стрелку
+                    return;
                 }
             }
         }
 
-        // Проверяем скетч-элементы
+        // Получаем все скетч-элементы
         const allSketchElements = this.editor.objectsManager.getAllSketchElements();
+        const closedElements = allSketchElements.filter(element =>
+            this.isSketchElementClosed(element)
+        );
+
         const selectedContours = this.getSelectedContours();
 
         // Убираем подсветку с элементов
@@ -1164,12 +1338,32 @@ class ExtrudeManager {
             }
         });
 
-        const intersects = this.editor.raycaster.intersectObjects(allSketchElements, false);
+        // Проверяем пересечение с ЗАМКНУТЫМИ элементами
+        const intersects = this.editor.raycaster.intersectObjects(closedElements, false);
 
         if (intersects.length > 0) {
             const element = intersects[0].object;
 
-            if (this.isSketchElementClosed(element)) {
+            // Проверяем, не является ли этот элемент вложенным
+            const isNested = this.isContourNested(element, closedElements);
+
+            // Для вложенных элементов показываем специальный курсор
+            if (isNested) {
+                document.body.style.cursor = 'crosshair';
+
+                if (!selectedContours.includes(element) && !element.userData.hoverHighlighted) {
+                    element.userData.hoverHighlighted = true;
+
+                    if (!element.userData.originalColor) {
+                        element.userData.originalColor = element.material.color.clone();
+                    }
+
+                    const tempMaterial = element.material.clone();
+                    tempMaterial.color.setHex(0xFFA500); // Оранжевый для вложенных контуров
+                    element.material = tempMaterial;
+                    element.material.needsUpdate = true;
+                }
+            } else {
                 document.body.style.cursor = 'pointer';
 
                 if (!selectedContours.includes(element) && !element.userData.hoverHighlighted) {
@@ -1184,8 +1378,6 @@ class ExtrudeManager {
                     element.material = tempMaterial;
                     element.material.needsUpdate = true;
                 }
-            } else {
-                document.body.style.cursor = 'not-allowed';
             }
         } else {
             document.body.style.cursor = 'default';
@@ -1228,7 +1420,6 @@ class ExtrudeManager {
             this.editor.objectsManager.safeRestoreElementColor(element);
         });
 
-        this.editor.setCurrentTool('select');
         document.body.style.cursor = 'default';
         this.dragging = false;
 

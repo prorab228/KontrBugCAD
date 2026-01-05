@@ -112,11 +112,12 @@
                     <i class="fas fa-times"></i>
                 </button>
             </div>
+            <div class="divider"></div>
         </div>
 
 
 
-            <div class="divider"></div>
+
 
             <!-- Редактирование объектов -->
             <div class="tool-section">
@@ -133,6 +134,31 @@
                     <button class="tool-btn" data-tool="scale" title="Масштаб">
                         <i class="fas fa-expand-alt"></i>
                     </button>
+                    <div class="dropdown">
+                        <button class="tool-btn dropdown-toggle" title="Булевы операции">
+                            <i class="fas fa-object-group"></i>
+                            <i class="fas fa-caret-down"></i>
+                        </button>
+                        <div class="dropdown-menu">
+                            <a href="#" id="booleanUnion"><i class="fas fa-plus-circle"></i> Объединение</a>
+                            <a href="#" id="booleanSubtract"><i class="fas fa-minus-circle"></i> Вычитание</a>
+                            <a href="#" id="booleanIntersect"><i class="fas fa-times-circle"></i> Пересечение</a>
+                        </div>
+                    </div>
+                    <button class="tool-btn" id="extrudeSketch" title="Вытянуть скетч">
+                            <i class="fas fa-arrows-alt-v"></i>
+                    </button>
+                    <button class="tool-btn" data-tool="rulerTool" id="rulerTool" title="Линейка (Ctrl+M)">
+                        <i class="fas fa-ruler"></i>
+                    </button>
+
+                    <button class="tool-btn" data-tool="gearGenerator" id="gearGenerator" title="Шестерня (Ctrl+G)">
+                        <i class="fas fa-cog"></i>
+                    </button>
+
+                    <button class="tool-btn" data-tool="threadGenerator" id="threadGenerator" title="Резьба (Ctrl+T)">
+                        <i class="fas fa-screwdriver"></i>
+                    </button>
                 </div>
             </div>
 
@@ -145,9 +171,7 @@
                         <button class="tool-btn" id="openSketch" title="Чертеж (Скетч)">
                             <i class="fas fa-drafting-compass"></i>
                         </button>
-                        <button class="tool-btn" id="extrudeSketch" title="Вытянуть скетч">
-                            <i class="fas fa-arrows-alt-v"></i>
-                        </button>
+
 
 
                         <button class="tool-btn" id="createSketchPlane" title="Создать плоскость для скетча">
@@ -159,17 +183,7 @@
                     </div>
 
 
-                    <div class="dropdown">
-                        <button class="tool-btn dropdown-toggle" title="Булевы операции">
-                            <i class="fas fa-object-group"></i>
-                            <i class="fas fa-caret-down"></i>
-                        </button>
-                        <div class="dropdown-menu">
-                            <a href="#" id="booleanUnion"><i class="fas fa-plus-circle"></i> Объединение</a>
-                            <a href="#" id="booleanSubtract"><i class="fas fa-minus-circle"></i> Вычитание</a>
-                            <a href="#" id="booleanIntersect"><i class="fas fa-times-circle"></i> Пересечение</a>
-                        </div>
-                    </div>
+
                 </div>
             </div>
 
@@ -639,6 +653,28 @@
     <script src="js/extrude-manager.js"></script>
     <script src="js/project-manager.js"></script>
     <script src="js/drag-manager.js"></script>
+
+<!--    инструменты-->
+
+    <script src="js/tools/gear-generator.js"></script>
+    <script src="js/tools/thread-generator.js"></script>
+
+    <script src="js/tools/tool.js"></script>
+    <script src="js/tools/tool-manager.js"></script>
+    <script src="js/tools/select-tool.js"></script>
+    <script src="js/tools/move-tool.js"></script>
+    <script src="js/tools/rotate-tool.js"></script>
+    <script src="js/tools/scale-tool.js"></script>
+    <script src="js/tools/sketch-tool.js"></script>
+    <script src="js/tools/extrude-tool.js"></script>
+    <script src="js/tools/workplane-tool.js"></script>
+    <script src="js/tools/gear-tool.js"></script>
+    <script src="js/tools/thread-tool.js"></script>
+    <script src="js/tools/ruler-tool.js"></script>
+    <script src="js/tools/boolean-tool.js"></script>
+
+
+
     <script src="js/app.js"></script>
 </body>
 </html>

@@ -1,7 +1,6 @@
 // app.js
 class CADEditor {
     constructor() {
-
         // Константы версии
         this.APP_VERSION = '0.5.1';
         this.APP_NAME = 'КонтрБагCAD';
@@ -14,22 +13,12 @@ class CADEditor {
         this.controls = null;
         this.objects = [];
         this.selectedObjects = [];
-        this.currentTool = 'select';
+       // this.currentTool = 'select';
 
-        // Плоскости и скетчи
+        // Плоскости
         this.workPlanes = [];
         this.sketchPlanes = [];
-        this.hoveredPlane = null;
-        this.hoveredFace = null;
         this.basePlanes = null;
-
-        // Режимы
-        this.sketchMode = null;
-        this.workPlaneMode = null;
-        this.currentSketchPlane = null;
-        this.extrudeMode = false;
-        this.selectedContour = null;
-        this.extrudeArrow = null;
 
         // Группы
         this.worldGroup = null;
@@ -51,27 +40,29 @@ class CADEditor {
         // Менеджеры
         this.history = null;
         this.storage = null;
-        this.uiManager = null;
+        this.toolManager = null;
         this.transformControls = null;
-        this.sketchTools = null;
         this.booleanOps = null;
         this.libraryManager = null;
         this.dragManager = null;
 
-        // Новые менеджеры
+        // Менеджеры объектов и проектов
         this.objectsManager = null;
         this.planesManager = null;
         this.extrudeManager = null;
         this.projectManager = null;
 
+        // Инструменты (теперь создаются через toolManager)
+        this.sketchTools = null;
+        this.gearGenerator = null;
+        this.rulerTool = null;
+        this.threadGenerator = null;
+
         // Параметры
         this.mmScale = 1;
         this.pendingPrimitive = null;
 
-        // Для выбора граней
-        this.faceSelectionObject = null;
-        this.tempWorkPlane = null;
-
+        // Производительность
         this.frames = 0;
         this.lastTime = performance.now();
         this.fps = 60;
@@ -88,34 +79,8 @@ class CADEditor {
         this.initUI();
         this.initEventListeners();
         this.animate();
-        this.initFileDrop(); // <-- Добавить эту строку
+        this.initFileDrop();
         this.planesManager.createBasePlanes();
-    }
-
-    initFileDrop() {
-        const viewport = document.getElementById('viewport');
-
-        viewport.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            e.dataTransfer.dropEffect = 'copy';
-        });
-
-        viewport.addEventListener('drop', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-
-            const files = e.dataTransfer.files;
-            if (files.length > 0) {
-                const file = files[0];
-                if (file.name.toLowerCase().endsWith('.stl')) {
-                    // Получаем позицию дропа
-                    const position = this.libraryManager.getDropPosition(e);
-                    // Добавляем STL модель
-                    this.libraryManager.addCustomSTLModel(file, position);
-                }
-            }
-        });
     }
 
     initThreeJS() {
@@ -139,7 +104,6 @@ class CADEditor {
         this.camera.lookAt(0, 0, 0);
 
         this.worldGroup = new THREE.Group();
-       // this.worldGroup.rotation.x = -Math.PI / 2;
         this.scene.add(this.worldGroup);
 
         this.controls = new THREE.OrbitControls(this.camera, this.renderer.domElement);
@@ -155,13 +119,6 @@ class CADEditor {
         this.worldGroup.add(this.sketchGroup);
 
         this.renderer.domElement.addEventListener('contextmenu', (e) => e.preventDefault());
-    }
-
-    focusCameraOnObject(object) {
-        // Делегируем вызов менеджеру объектов
-        if (this.objectsManager && object) {
-            this.objectsManager.focusCameraOnObject(object);
-        }
     }
 
     configureOrbitControls() {
@@ -184,13 +141,11 @@ class CADEditor {
     }
 
     initManagers() {
-        this.history = new HistoryManager(this);  // Передаем this (CADEditor)
+        this.history = new HistoryManager(this);
         this.storage = new StorageManager();
-     //   this.uiManager = new UIManager(this);
         this.transformControls = new TransformControls(this);
-        this.sketchTools = new SketchTools(this);
 
-        // Новые менеджеры
+        // Менеджеры объектов и операций
         this.objectsManager = new ObjectsManager(this);
         this.planesManager = new PlanesManager(this);
         this.extrudeManager = new ExtrudeManager(this);
@@ -198,6 +153,13 @@ class CADEditor {
         this.libraryManager = new LibraryManager(this);
         this.dragManager = new DragManager(this);
 
+        // Менеджер инструментов
+        this.toolManager = new ToolManager(this);
+
+        // Инициализируем инструменты
+        this.initTools();
+
+        // Булевы операции (асинхронная загрузка)
         setTimeout(() => {
             if (typeof THREE_BVH_CSG === 'undefined') {
                 console.warn('three-bvh-csg не загружена');
@@ -207,6 +169,35 @@ class CADEditor {
                 console.log('Менеджер булевых операций инициализирован с three-bvh-csg');
             }
         }, 100);
+    }
+
+    initTools() {
+        // Инициализируем инструменты скетча (должны быть созданы до регистрации SketchTool)
+        this.sketchTools = new SketchTools(this);
+
+        // Инициализируем генераторы
+        this.gearGenerator = new GearGenerator(this);
+        this.threadGenerator = new ThreadGenerator(this);
+
+        // Регистрируем инструменты
+        this.toolManager.registerTool('select', new SelectTool(this));
+        this.toolManager.registerTool('move', new MoveTool(this));
+        this.toolManager.registerTool('rotate', new RotateTool(this));
+        this.toolManager.registerTool('scale', new ScaleTool(this));
+        this.toolManager.registerTool('sketch', new SketchTool(this));
+        this.toolManager.registerTool('extrude', new ExtrudeTool(this));
+        this.toolManager.registerTool('workplane', new WorkPlaneTool(this));
+        this.toolManager.registerTool('rulerTool', new RulerTool(this));
+        this.toolManager.registerTool('gearGenerator', new GearTool(this));
+        this.toolManager.registerTool('threadGenerator', new ThreadTool(this));
+
+        // Булевы операции
+        this.toolManager.registerTool('boolean-union', new BooleanUnionTool(this));
+        this.toolManager.registerTool('boolean-subtract', new BooleanSubtractTool(this));
+        this.toolManager.registerTool('boolean-intersect', new BooleanIntersectTool(this));
+
+        // Устанавливаем инструмент по умолчанию
+        this.toolManager.setCurrentTool('select');
     }
 
     initLighting() {
@@ -231,20 +222,16 @@ class CADEditor {
         this.scene.add(pointLight);
     }
 
-    // app.js - исправленный initHelpers()
     initHelpers() {
-        // Грид теперь лежит в плоскости XZ (горизонтальная плоскость)
         this.gridHelper = new THREE.GridHelper(500, 100, 0x444444);
-        this.gridHelper.position.y = 0;  // Грид на высоте 0
+        this.gridHelper.position.y = 0;
         this.gridHelper.visible = this.gridVisible;
         this.worldGroup.add(this.gridHelper);
 
-        // Оси оставляем как есть
         this.axesHelper = new THREE.AxesHelper(50);
         this.axesHelper.visible = this.axesVisible;
         this.worldGroup.add(this.axesHelper);
 
-        // В методе initHelpers() добавьте:
         if (this.gridHelper) {
             const savedGridColor = localStorage.getItem('cad-grid-color');
             if (savedGridColor) {
@@ -254,23 +241,18 @@ class CADEditor {
     }
 
     initUI() {
-
+        // История
         document.getElementById('undo').addEventListener('click', () => this.undo());
         document.getElementById('redo').addEventListener('click', () => this.redo());
+        document.getElementById('deleteObject').addEventListener('click', () => this.deleteSelected());
 
-        document.querySelectorAll('[data-tool]').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const tool = btn.dataset.tool;
-                this.setCurrentTool(tool);
-            });
-        });
+        // Устанавливаем номер версии
+        document.getElementById('version').innerHTML = `<strong>Версия:</strong> ${this.APP_VERSION}`;
 
-       this.objectsManager.updateSceneStats()
-       //номер версии
-       document.getElementById('version').innerHTML = `<strong>Версия:</strong> ${this.APP_VERSION}`;
+        // Обновляем статистику сцены
+        this.objectsManager.updateSceneStats();
     }
 
-    // ОБРАБОТКА СОБЫТИЙ
     initEventListeners() {
         window.addEventListener('resize', () => this.onWindowResize());
         this.initMouseHandlers();
@@ -282,155 +264,11 @@ class CADEditor {
         this.initModalHandlers();
         this.initPanelTabs();
         this.initPropertyControls();
-
         this.initThemeControls();
         this.initEnvironmentControls();
-
-
-    //    this.loadSavedProjects();
     }
 
-    initThemeControls() {
-//        const themeToggle = document.querySelector('.tool-btn .fa-sun').closest('.tool-btn');
-//        if (themeToggle) {
-//            themeToggle.addEventListener('click', () => {
-//                const menu = themeToggle.nextElementSibling;
-//                menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
-//            });
-//        }
-
-        // Обработчики для кнопок темы
-        document.querySelectorAll('.theme-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const theme = btn.dataset.theme;
-                this.setTheme(theme);
-
-                // Обновляем активное состояние
-                document.querySelectorAll('.theme-btn').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-            });
-        });
-
-        // Загружаем сохранённую тему
-        const savedTheme = localStorage.getItem('cad-theme') || 'dark';
-        this.setTheme(savedTheme);
-
-        // Устанавливаем активную кнопку
-        const activeBtn = document.querySelector(`.theme-btn[data-theme="${savedTheme}"]`);
-        if (activeBtn) activeBtn.classList.add('active');
-    }
-
-    initEnvironmentControls() {
-        // Цвет фона
-        const bgColorPicker = document.getElementById('backgroundColor');
-        if (bgColorPicker) {
-            bgColorPicker.addEventListener('change', (e) => {
-                this.renderer.setClearColor(new THREE.Color(e.target.value));
-                localStorage.setItem('cad-bg-color', e.target.value);
-            });
-
-            // Загружаем сохранённый цвет
-            const savedBgColor = localStorage.getItem('cad-bg-color') || '#1a1a1a';
-            bgColorPicker.value = savedBgColor;
-            this.renderer.setClearColor(new THREE.Color(savedBgColor));
-        }
-
-        // Цвет сетки
-        const gridColorPicker = document.getElementById('gridColor');
-        if (gridColorPicker && this.gridHelper) {
-            gridColorPicker.addEventListener('change', (e) => {
-                this.gridHelper.material.color.set(new THREE.Color(e.target.value));
-                localStorage.setItem('cad-grid-color', e.target.value);
-            });
-
-            // Загружаем сохранённый цвет сетки
-            const savedGridColor = localStorage.getItem('cad-grid-color') || '#444444';
-            gridColorPicker.value = savedGridColor;
-            if (this.gridHelper) {
-                this.gridHelper.material.color.set(new THREE.Color(savedGridColor));
-            }
-        }
-
-        // Сброс настроек
-        const resetBtn = document.getElementById('resetEnvironment');
-        if (resetBtn) {
-            resetBtn.addEventListener('click', () => {
-                this.resetEnvironment();
-            });
-        }
-    }
-
-    setTheme(theme) {
-        const body = document.body;
-
-        // Добавляем класс для плавного перехода
-        body.classList.add('theme-transition');
-
-        if (theme === 'auto') {
-            // Автоматическое определение темы системы
-            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-            body.classList.remove('dark-theme', 'light-theme');
-            body.classList.add(prefersDark ? 'dark-theme' : 'light-theme');
-        } else {
-            body.classList.remove('dark-theme', 'light-theme');
-            body.classList.add(`${theme}-theme`);
-        }
-
-        // Сохраняем выбор
-        localStorage.setItem('cad-theme', theme);
-
-        // Обновляем иконку в тулбаре
-        const themeIcon = document.querySelector('.theme-controls .fa-sun, .theme-controls .fa-moon');
-        if (themeIcon) {
-            if (theme === 'light' || (theme === 'auto' && !window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-                themeIcon.className = 'fas fa-sun';
-            } else {
-                themeIcon.className = 'fas fa-moon';
-            }
-        }
-
-        // Убираем класс перехода после завершения анимации
-        setTimeout(() => {
-            body.classList.remove('theme-transition');
-        }, 300);
-    }
-
-    resetEnvironment() {
-        // Сбрасываем настройки по умолчанию
-        localStorage.removeItem('cad-bg-color');
-        localStorage.removeItem('cad-grid-color');
-
-        // Сбрасываем цвет фона
-        this.renderer.setClearColor(0x1a1a1a, 1);
-        document.getElementById('backgroundColor').value = '#1a1a1a';
-
-        // Сбрасываем цвет сетки
-        if (this.gridHelper) {
-            this.gridHelper.material.color.set(0x444444);
-        }
-        document.getElementById('gridColor').value = '#444444';
-
-        this.showStatus('Настройки окружения сброшены', 'info');
-    }
-
-
-
-    initMouseHandlers() {
-        const canvas = this.renderer.domElement;
-        canvas.addEventListener('mousedown', (e) => this.handleMouseDown(e));
-        canvas.addEventListener('mousemove', (e) => this.handleMouseMove(e));
-        canvas.addEventListener('mouseup', (e) => this.handleMouseUp(e));
-        canvas.addEventListener('mouseleave', () => this.handleMouseLeave());
-
-        // обработчик двойного клика
-        canvas.addEventListener('dblclick', (e) => this.handleDoubleClick(e));
-    }
-
-    initKeyboardHandlers() {
-        document.addEventListener('keydown', (e) => this.onKeyDown(e));
-        document.addEventListener('keyup', (e) => this.onKeyUp(e));
-    }
-
+    // ФАЙЛОВЫЕ ОПЕРАЦИИ
     initFileOperations() {
         document.getElementById('newProject').addEventListener('click', () => this.newProject());
         document.getElementById('openProject').addEventListener('click', () => this.openProject());
@@ -441,6 +279,31 @@ class CADEditor {
         document.getElementById('openSTL').addEventListener('click', () => this.projectManager.openSTL());
     }
 
+    initFileDrop() {
+        const viewport = document.getElementById('viewport');
+
+        viewport.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            e.dataTransfer.dropEffect = 'copy';
+        });
+
+        viewport.addEventListener('drop', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                const file = files[0];
+                if (file.name.toLowerCase().endsWith('.stl')) {
+                    const position = this.libraryManager.getDropPosition(e);
+                    this.libraryManager.addCustomSTLModel(file, position);
+                }
+            }
+        });
+    }
+
+    // ВИДЫ И ОТОБРАЖЕНИЕ
     initViewControls() {
         const views = {
             homeView: 'home',
@@ -463,15 +326,26 @@ class CADEditor {
         document.getElementById('toggleWireframe').addEventListener('click', () => this.toggleWireframe());
     }
 
+    // СКЕТЧ-ИНСТРУМЕНТЫ (теперь делегируются SketchTool)
     initSketchTools() {
-        document.getElementById('openSketch').addEventListener('click', () => this.openSketch());
-        document.getElementById('createSketchPlane').addEventListener('click', () => this.createWorkPlane());
-        document.getElementById('extrudeSketch').addEventListener('click', () => this.startExtrudeMode());
+        document.getElementById('openSketch').addEventListener('click', () => {
+            this.toolManager.setCurrentTool('sketch');
+        });
+
+        document.getElementById('createSketchPlane').addEventListener('click', () => {
+            this.toolManager.setCurrentTool('workplane');
+        });
+
+        document.getElementById('extrudeSketch').addEventListener('click', () => {
+            this.toolManager.setCurrentTool('extrude');
+        });
 
         document.querySelectorAll('.sketch-tool-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const tool = e.currentTarget.dataset.sketchTool;
-                this.setSketchTool(tool);
+                if (this.sketchTools) {
+                    this.sketchTools.setCurrentTool(tool);
+                }
             });
         });
 
@@ -484,7 +358,12 @@ class CADEditor {
         });
 
         document.getElementById('exitSketchBtn').addEventListener('click', () => {
-            this.exitSketchMode();
+            if (this.sketchTools) {
+                const sketchTool = this.toolManager.getTool('sketch');
+                if (sketchTool) {
+                    sketchTool.exitSketchMode();
+                }
+            }
         });
 
         document.getElementById('toggleSketchGrid').addEventListener('click', () => {
@@ -495,23 +374,22 @@ class CADEditor {
         });
     }
 
+    // БУЛЕВЫ ОПЕРАЦИИ
     initBooleanOperations() {
+        document.getElementById('booleanUnion').addEventListener('click', () => {
+            this.toolManager.setCurrentTool('boolean-union');
+        });
 
-        const initOps = () => {
-            if (typeof ThreeCSG !== 'undefined') {
-                this.booleanOps = new BooleanOperations(this);
-                console.log('ThreeCSG loaded, BooleanOperations initialized');
-            } else {
-                console.warn('ThreeCSG not loaded yet, will retry...');
-                // Пробуем еще раз через небольшой интервал
-                setTimeout(initOps, 100);
-            }
-        };
-        document.getElementById('booleanUnion').addEventListener('click', () => this.performUnion());
-        document.getElementById('booleanSubtract').addEventListener('click', () => this.performSubtract());
-        document.getElementById('booleanIntersect').addEventListener('click', () => this.performIntersect());
+        document.getElementById('booleanSubtract').addEventListener('click', () => {
+            this.toolManager.setCurrentTool('boolean-subtract');
+        });
+
+        document.getElementById('booleanIntersect').addEventListener('click', () => {
+            this.toolManager.setCurrentTool('boolean-intersect');
+        });
     }
 
+    // МОДАЛЬНЫЕ ОКНА
     initModalHandlers() {
         document.querySelectorAll('.close-modal').forEach(btn => {
             btn.addEventListener('click', (e) => {
@@ -519,9 +397,8 @@ class CADEditor {
                 if (modal) modal.classList.remove('active');
             });
         });
-        //О программе
+
         document.getElementById('aboutBtn').addEventListener('click', () => {
-            // Если нужно динамически обновлять информацию:
             const modal = document.getElementById('aboutModal');
             modal.querySelector('h4').textContent = this.APP_NAME;
             modal.querySelector('p:nth-child(2)').innerHTML = `<strong>Версия:</strong> ${this.APP_VERSION}`;
@@ -548,6 +425,7 @@ class CADEditor {
         });
     }
 
+    // ПАНЕЛИ И СВОЙСТВА
     initPanelTabs() {
         document.querySelectorAll('.panel-tab').forEach(tab => {
             tab.addEventListener('click', () => {
@@ -573,7 +451,6 @@ class CADEditor {
             this.applySizeFromInputs();
         });
 
-        // Обработчики для цвета и прозрачности
         document.getElementById('objectColor').addEventListener('input', (e) => {
             this.onObjectColorChange(e);
         });
@@ -588,13 +465,178 @@ class CADEditor {
         });
 
         const extrudeSketchBtn = document.getElementById('extrudeSketchBtn');
-        const cutSketchBtn = document.getElementById('cutSketchBtn');
 
-        if (extrudeSketchBtn) extrudeSketchBtn.addEventListener('click', () => this.extrudeSketch());
-        if (cutSketchBtn) cutSketchBtn.addEventListener('click', () => this.cutSketch());
+
+        if (extrudeSketchBtn) extrudeSketchBtn.addEventListener('click', () => {
+            this.toolManager.setCurrentTool('extrude');
+        });
     }
 
+    // ТЕМА И ОКРУЖЕНИЕ
+    initThemeControls() {
+        document.querySelectorAll('.theme-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const theme = btn.dataset.theme;
+                this.setTheme(theme);
+
+                document.querySelectorAll('.theme-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+            });
+        });
+
+        const savedTheme = localStorage.getItem('cad-theme') || 'dark';
+        this.setTheme(savedTheme);
+
+        const activeBtn = document.querySelector(`.theme-btn[data-theme="${savedTheme}"]`);
+        if (activeBtn) activeBtn.classList.add('active');
+    }
+
+    initEnvironmentControls() {
+        const bgColorPicker = document.getElementById('backgroundColor');
+        if (bgColorPicker) {
+            bgColorPicker.addEventListener('change', (e) => {
+                this.renderer.setClearColor(new THREE.Color(e.target.value));
+                localStorage.setItem('cad-bg-color', e.target.value);
+            });
+
+            const savedBgColor = localStorage.getItem('cad-bg-color') || '#1a1a1a';
+            bgColorPicker.value = savedBgColor;
+            this.renderer.setClearColor(new THREE.Color(savedBgColor));
+        }
+
+        const gridColorPicker = document.getElementById('gridColor');
+        if (gridColorPicker && this.gridHelper) {
+            gridColorPicker.addEventListener('change', (e) => {
+                this.gridHelper.material.color.set(new THREE.Color(e.target.value));
+                localStorage.setItem('cad-grid-color', e.target.value);
+            });
+
+            const savedGridColor = localStorage.getItem('cad-grid-color') || '#444444';
+            gridColorPicker.value = savedGridColor;
+            if (this.gridHelper) {
+                this.gridHelper.material.color.set(new THREE.Color(savedGridColor));
+            }
+        }
+
+        const resetBtn = document.getElementById('resetEnvironment');
+        if (resetBtn) {
+            resetBtn.addEventListener('click', () => {
+                this.resetEnvironment();
+            });
+        }
+    }
+
+    setTheme(theme) {
+        const body = document.body;
+        body.classList.add('theme-transition');
+
+        if (theme === 'auto') {
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            body.classList.remove('dark-theme', 'light-theme');
+            body.classList.add(prefersDark ? 'dark-theme' : 'light-theme');
+        } else {
+            body.classList.remove('dark-theme', 'light-theme');
+            body.classList.add(`${theme}-theme`);
+        }
+
+        localStorage.setItem('cad-theme', theme);
+
+        const themeIcon = document.querySelector('.theme-controls .fa-sun, .theme-controls .fa-moon');
+        if (themeIcon) {
+            if (theme === 'light' || (theme === 'auto' && !window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                themeIcon.className = 'fas fa-sun';
+            } else {
+                themeIcon.className = 'fas fa-moon';
+            }
+        }
+
+        setTimeout(() => {
+            body.classList.remove('theme-transition');
+        }, 300);
+    }
+
+    resetEnvironment() {
+        localStorage.removeItem('cad-bg-color');
+        localStorage.removeItem('cad-grid-color');
+
+        this.renderer.setClearColor(0x1a1a1a, 1);
+        document.getElementById('backgroundColor').value = '#1a1a1a';
+
+        if (this.gridHelper) {
+            this.gridHelper.material.color.set(0x444444);
+        }
+        document.getElementById('gridColor').value = '#444444';
+
+        this.showStatus('Настройки окружения сброшены', 'info');
+    }
+
+    // ОБРАБОТКА МЫШИ
+    initMouseHandlers() {
+        const canvas = this.renderer.domElement;
+        canvas.addEventListener('mousedown', (e) => this.handleMouseDown(e));
+        canvas.addEventListener('mousemove', (e) => this.handleMouseMove(e));
+        canvas.addEventListener('mouseup', (e) => this.handleMouseUp(e));
+        canvas.addEventListener('dblclick', (e) => this.handleDoubleClick(e));
+    }
+
+    initKeyboardHandlers() {
+        document.addEventListener('keydown', (e) => this.onKeyDown(e));
+        document.addEventListener('keyup', (e) => this.onKeyUp(e));
+    }
+
+    handleMouseDown(e) {
+        const isLeftClick = e.button === 0;
+        const isRightClick = e.button === 2;
+        const isMiddleClick = e.button === 1;
+
+        if (isLeftClick) {
+            e.preventDefault();
+            this.updateMousePosition(e);
+
+            // Делегируем обработку менеджеру инструментов
+            if (this.toolManager.handleMouseDown(e)) {
+                return;
+            }
+
+            // Стандартная обработка мыши (выделение)
+            this.handleStandardMouseDown(e);
+        }
+
+        if (isRightClick) document.body.style.cursor = 'grab';
+        if (isMiddleClick) document.body.style.cursor = 'move';
+    }
+
+    handleMouseMove(e) {
+        this.updateMousePosition(e);
+        this.updateCoordinates(e);
+
+        // Делегируем обработку менеджеру инструментов
+        this.toolManager.handleMouseMove(e);
+    }
+
+    handleMouseUp(e) {
+        const isRightClick = e.button === 2;
+        const isMiddleClick = e.button === 1;
+
+        if (isRightClick || isMiddleClick) {
+            document.body.style.cursor = 'default';
+        }
+
+        if (e.button === 0) {
+            // Делегируем обработку менеджеру инструментов
+            this.toolManager.handleMouseUp(e);
+        }
+    }
+
+
+
     handleDoubleClick(e) {
+        // Делегируем обработку менеджеру инструментов
+        if (this.toolManager.handleDoubleClick(e)) {
+            return;
+        }
+
+        // Стандартная обработка двойного клика
         if (e.button !== 0) return;
 
         this.updateMousePosition(e);
@@ -610,180 +652,18 @@ class CADEditor {
                 object.userData.type === 'work_plane') {
 
                 // Проверяем, есть ли элементы скетча на этой плоскости
-                const hasSketchElements = this.checkPlaneForSketchElements(object);
+                const hasSketchElements = this.objectsManager.checkPlaneForSketchElements(object);
 
                 if (hasSketchElements) {
                     // Редактируем существующий скетч
                     this.selectSingleObject(object);
-                    this.editExistingSketch(object);
-                    return;
-                }
-            }
-        }
-    }
-
-    // ОБРАБОТКА МЫШИ
-    handleMouseDown(e) {
-        const isLeftClick = e.button === 0;
-        const isRightClick = e.button === 2;
-        const isMiddleClick = e.button === 1;
-
-        if (isLeftClick) {
-
-            e.preventDefault();
-            this.updateMousePosition(e);
-
-            // Проверяем, не началось ли перетаскивание
-            if (this.dragManager && this.dragManager.isDragging) {
-                return;
-            }
-
-            if (this.transformControls && this.transformControls.onMouseDown(e, this.mouse)) {
-                return;
-            }
-
-            // Обработка в зависимости от режима
-            if (this.workPlaneMode === 'selecting_face') {
-                this.planesManager.selectFaceForWorkPlane(e);
-                return;
-            } else if (this.workPlaneMode === 'selecting_plane') {
-                this.planesManager.selectBasePlaneForWorkPlane(e);
-                return;
-            } else if (this.sketchMode === 'drawing' && this.sketchTools) {
-                this.sketchTools.onMouseDown(e);
-                return;
-            } else if (this.extrudeMode) {
-                // Пробуем начать перетаскивание стрелки
-                if (this.extrudeManager.handleArrowDragStart(e)) {
-                    return;
-                }
-
-                // Если не начали перетаскивать стрелку, выбираем контур
-                if (this.extrudeManager.selectContourForExtrude(e)) {
-                    return;
-                }
-            }
-
-            this.handleStandardMouseDown(e);
-        }
-
-        if (isRightClick) document.body.style.cursor = 'grab';
-        if (isMiddleClick) document.body.style.cursor = 'move';
-    }
-
-    handleMouseMove(e) {
-        this.updateMousePosition(e);
-        this.updateCoordinates(e);
-
-        // Если идет перетаскивание, делегируем DragManager
-        if (this.dragManager && this.dragManager.isDragging) {
-            this.dragManager.onMouseMove(e);
-            return;
-        }
-
-        if (this.transformControls && this.transformControls.isDragging) {
-            this.transformControls.onMouseMove(e, this.mouse);
-            return;
-        }
-
-        // Обработка в зависимости от режима
-        if (this.workPlaneMode === 'selecting_face') {
-            this.planesManager.highlightFacesForWorkPlane(e);
-        } else if (this.workPlaneMode === 'selecting_plane') {
-            this.planesManager.highlightBasePlanesForWorkPlane(e);
-        } else if (this.sketchMode === 'drawing' && this.sketchTools) {
-            this.sketchTools.onMouseMove(e);
-        } else if (this.extrudeMode) {
-            if (this.extrudeManager.dragging) {
-                this.extrudeManager.handleArrowDrag(e);
-                return;
-            }
-            this.extrudeManager.highlightContoursOnHover(e);
-        } else {
-            this.handleStandardMouseMove(e);
-        }
-    }
-
-    handleMouseUp(e) {
-        const isRightClick = e.button === 2;
-        const isMiddleClick = e.button === 1;
-
-        if (isRightClick || isMiddleClick) {
-            document.body.style.cursor = 'default';
-        }
-
-        if (e.button === 0) {
-            // Если было перетаскивание, завершаем его
-            if (this.dragManager && this.dragManager.isDragging) {
-                this.dragManager.onMouseUp(e);
-                return;
-            }
-
-            // Сохранение transform операций в историю
-            if (this.transformControls && this.transformControls.isDragging) {
-                const obj = this.transformControls.attachedObject;
-                if (obj) {
-                    // Определяем тип операции
-                    const mode = this.transformControls.getMode();
-                    let actionType = '';
-                    let actionData = {};
-
-                    switch(mode) {
-                        case 'translate':
-                            actionType = 'modify_position';
-                            actionData = {
-                                position: obj.position.toArray(),
-                                previousPosition: obj.userData.lastPosition || [0, 0, 0]
-                            };
-                            obj.userData.lastPosition = obj.position.toArray();
-                            break;
-
-                        case 'rotate':
-                            actionType = 'modify_rotation';
-                            actionData = {
-                                rotation: [obj.rotation.x, obj.rotation.y, obj.rotation.z],
-                                previousRotation: obj.userData.lastRotation || [0, 0, 0]
-                            };
-                            obj.userData.lastRotation = [obj.rotation.x, obj.rotation.y, obj.rotation.z];
-                            break;
-
-                        case 'scale':
-                            actionType = 'modify_scale';
-                            actionData = {
-                                scale: obj.scale.toArray(),
-                                previousScale: obj.userData.lastScale || [1, 1, 1]
-                            };
-                            obj.userData.lastScale = obj.scale.toArray();
-                            break;
+                    const sketchTool = this.toolManager.getTool('sketch');
+                    if (sketchTool) {
+                        sketchTool.editExistingSketch(object);
                     }
-
-                    if (actionType) {
-                        this.history.addAction({
-                            type: actionType,
-                            object: obj.uuid,
-                            data: actionData
-                        });
-                    }
+                    return;
                 }
-
-                this.transformControls.onMouseUp();
-                return;
             }
-
-            if (this.sketchMode === 'drawing' && this.sketchTools) {
-                this.sketchTools.onMouseUp(e);
-            }
-
-            if (this.extrudeManager && this.extrudeManager.dragging) {
-                this.extrudeManager.handleArrowDragEnd();
-                return;
-            }
-        }
-    }
-
-    handleMouseLeave() {
-        if (this.transformControls && this.transformControls.isDragging) {
-            this.transformControls.onMouseUp();
         }
     }
 
@@ -793,42 +673,28 @@ class CADEditor {
         this.mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
     }
 
+    // СТАНДАРТНАЯ ОБРАБОТКА МЫШИ (выделение)
     handleStandardMouseDown(e) {
         this.raycaster.setFromCamera(this.mouse, this.camera);
-
-        // Создание примитива
-//        if (this.pendingPrimitive) {
-//            this.createPrimitive(this.pendingPrimitive, e);
-//            this.setCurrentTool('select');
-//            return;
-//        }
 
         const intersects = this.raycaster.intersectObjects(this.objectsGroup.children, true);
 
         if (intersects.length > 0) {
             const object = this.objectsManager.findTopParent(intersects[0].object);
 
-            if (event.ctrlKey || event.metaKey) {
+            if (e.ctrlKey || e.metaKey) {
+                // При Ctrl+клике добавляем/удаляем объект из выделения
                 this.toggleObjectSelection(object);
             } else {
+                // Обычный клик - выделяем один объект
                 this.selectSingleObject(object);
             }
 
             this.updatePropertiesPanel();
             this.updateStatus();
         } else {
-            if (!['move', 'scale', 'rotate'].includes(this.currentTool)) {
-                this.clearSelection();
-            }
-        }
-    }
-
-    handleStandardMouseMove(e) {
-        this.raycaster.setFromCamera(this.mouse, this.camera);
-
-        if (this.currentTool === 'select' && !this.sketchMode && !this.extrudeMode) {
-            const intersects = this.raycaster.intersectObjects(this.objectsGroup.children, true);
-            // Можно добавить подсветку при наведении
+            // Кликнули вне объекта - сбрасываем выделение
+            this.clearSelection();
         }
     }
 
@@ -849,12 +715,9 @@ class CADEditor {
         this.selectedObjects = [object];
         this.objectsManager.highlightObject(object);
 
-        if (['move', 'scale', 'rotate'].includes(this.currentTool) && this.transformControls) {
-            const mode = this.currentTool === 'move' ? 'translate' :
-                        this.currentTool === 'scale' ? 'scale' : 'rotate';
-            this.transformControls.attach(object);
-            this.transformControls.updateMode(mode);
-        }
+        this.updatePropertiesPanel();
+        this.objectsManager.updateSceneList();
+        this.updateStatus();
     }
 
     selectObject(object) {
@@ -865,7 +728,7 @@ class CADEditor {
         this.updateStatus();
     }
 
-    clearSelection() {
+      clearSelection() {
         this.selectedObjects.forEach(obj => this.objectsManager.unhighlightObject(obj));
         this.selectedObjects = [];
 
@@ -874,448 +737,37 @@ class CADEditor {
             this.transformControls.hide();
         }
 
+      //  this.setCurrentTool('select');
         this.updatePropertiesPanel();
         this.updateStatus();
-        this.setCurrentTool('select');
+    }
+
+    activateTransformForSelected(object) {
+        if (!object || !this.transformControls) return;
+
+        const mode = this.toolManager.currentTool === 'move' ? 'translate' :
+                    this.toolManager.currentTool === 'scale' ? 'scale' : 'rotate';
+
+        // Сохраняем текущее состояние для истории
+        if (!object.userData.lastPosition) {
+            object.userData.lastPosition = object.position.toArray();
+        }
+        if (!object.userData.lastRotation) {
+            object.userData.lastRotation = [object.rotation.x, object.rotation.y, object.rotation.z];
+        }
+        if (!object.userData.lastScale) {
+            object.userData.lastScale = object.scale.toArray();
+        }
+
+        // Прикрепляем gizmo
+        this.transformControls.attach(object);
+        this.transformControls.updateMode(mode);
+        this.transformControls.show();
     }
 
     // ИНСТРУМЕНТЫ
     setCurrentTool(tool) {
-        if (this.transformControls) {
-            this.transformControls.detach();
-        }
-
-        // Выход из режимов при смене инструмента
-        if (tool !== 'select' && this.sketchMode === 'drawing') {
-            this.exitSketchMode();
-        }
-
-        if (tool !== 'extrude') {
-            this.extrudeMode = false;
-            this.selectedContour = null;
-        }
-
-        this.currentTool = tool;
-        this.updateToolUI(tool);
-
-        // Для инструментов трансформации
-        if (['move', 'scale', 'rotate'].includes(tool) && this.selectedObjects.length === 1) {
-            const mode = tool === 'move' ? 'translate' :
-                        tool === 'scale' ? 'scale' : 'rotate';
-
-            // Сохраняем текущее состояние перед изменением
-            const obj = this.selectedObjects[0];
-            if (obj) {
-                switch(mode) {
-                    case 'translate':
-                        if (!obj.userData.lastPosition) {
-                            obj.userData.lastPosition = obj.position.toArray();
-                        }
-                        break;
-                    case 'rotate':
-                        if (!obj.userData.lastRotation) {
-                            obj.userData.lastRotation = [obj.rotation.x, obj.rotation.y, obj.rotation.z];
-                        }
-                        break;
-                    case 'scale':
-                        if (!obj.userData.lastScale) {
-                            obj.userData.lastScale = obj.scale.toArray();
-                        }
-                        break;
-                }
-            }
-
-            if (this.transformControls) {
-                this.transformControls.attach(obj);
-                this.transformControls.updateMode(mode);
-                this.transformControls.show();
-            }
-        } else {
-            if (this.transformControls) {
-                this.transformControls.detach();
-                this.transformControls.hide();
-            }
-        }
-
-        this.updateStatus();
-    }
-
-    updateToolUI(tool) {
-        document.querySelectorAll('.tool-btn, [data-tool]').forEach(b => {
-            b.classList.remove('active', 'pending');
-        });
-
-        const activeBtn = document.querySelector(`[data-tool="${tool}"]`);
-        if (activeBtn) {
-            activeBtn.classList.add('active');
-        }
-    }
-
-
-
-    // РАБОЧИЕ ПЛОСКОСТИ (для операций)
-    createWorkPlane() {
-        // Если выбран объект (и это не плоскость), начинаем выбор грани
-        if (this.selectedObjects.length === 1 &&
-            this.selectedObjects[0].userData.type !== 'work_plane' &&
-            this.selectedObjects[0].userData.type !== 'sketch_plane' &&
-            this.selectedObjects[0].userData.type !== 'base_plane') {
-            this.planesManager.startWorkPlaneFaceSelection();
-        } else {
-            // Иначе начинаем выбор базовой плоскости
-            this.planesManager.startWorkPlaneBaseSelection();
-        }
-    }
-
-    // РАБОТА СО СКЕТЧАМИ
-    openSketch() {
-        if (this.sketchMode === 'drawing') {
-            this.exitSketchMode();
-            return;
-        }
-
-        // Если выбран объект, который является плоскостью скетча
-        if (this.selectedObjects.length === 1) {
-            const object = this.selectedObjects[0];
-
-            // Проверяем, является ли объект плоскостью скетча
-            if (object.userData.type === 'sketch_plane' ||
-                object.userData.type === 'work_plane') {
-
-                // Проверяем, есть ли на этой плоскости элементы скетча
-                const hasSketchElements = this.checkPlaneForSketchElements(object);
-
-                if (hasSketchElements) {
-                    // Редактируем существующий скетч
-                    this.editExistingSketch(object);
-                } else {
-                    // Создаем новый скетч на выбранной плоскости
-                    this.startSketchOnPlane(object);
-                }
-                return;
-            }
-        }
-
-        this.showStatus('Выберите плоскость для скетча (рабочую или скетч-плоскость)', 'error');
-    }
-
-    // Проверяем, содержит ли плоскость элементы скетча
-    checkPlaneForSketchElements(planeObject) {
-        if (!planeObject || !planeObject.children) return false;
-
-        for (const child of planeObject.children) {
-            if (child.userData && child.userData.type === 'sketch_element') {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    // Метод для редактирования существующего скетча
-    editExistingSketch(planeObject) {
-        if (!this.sketchTools) return;
-
-        // Запускаем режим редактирования
-        this.sketchMode = 'drawing';
-        this.sketchTools.editExistingSketch(planeObject);
-
-        // Показываем инструменты скетча
-        document.getElementById('sketchToolsSection').style.display = 'flex';
-        this.setCurrentTool('select');
-        this.showStatus('Режим редактирования скетча. Используйте инструменты рисования.', 'info');
-    }
-
-    startSketchOnPlane(plane) {
-        // Создаем отдельную плоскость для скетча на основе выбранной плоскости
-        const sketchPlane = this.planesManager.createSketchPlaneObject();
-
-        // Копируем позицию и ориентацию
-        sketchPlane.position.copy(plane.position);
-        sketchPlane.quaternion.copy(plane.quaternion);
-
-        this.objectsGroup.add(sketchPlane);
-        this.objects.push(sketchPlane);
-        this.sketchPlanes.push(sketchPlane);
-
-        this.currentSketchPlane = sketchPlane;
-        this.sketchMode = 'drawing';
-
-        // Показываем инструменты скетча
-        document.getElementById('sketchToolsSection').style.display = 'flex';
-
-        if (this.sketchTools) {
-            this.sketchTools.startSketchOnPlane(sketchPlane);
-            this.sketchTools.setCurrentTool('line');
-        }
-
-        // Убираем старый вызов planesManager.setCameraForSketch
-        // Камера будет настроена в sketchTools.orientCameraToPlane
-
-        this.setSketchTool('line');
-        this.showStatus('Режим скетча: используйте инструменты рисования', 'info');
-    }
-
-    exitSketchMode() {
-        if (this.sketchMode === null) return;
-
-        this.sketchMode = null;
-        this.currentSketchPlane = null;
-
-        document.getElementById('sketchToolsSection').style.display = 'none';
-
-        if (this.sketchTools) {
-            this.sketchTools.exitSketchMode();
-        }
-
-        this.setCurrentTool('select');
-        this.showStatus('Режим скетча завершен', 'info');
-    }
-
-    setSketchTool(tool) {
-        if (this.sketchTools && this.sketchMode === 'drawing') {
-            this.sketchTools.setCurrentTool(tool);
-
-            document.querySelectorAll('.sketch-tool-btn').forEach(btn => {
-                btn.classList.remove('active');
-                if (btn.dataset.sketchTool === tool) {
-                    btn.classList.add('active');
-                }
-            });
-
-            // Обновляем информацию о текущем инструменте
-            const toolNames = {
-                select: 'Выделение',
-                line: 'Линия',
-                rectangle: 'Прямоугольник',
-                circle: 'Окружность',
-                polyline: 'Полилиния'
-            };
-
-            if (this.sketchTools.sizeDisplay) {
-                const sizeInfo = this.sketchTools.sizeDisplay.querySelector('#sizeInfo');
-                if (sizeInfo) {
-                    sizeInfo.textContent = `Инструмент: ${toolNames[tool] || tool}`;
-                }
-            }
-        }
-    }
-
-    // ВЫТЯГИВАНИЕ СКЕТЧА
-    // app.js - исправленный метод startExtrudeMode
-    startExtrudeMode() {
-        // Используем менеджер объектов для получения элементов
-        const closedContours = this.objectsManager.getClosedSketchElements();
-
-        console.log("Замкнутых контуров для выдавливания:", closedContours.length);
-
-        if (closedContours.length === 0) {
-            this.showStatus('Нет замкнутых контуров для вытягивания', 'error');
-
-            // Для отладки покажем все элементы
-            const allElements = this.objectsManager.getAllSketchElements();
-            console.log("Всего скетч-элементов:", allElements.length);
-            allElements.forEach((element, index) => {
-                console.log(`Элемент ${index}:`, {
-                    type: element.userData?.elementType,
-                    isClosed: element.userData?.isClosed,
-                    userData: element.userData
-                });
-            });
-
-            return;
-        }
-
-        this.extrudeMode = true;
-        this.currentTool = 'extrude';
-        this.selectedContour = null;
-
-        this.extrudeManager.showExtrudeUI();
-        this.showStatus('Выберите замкнутый контур скетча для вытягивания. Подсвечены доступные контуры.', 'info');
-
-        // Подсвечиваем замкнутые контуры
-        this.extrudeManager.highlightExtrudableContours();
-    }
-
-
-   //СМЕНА ЦВЕТА
-
-   onObjectColorChange(e) {
-        if (this.selectedObjects.length !== 1) return;
-
-        const object = this.selectedObjects[0];
-
-        // Проверяем, что объект имеет материал
-        let material = object.material;
-
-        // Если material не существует, создаем его
-        if (!material) {
-            console.warn('Объект не имеет материала, создаем новый');
-            material = new THREE.MeshStandardMaterial({
-                color: 0x808080,
-                side: THREE.FrontSide
-            });
-            object.material = material;
-
-            // Сохраняем в userData
-            if (!object.userData.originalMaterial) {
-                object.userData.originalMaterial = material.clone();
-            }
-        }
-
-        // Проверяем, что материал имеет свойство color
-        if (!material.color) {
-            this.showStatus('Материал объекта не поддерживает изменение цвета', 'error');
-            return;
-        }
-
-        const newColor = e.target.value;
-
-        // Сохраняем предыдущий цвет для истории
-        const previousColor = material.color.getHex ? material.color.getHex() : 0x808080;
-
-        // Обновляем цвет
-        this.setObjectColor(object, newColor);
-
-        // Добавляем в историю
-        this.history.addAction({
-            type: 'modify_color',
-            object: object.uuid,
-            data: {
-                color: newColor,
-                previousColor: previousColor
-            }
-        });
-    }
-
-
-    onObjectOpacityChange(e) {
-        if (this.selectedObjects.length !== 1) return;
-
-        const object = this.selectedObjects[0];
-
-        // Проверяем, что объект имеет материал
-        let material = object.material;
-
-        // Если material не существует, создаем его
-        if (!material) {
-            console.warn('Объект не имеет материала, создаем новый');
-            material = new THREE.MeshStandardMaterial({
-                color: 0x808080,
-                side: THREE.FrontSide,
-                transparent: true
-            });
-            object.material = material;
-
-            // Сохраняем в userData
-            if (!object.userData.originalMaterial) {
-                object.userData.originalMaterial = material.clone();
-            }
-        }
-
-        const opacity = parseFloat(e.target.value);
-
-        // Сохраняем предыдущую прозрачность для истории
-        const previousOpacity = material.opacity !== undefined ? material.opacity : 1.0;
-
-        // Обновляем прозрачность
-        this.setObjectOpacity(object, opacity);
-
-        // Добавляем в историю
-        this.history.addAction({
-            type: 'modify_opacity',
-            object: object.uuid,
-            data: {
-                opacity: opacity,
-                previousOpacity: previousOpacity
-            }
-        });
-    }
-
-    setObjectColor(object, colorValue) {
-        if (!object) return;
-
-        // Создаем новый цвет
-        const newColor = new THREE.Color(colorValue);
-
-        // Если у объекта нет материала, создаем его
-        if (!object.material) {
-            object.material = new THREE.MeshStandardMaterial({
-                color: newColor,
-                side: THREE.FrontSide
-            });
-            object.material.needsUpdate = true;
-
-            // Сохраняем в userData
-            object.userData.originalMaterial = object.material.clone();
-            object.userData.currentColor = colorValue;
-            return;
-        }
-
-        // Если объект выделен, обновляем и оригинальный материал
-        if (object.userData.originalMaterial) {
-            // Клонируем оригинальный материал, чтобы сохранить изменения
-            const originalClone = object.userData.originalMaterial.clone();
-            originalClone.color.copy(newColor);
-
-            // Обновляем userData
-            object.userData.originalMaterial = originalClone;
-        } else {
-            // Сохраняем текущий материал как оригинальный
-            object.userData.originalMaterial = object.material.clone();
-            object.userData.originalMaterial.color.copy(newColor);
-        }
-
-        // Меняем цвет текущего материала
-        object.material.color.copy(newColor);
-        object.material.needsUpdate = true;
-
-        // Сохраняем новый цвет в userData
-        object.userData.currentColor = colorValue;
-    }
-
-    setObjectOpacity(object, opacity) {
-        if (!object) return;
-
-        // Если у объекта нет материала, создаем его
-        if (!object.material) {
-            object.material = new THREE.MeshStandardMaterial({
-                color: 0x808080,
-                side: THREE.FrontSide,
-                transparent: opacity < 1.0,
-                opacity: opacity
-            });
-            object.material.needsUpdate = true;
-
-            // Сохраняем в userData
-            object.userData.originalMaterial = object.material.clone();
-            object.userData.currentOpacity = opacity;
-            return;
-        }
-
-        // Если объект выделен, обновляем и оригинальный материал
-        if (object.userData.originalMaterial) {
-            // Клонируем оригинальный материал
-            const originalClone = object.userData.originalMaterial.clone();
-            originalClone.opacity = opacity;
-            originalClone.transparent = opacity < 1.0;
-
-            // Обновляем userData
-            object.userData.originalMaterial = originalClone;
-        } else {
-            // Сохраняем текущий материал как оригинальный
-            object.userData.originalMaterial = object.material.clone();
-            object.userData.originalMaterial.opacity = opacity;
-            object.userData.originalMaterial.transparent = opacity < 1.0;
-        }
-
-        // Меняем прозрачность текущего материала
-        object.material.opacity = opacity;
-        object.material.transparent = opacity < 1.0;
-        object.material.needsUpdate = true;
-
-        // Сохраняем новую прозрачность
-        object.userData.currentOpacity = opacity;
+        this.toolManager.setCurrentTool(tool);
     }
 
     // УДАЛЕНИЕ ОБЪЕКТОВ
@@ -1392,8 +844,8 @@ class CADEditor {
                 }
             }
 
-            obj.geometry.dispose();
-            obj.material.dispose();
+            if (obj.geometry) obj.geometry.dispose();
+            if (obj.material) obj.material.dispose();
         });
 
         this.clearSelection();
@@ -1426,27 +878,14 @@ class CADEditor {
         });
     }
 
-    extrudeSketch() {
-        if (this.selectedObjects.length === 1 &&
-            this.selectedObjects[0].userData.type === 'sketch') {
-            this.startExtrudeMode();
-        } else {
-            this.showStatus('Выберите скетч для вытягивания', 'error');
-        }
-    }
-
-    cutSketch() {
-        this.showStatus('Вырезание скетча (в разработке)', 'info');
-    }
-
     // ВИДЫ КАМЕРЫ
     setView(view) {
         const positions = {
             home: [100, 100, 100],
             isometric: [100, 100, 100],
-            front: [0, 0, 100],    // Смотрим по оси Z (Y вверх)
+            front: [0, 0, 100],
             back: [0, 0, -100],
-            top: [0, 100, 0],      // Смотрим сверху по оси Y
+            top: [0, 100, 0],
             bottom: [0, -100, 0],
             left: [-100, 0, 0],
             right: [100, 0, 0]
@@ -1454,9 +893,7 @@ class CADEditor {
 
         if (positions[view]) {
             this.camera.position.set(...positions[view]);
-            //this.controls.target.copy(new THREE.Vector3(1, 0, 0));
             this.camera.lookAt(0, 0, 0);
-
         }
 
         if (view === 'perspective') {
@@ -1499,62 +936,60 @@ class CADEditor {
         }
     }
 
+    focusCameraOnObject(object) {
+        if (this.objectsManager && object) {
+            this.objectsManager.focusCameraOnObject(object);
+        }
+    }
+
     // КЛАВИАТУРА
     onKeyDown(e) {
+        // Даем обработать текущему инструменту
+        if (this.toolManager.handleKeyDown(e)) {
+            return;
+        }
+
         const key = e.key.toLowerCase();
 
         switch (key) {
-            case 'escape':
-                // Сначала пробуем отменить перетаскивание
-                if (this.dragManager && this.dragManager.handleEscape()) {
-                    e.preventDefault();
-                    break;
-                }
-                this.clearSelection();
-                if (this.sketchMode) this.exitSketchMode();
-                if (this.extrudeMode) this.extrudeManager.cancelExtrudeMode();
-                if (this.workPlaneMode) this.planesManager.exitWorkPlaneMode();
-                this.setCurrentTool('select');
-                break;
-            case 'g':
-            if (e.ctrlKey || e.metaKey) {
-                e.preventDefault();
-                if (this.dragManager) {
-                    const snapped = this.dragManager.toggleSnapToGrid();
-                    document.getElementById('toggleGrid').classList.toggle('active', snapped);
-                }
-            }
-            break;
             case 'delete':
             case 'backspace':
                 this.deleteSelected();
                 break;
             case 'z':
+            case 'я':
                 if (e.ctrlKey || e.metaKey) {
                     e.preventDefault();
                     e.shiftKey ? this.redo() : this.undo();
                 }
                 break;
             case 'y':
+            case 'н':
                 if (e.ctrlKey || e.metaKey) {
                     e.preventDefault();
                     this.redo();
                 }
                 break;
             case 's':
+            case 'ы':
                 if (e.ctrlKey || e.metaKey) {
                     e.preventDefault();
                     this.saveProject();
                 }
                 break;
             case 'n':
+            case 'т':
                 if (e.ctrlKey || e.metaKey) {
                     e.preventDefault();
                     this.newProject();
                 }
                 break;
+            case 'к':
             case 'r':
-                if (e.altKey || e.shiftKey) {
+                if (e.ctrlKey || e.metaKey) {
+                    e.preventDefault();
+                    this.newProject();
+                } else if (e.altKey || e.shiftKey) {
                     this.setView('home');
                 }
                 break;
@@ -1565,10 +1000,22 @@ class CADEditor {
                     this.controls.mouseButtons.LEFT = THREE.MOUSE.PAN;
                 }
                 break;
+            case 'п':
+            case 'g':
+                if (e.ctrlKey || e.metaKey) {
+                    e.preventDefault();
+                    if (this.dragManager) {
+                        const snapped = this.dragManager.toggleSnapToGrid();
+                        document.getElementById('toggleGrid').classList.toggle('active', snapped);
+                    }
+                }
+                break;
         }
     }
 
     onKeyUp(e) {
+        this.toolManager.handleKeyUp(e);
+
         if (e.key === ' ') {
             if (this.spacePressed && this.originalMouseButtons) {
                 this.spacePressed = false;
@@ -1577,232 +1024,104 @@ class CADEditor {
         }
     }
 
-    // БУЛЕВЫ ОПЕРАЦИИ
+    // БУЛЕВЫ ОПЕРАЦИИ (вызываются из BooleanTool)
     performUnion() {
-        // Проверяем инициализацию
-        if (!this.booleanOps) {
-            this.showStatus('Булевы операции не инициализированы. Попробуйте еще раз через секунду.', 'error');
-            // Пробуем инициализировать снова
-            this.initBooleanOperations();
-            return;
-        }
-
-        if (this.selectedObjects.length < 2) {
-            this.showStatus('Выберите минимум 2 объекта для объединения', 'error');
-            return;
-        }
-
-        const check = this.booleanOps.canPerformOperation(this.selectedObjects);
-        if (!check.can) {
-            this.showStatus(check.reason, 'error');
-            return;
-        }
-
-        if (check.warning && !confirm(`${check.reason}\nПродолжить операцию?`)) {
-            return;
-        }
-
-        this.showLoadingIndicator('Выполняется объединение...');
-
-        // Запускаем операцию асинхронно
-        setTimeout(() => {
-            try {
-                const result = this.booleanOps.unionMultiple(this.selectedObjects);
-                this.hideLoadingIndicator();
-
-                if (result) {
-                    this.addBooleanResult(result, 'union');
-                } else {
-                    this.showStatus('Операция не дала результата', 'error');
-                }
-            } catch (error) {
-                this.hideLoadingIndicator();
-                console.error('Union error:', error);
-                this.showStatus(`Ошибка объединения: ${error.message}`, 'error');
-            }
-        }, 50);
+        return this.booleanOps ? this.booleanOps.unionMultiple(this.selectedObjects) : null;
     }
 
-    // Аналогично обновите performSubtract() и performIntersect()
     performSubtract() {
-        if (!this.booleanOps) {
-            this.showStatus('Булевы операции не инициализированы. Попробуйте еще раз через секунду.', 'error');
-            this.initBooleanOperations();
-            return;
-        }
-
-        if (this.selectedObjects.length < 2) {
-            this.showStatus('Выберите 2 объекта для вычитания', 'error');
-            return;
-        }
-
-        const check = this.booleanOps.canPerformOperation(this.selectedObjects.slice(0, 2));
-        if (!check.can) {
-            this.showStatus(check.reason, 'error');
-            return;
-        }
-
-        if (check.warning && !confirm(`${check.reason}\nПродолжить операцию?`)) {
-            return;
-        }
-
-        this.showLoadingIndicator('Выполняется вычитание...');
-
-        setTimeout(() => {
-            try {
-                const result = this.booleanOps.subtract(
-                    this.selectedObjects[0],
-                    this.selectedObjects[1]
-                );
-                this.hideLoadingIndicator();
-
-                if (result) {
-                    this.addBooleanResult(result, 'subtract');
-                } else if (!result) {
-                    this.showStatus('Операция не дала результата', 'error');
-                }
-            } catch (error) {
-                this.hideLoadingIndicator();
-                console.error('Subtract error:', error);
-                this.showStatus(`Ошибка вычитания: ${error.message}`, 'error');
-            }
-        }, 50);
+        if (!this.booleanOps || this.selectedObjects.length < 2) return null;
+        return this.booleanOps.subtract(this.selectedObjects[0], this.selectedObjects[1]);
     }
 
     performIntersect() {
-        if (!this.booleanOps) {
-            this.showStatus('Булевы операции не инициализированы. Попробуйте еще раз через секунду.', 'error');
-            this.initBooleanOperations();
-            return;
-        }
-
-        if (this.selectedObjects.length < 2) {
-            this.showStatus('Выберите 2 объекта для пересечения', 'error');
-            return;
-        }
-
-        const check = this.booleanOps.canPerformOperation(this.selectedObjects.slice(0, 2));
-        if (!check.can) {
-            this.showStatus(check.reason, 'error');
-            return;
-        }
-
-        if (check.warning && !confirm(`${check.reason}\nПродолжить операцию?`)) {
-            return;
-        }
-
-        this.showLoadingIndicator('Выполняется пересечение...');
-
-        setTimeout(() => {
-            try {
-                const result = this.booleanOps.intersect(
-                    this.selectedObjects[0],
-                    this.selectedObjects[1]
-                );
-                this.hideLoadingIndicator();
-
-                if (result) {
-                    this.addBooleanResult(result, 'intersect');
-                } else if (!result) {
-                    this.showStatus('Операция не дала результата', 'error');
-                }
-            } catch (error) {
-                this.hideLoadingIndicator();
-                console.error('Intersect error:', error);
-                this.showStatus(`Ошибка пересечения: ${error.message}`, 'error');
-            }
-        }, 50);
+        if (!this.booleanOps || this.selectedObjects.length < 2) return null;
+        return this.booleanOps.intersect(this.selectedObjects[0], this.selectedObjects[1]);
     }
-
-    validateBooleanResult(resultMesh) {
-        if (!resultMesh || !resultMesh.geometry) {
-            return false;
-        }
-
-        const vertices = resultMesh.geometry.attributes.position?.count || 0;
-        return vertices > 0;
-    }
-
-
 
     addBooleanResult(result, operation) {
-        // Сохраняем копии исходных объектов перед удалением
-        const originalObjects = this.selectedObjects.map(obj => {
-            return {
-                uuid: obj.uuid,
-                data: this.projectManager.serializeObjectForHistory(obj)
-            };
+        console.log('=== addBooleanResult ===');
+        console.log('Operation:', operation);
+        console.log('Selected objects:', this.selectedObjects.length);
+
+        const originalObjects = [];
+
+        this.selectedObjects.forEach((obj, index) => {
+            console.log(`Processing object ${index}:`, obj.userData?.type, obj.uuid);
+
+            try {
+                const serialized = this.projectManager.serializeObjectForHistory(obj);
+                console.log(`Serialized object ${index}:`, serialized);
+
+                if (serialized) {
+                    originalObjects.push({
+                        uuid: obj.uuid,
+                        data: serialized
+                    });
+                } else {
+                    console.error(`Failed to serialize object ${index}`);
+                }
+            } catch (error) {
+                console.error(`Error serializing object ${index}:`, error);
+            }
         });
 
-        const sourceObjectIds = this.selectedObjects.map(obj => obj.uuid);
-        const keepOriginal = document.getElementById('boolKeepOriginal') ?
-            document.getElementById('boolKeepOriginal').checked : false;
+        console.log('Original objects to save:', originalObjects);
 
-        // Анимация результата
-        result.userData.animation = {
-            scale: { x: 0.1, y: 0.1, z: 0.1 },
-            targetScale: { x: 1, y: 1, z: 1 }
-        };
+        const sourceObjectIds = this.selectedObjects.map(obj => obj.uuid);
+
+        if (!result || !result.geometry) {
+            this.showStatus('Ошибка: недопустимый результат булевой операции', 'error');
+            return;
+        }
 
         this.objectsGroup.add(result);
         this.objects.push(result);
 
-        result.scale.set(0.1, 0.1, 0.1);
-        new TWEEN.Tween(result.scale)
-            .to({ x: 1, y: 1, z: 1 }, 300)
-            .easing(TWEEN.Easing.Elastic.Out)
-            .start();
-
-        if (!keepOriginal && this.selectedObjects.length > 0) {
-            const objectsToRemove = [...this.selectedObjects];
-
-            for (let obj of objectsToRemove) {
-                if (obj.parent) {
-                    obj.parent.remove(obj);
-                } else {
-                    this.objectsGroup.remove(obj);
-                }
-
-                    const index = this.objects.indexOf(obj);
-                    if (index > -1) {
-                        this.objects.splice(index, 1);
-
-                        // Удаляем из специальных массивов
-                        if (obj.userData.type === 'sketch_plane') {
-                            this.sketchPlanes = this.sketchPlanes.filter(p => p.uuid !== obj.uuid);
-                        } else if (obj.userData.type === 'work_plane') {
-                            this.workPlanes = this.workPlanes.filter(p => p.uuid !== obj.uuid);
-                        }
-                    }
-                }
-
-                this.selectedObjects = [];
-                this.objectsManager.updateSceneList();
+        const objectsToRemove = [...this.selectedObjects];
+        for (let obj of objectsToRemove) {
+            this.objectsGroup.remove(obj);
+            const index = this.objects.indexOf(obj);
+            if (index > -1) {
+                this.objects.splice(index, 1);
             }
 
-            this.selectObject(result);
-            this.objectsManager.updateSceneStats();
-
-            // Записываем в историю с сохранением исходных объектов
-            this.history.addAction({
-                type: 'boolean',
-                operation: operation,
-                result: result.uuid,
-                sourceObjects: sourceObjectIds,
-                originalObjects: originalObjects,
-                data: this.projectManager.serializeObjectForHistory(result)
-            });
-
-            setTimeout(() => {
-                const stats = this.booleanOps ? this.booleanOps.getOperationStats(result) : null;
-                if (stats) {
-                    this.showStatus(
-                        `Операция "${operation}" завершена. Вершин: ${stats.vertices}, Полигонов: ${stats.faces}`,
-                        'success'
-                    );
+            if (obj.userData?.type === 'sketch_plane') {
+                const planeIndex = this.sketchPlanes.indexOf(obj);
+                if (planeIndex > -1) {
+                    this.sketchPlanes.splice(planeIndex, 1);
                 }
-            }, 100);
+            } else if (obj.userData?.type === 'work_plane') {
+                const planeIndex = this.workPlanes.indexOf(obj);
+                if (planeIndex > -1) {
+                    this.workPlanes.splice(planeIndex, 1);
+                }
+            }
         }
+
+        this.selectedObjects = [];
+        this.objectsManager.updateSceneList();
+
+        this.selectObject(result);
+        this.objectsManager.updateSceneStats();
+
+        const resultData = this.projectManager.serializeObjectForHistory(result);
+        console.log('Result data:', resultData);
+
+        const historyAction = {
+            type: 'boolean',
+            operation: operation,
+            result: result.uuid,
+            sourceObjects: sourceObjectIds,
+            originalObjects: originalObjects,
+            resultData: resultData
+        };
+
+        console.log('Adding to history:', historyAction);
+        this.history.addAction(historyAction);
+
+        this.showStatus(`Операция "${operation}" завершена`, 'success');
+    }
 
     showLoadingIndicator(message) {
         let indicator = document.getElementById('boolLoadingIndicator');
@@ -1880,10 +1199,6 @@ class CADEditor {
         return this.projectManager.loadProject(project);
     }
 
-//    loadSavedProjects() {
-//        return this.projectManager.loadSavedProjects();
-//    }
-
     showExportModal() {
         return this.projectManager.showExportModal();
     }
@@ -1917,30 +1232,29 @@ class CADEditor {
         }
     }
 
-    // app.js - добавьте в applyHistoryAction()
     applyHistoryAction(action, isUndo) {
-        if (!action) return;
+        console.log('=== APPLY HISTORY ACTION ===');
+        console.log('Action type:', action.type);
+        console.log('isUndo:', isUndo);
+        console.log('Action data:', action);
 
-        console.log('Applying history action:', action.type, isUndo ? 'undo' : 'redo');
+        if (!action) return;
 
         switch (action.type) {
             case 'create':
                 if (isUndo) {
-                    // Удаляем объект
                     const obj = this.findObjectByUuid(action.object);
                     if (obj) {
                         this.objectsGroup.remove(obj);
                         this.objects = this.objects.filter(o => o.uuid !== action.object);
                         this.selectedObjects = this.selectedObjects.filter(o => o.uuid !== action.object);
 
-                        // Удаляем из специальных массивов
                         if (obj.userData.type === 'sketch_plane') {
                             this.sketchPlanes = this.sketchPlanes.filter(p => p.uuid !== action.object);
                         } else if (obj.userData.type === 'work_plane') {
                             this.workPlanes = this.workPlanes.filter(p => p.uuid !== action.object);
                         }
 
-                        // Освобождаем ресурсы
                         if (obj.geometry) obj.geometry.dispose();
                         if (obj.material) obj.material.dispose();
 
@@ -1948,7 +1262,6 @@ class CADEditor {
                         this.objectsManager.updateSceneList();
                     }
                 } else {
-                    // Восстанавливаем объект
                     if (action.data && this.projectManager) {
                         const objData = {
                             uuid: action.object,
@@ -1978,10 +1291,8 @@ class CADEditor {
 
             case 'delete':
                 if (isUndo) {
-                    // Восстанавливаем удаленные объекты
                     action.objects.forEach(objData => {
                         if (objData.data && this.projectManager) {
-                            // Для STL и сложных объектов восстанавливаем из сохраненных данных
                             const fullData = {
                                 uuid: objData.uuid,
                                 userData: objData.data.userData,
@@ -2007,7 +1318,6 @@ class CADEditor {
                     this.objectsManager.updateSceneStats();
                     this.objectsManager.updateSceneList();
                 } else {
-                    // Снова удаляем объекты
                     action.objects.forEach(objData => {
                         const obj = this.findObjectByUuid(objData.uuid);
                         if (obj) {
@@ -2104,12 +1414,14 @@ class CADEditor {
                 break;
 
             case 'boolean':
-                console.log('Boolean action:', action.operation, isUndo ? 'undo' : 'redo');
+                console.log('=== BOOLEAN HISTORY ACTION ===');
+                console.log('Operation:', action.operation);
+                console.log('isUndo:', isUndo);
 
                 if (isUndo) {
-                    // Удаляем результат булевой операции
                     const resultObj = this.findObjectByUuid(action.result);
                     if (resultObj) {
+                        console.log('Removing boolean result:', resultObj.uuid);
                         this.objectsGroup.remove(resultObj);
                         this.objects = this.objects.filter(o => o.uuid !== action.result);
                         this.selectedObjects = this.selectedObjects.filter(o => o.uuid !== action.result);
@@ -2118,82 +1430,52 @@ class CADEditor {
                         if (resultObj.material) resultObj.material.dispose();
                     }
 
-                    // Восстанавливаем исходные объекты из originalObjects
                     if (action.originalObjects && action.originalObjects.length > 0) {
-                        action.originalObjects.forEach(objData => {
-                            if (objData && objData.data && this.projectManager) {
-                                const fullData = {
-                                    uuid: objData.uuid,
-                                    userData: objData.data.userData || {},
-                                    position: objData.data.position || [0, 0, 0],
-                                    rotation: objData.data.rotation || [0, 0, 0],
-                                    scale: objData.data.scale || [1, 1, 1],
-                                    type: objData.data.type || 'object'
-                                };
+                        console.log('Restoring original objects:', action.originalObjects.length);
 
-                                const restoredObj = this.projectManager.deserializeObjectOptimized(fullData);
-                                if (restoredObj) {
-                                    this.objectsGroup.add(restoredObj);
-                                    this.objects.push(restoredObj);
+                        action.originalObjects.forEach((objData, index) => {
+                            try {
+                                console.log(`Restoring object ${index}:`, objData.uuid);
 
-                                    // Восстанавливаем специальные массивы
-                                    if (restoredObj.userData.type === 'sketch_plane') {
-                                        this.sketchPlanes.push(restoredObj);
-                                    } else if (restoredObj.userData.type === 'work_plane') {
-                                        this.workPlanes.push(restoredObj);
+                                if (objData.data) {
+                                    const restoredObj = this.projectManager.deserializeObject({
+                                        uuid: objData.uuid,
+                                        ...objData.data
+                                    });
+
+                                    if (restoredObj) {
+                                        this.objectsGroup.add(restoredObj);
+                                        this.objects.push(restoredObj);
+                                        console.log('Successfully restored:', restoredObj.uuid);
+                                    } else {
+                                        console.error('Failed to restore object:', objData);
                                     }
                                 }
+                            } catch (error) {
+                                console.error(`Error restoring object ${index}:`, error);
                             }
                         });
+                    } else {
+                        console.warn('No original objects to restore!');
                     }
                 } else {
-                    // Redo: снова удаляем исходные объекты
-                    if (action.sourceObjects && action.sourceObjects.length > 0) {
-                        action.sourceObjects.forEach(sourceUuid => {
-                            const sourceObj = this.findObjectByUuid(sourceUuid);
-                            if (sourceObj) {
-                                this.objectsGroup.remove(sourceObj);
-                                this.objects = this.objects.filter(o => o.uuid !== sourceUuid);
-                                this.selectedObjects = this.selectedObjects.filter(o => o.uuid !== sourceUuid);
+                    console.log('Redoing boolean operation');
+                    try {
+                        if (action.resultData) {
+                            const resultObj = this.projectManager.deserializeObject({
+                                uuid: action.result,
+                                ...action.resultData
+                            });
 
-                                // Удаляем из специальных массивов
-                                if (sourceObj.userData.type === 'sketch_plane') {
-                                    this.sketchPlanes = this.sketchPlanes.filter(p => p.uuid !== sourceUuid);
-                                } else if (sourceObj.userData.type === 'work_plane') {
-                                    this.workPlanes = this.workPlanes.filter(p => p.uuid !== sourceUuid);
-                                }
-
-                                if (sourceObj.geometry) sourceObj.geometry.dispose();
-                                if (sourceObj.material) sourceObj.material.dispose();
+                            if (resultObj) {
+                                this.objectsGroup.add(resultObj);
+                                this.objects.push(resultObj);
+                                this.selectObject(resultObj);
+                                console.log('Recreated boolean result:', resultObj.uuid);
                             }
-                        });
-                    }
-
-                    // Создаем результат булевой операции
-                    const resultObj = this.findObjectByUuid(action.result);
-                    if (!resultObj && action.data && this.projectManager) {
-                        const resultData = {
-                            uuid: action.result,
-                            userData: action.data.userData || {},
-                            position: action.data.position || [0, 0, 0],
-                            rotation: action.data.rotation || [0, 0, 0],
-                            scale: action.data.scale || [1, 1, 1],
-                            type: action.data.type || 'boolean_result'
-                        };
-
-                        const newResult = this.projectManager.deserializeObjectOptimized(resultData);
-                        if (newResult) {
-                            this.objectsGroup.add(newResult);
-                            this.objects.push(newResult);
-                            this.selectObject(newResult);
                         }
-                    } else if (resultObj) {
-                        // Если объект уже существует, но не в сцене
-                        if (!resultObj.parent) {
-                            this.objectsGroup.add(resultObj);
-                            this.objects.push(resultObj);
-                        }
-                        this.selectObject(resultObj);
+                    } catch (error) {
+                        console.error('Error redoing boolean:', error);
                     }
                 }
 
@@ -2201,23 +1483,40 @@ class CADEditor {
                 this.objectsManager.updateSceneList();
                 break;
 
-            case 'import':
-                if (isUndo) {
-                    const importedObj = this.findObjectByUuid(action.object);
-                    if (importedObj) {
-                        this.objectsGroup.remove(importedObj);
-                        this.objects = this.objects.filter(o => o.uuid !== action.object);
-                        this.selectedObjects = this.selectedObjects.filter(o => o.uuid !== action.object);
-
-                        if (importedObj.geometry) importedObj.geometry.dispose();
-                        if (importedObj.material) importedObj.material.dispose();
-
-                        this.objectsManager.updateSceneStats();
-                        this.objectsManager.updateSceneList();
-                    }
-                } else {
-                    // Повторно импортируем объект (нужно реализовать, если требуется)
-                    this.showStatus('Повторный импорт не реализован', 'warning');
+            case 'modify_position_multiple':
+            case 'modify_rotation_multiple':
+            case 'modify_scale_multiple':
+                if (action.objects && Array.isArray(action.objects)) {
+                    action.objects.forEach(objData => {
+                        const obj = this.findObjectByUuid(objData.uuid);
+                        if (obj) {
+                            if (isUndo) {
+                                switch(action.type) {
+                                    case 'modify_position_multiple':
+                                        obj.position.fromArray(objData.previousPosition || [0, 0, 0]);
+                                        break;
+                                    case 'modify_rotation_multiple':
+                                        obj.rotation.fromArray(objData.previousRotation || [0, 0, 0]);
+                                        break;
+                                    case 'modify_scale_multiple':
+                                        obj.scale.fromArray(objData.previousScale || [1, 1, 1]);
+                                        break;
+                                }
+                            } else {
+                                switch(action.type) {
+                                    case 'modify_position_multiple':
+                                        obj.position.fromArray(objData.position || [0, 0, 0]);
+                                        break;
+                                    case 'modify_rotation_multiple':
+                                        obj.rotation.fromArray(objData.rotation || [0, 0, 0]);
+                                        break;
+                                    case 'modify_scale_multiple':
+                                        obj.scale.fromArray(objData.scale || [1, 1, 1]);
+                                        break;
+                                }
+                            }
+                        }
+                    });
                 }
                 break;
 
@@ -2233,9 +1532,9 @@ class CADEditor {
         TWEEN.update();
         this.controls.update();
 
-        if (this.transformControls) {
-            this.transformControls.update();
-        }
+//        if (this.transformControls) {
+//            this.transformControls.update();
+//        }
 
         this.renderer.render(this.scene, this.camera);
         this.updateFPS();
@@ -2288,7 +1587,6 @@ class CADEditor {
         const propertiesContent = document.getElementById('propertiesContent');
         if (!propertiesContent) return;
 
-        // Всегда показываем группу центрирования если есть выделение
         const centerGroup = document.querySelector('.property-group[data-type="center"]');
 
         if (this.selectedObjects.length > 0 && centerGroup) {
@@ -2300,24 +1598,20 @@ class CADEditor {
         if (this.selectedObjects.length === 1) {
             const obj = this.selectedObjects[0];
 
-            // Позиция
             document.getElementById('posX').value = obj.position.x.toFixed(1);
             document.getElementById('posY').value = obj.position.y.toFixed(1);
             document.getElementById('posZ').value = obj.position.z.toFixed(1);
 
-            // Вращение
             const euler = new THREE.Euler().setFromQuaternion(obj.quaternion, 'XYZ');
             document.getElementById('rotX').value = THREE.MathUtils.radToDeg(euler.x).toFixed(1);
             document.getElementById('rotY').value = THREE.MathUtils.radToDeg(euler.y).toFixed(1);
             document.getElementById('rotZ').value = THREE.MathUtils.radToDeg(euler.z).toFixed(1);
 
-            // Размеры
             const dimensions = this.objectsManager.getObjectDimensions(obj);
             document.getElementById('sizeXInput').value = dimensions.x.toFixed(1);
             document.getElementById('sizeYInput').value = dimensions.y.toFixed(1);
             document.getElementById('sizeZInput').value = dimensions.z.toFixed(1);
 
-            // Внешний вид - ТОЛЬКО ЕСЛИ ОБЪЕКТ ИМЕЕТ МАТЕРИАЛ
             if (obj.material) {
                 const color = new THREE.Color(obj.material.color);
                 document.getElementById('objectColor').value = color.getStyle();
@@ -2325,35 +1619,29 @@ class CADEditor {
                 document.getElementById('objectColor').disabled = false;
                 document.getElementById('objectOpacity').disabled = false;
             } else {
-                // Если объект не имеет материала, отключаем поля
                 document.getElementById('objectColor').value = '#ffffff';
                 document.getElementById('objectOpacity').value = 1.0;
                 document.getElementById('objectColor').disabled = true;
                 document.getElementById('objectOpacity').disabled = true;
             }
 
-            // Показываем все группы свойств для единичного выделения
             document.querySelectorAll('.property-group').forEach(group => {
-                if (group.dataset.type !== 'center') { // кроме центрирования, которое уже показано
+                if (group.dataset.type !== 'center') {
                     group.style.display = 'block';
                 }
             });
 
             this.enablePropertyFields(true);
         } else {
-            // Скрываем все группы кроме центрирования
             document.querySelectorAll('.property-group').forEach(group => {
                 if (group.dataset.type !== 'center') {
                     group.style.display = 'none';
                 }
             });
 
-            // Для множественного выделения показываем только центрирование
             if (this.selectedObjects.length > 1) {
-                // Обновляем информацию о множественном выделении
                 document.querySelectorAll('.property-group').forEach(group => {
                     if (group.dataset.type === 'center') {
-                        // Можно добавить специальное сообщение для множественного выделения
                         const title = group.querySelector('h4');
                         if (title) {
                             title.innerHTML = `<i class="fas fa-bullseye"></i> Центрирование (${this.selectedObjects.length} объектов)`;
@@ -2366,7 +1654,6 @@ class CADEditor {
         }
     }
 
-
     enablePropertyFields(enabled) {
         const fields = [
             'posX', 'posY', 'posZ',
@@ -2378,10 +1665,8 @@ class CADEditor {
         fields.forEach(id => {
             const field = document.getElementById(id);
             if (field) {
-                // Поля доступны только если есть ровно один выделенный объект
                 field.disabled = !enabled || this.selectedObjects.length !== 1;
 
-                // Дополнительно для цветных полей проверяем наличие материала
                 if (id === 'objectColor' || id === 'objectOpacity') {
                     if (this.selectedObjects.length === 1 && this.selectedObjects[0].material) {
                         field.disabled = false;
@@ -2392,13 +1677,11 @@ class CADEditor {
             }
         });
 
-        // Кнопка применения размеров доступна только при выделении одного объекта
         const applyButton = document.getElementById('applySize');
         if (applyButton) {
             applyButton.disabled = !enabled || this.selectedObjects.length !== 1;
         }
 
-        // Кнопки центрирования всегда доступны если есть выделение
         const centerButtons = ['centerX', 'centerY', 'centerZ', 'centerAll'];
         centerButtons.forEach(id => {
             const button = document.getElementById(id);
@@ -2415,7 +1698,11 @@ class CADEditor {
             rotate: 'Вращение',
             scale: 'Масштабирование',
             sketch: 'Скетч',
-            extrude: 'Вытягивание'
+            extrude: 'Вытягивание',
+            rulerTool: 'Линейка',
+            gearGenerator: 'Шестерня',
+            threadGenerator: 'Резьба',
+            workplane: 'Рабочая плоскость'
         };
 
         const modeText = modeNames[this.currentTool] || this.currentTool;
@@ -2428,7 +1715,7 @@ class CADEditor {
     }
 
     updateToolButtons() {
-        document.querySelectorAll('.tool-btn').forEach(btn => {
+        document.querySelectorAll('[data-tool]').forEach(btn => {
             btn.classList.remove('active');
             if (btn.dataset.tool === this.currentTool) {
                 btn.classList.add('active');
@@ -2450,30 +1737,24 @@ class CADEditor {
             return;
         }
 
-        // Округляем до целых миллиметров
         const newDimensions = {
             x: Math.round(sizeX),
             y: Math.round(sizeY),
             z: Math.round(sizeZ)
         };
 
-        // Обновляем значения в полях ввода
         document.getElementById('sizeXInput').value = newDimensions.x;
         document.getElementById('sizeYInput').value = newDimensions.y;
         document.getElementById('sizeZInput').value = newDimensions.z;
 
-        // Применяем изменения через TransformControls
         if (this.transformControls) {
-            // Если гизмо прикреплено к объекту, используем его метод
             if (this.transformControls.attachedObject === obj) {
                 this.transformControls.updateObjectSize(obj, newDimensions);
             } else {
-                // Иначе используем прямой метод
                 this.transformControls.updateObjectSizeDirect(obj, newDimensions);
             }
         }
 
-        // Добавляем в историю
         this.history.addAction({
             type: 'modify_size',
             object: obj.uuid,
@@ -2490,7 +1771,6 @@ class CADEditor {
     updateCoordinates(event) {
         this.raycaster.setFromCamera(this.mouse, this.camera);
 
-        // Плоскость Y=0 для отображения координат
         const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
         const intersection = new THREE.Vector3();
 
@@ -2500,10 +1780,153 @@ class CADEditor {
         }
     }
 
-    // Метод для истории (должен быть доступен из HistoryManager)
+    // ЦВЕТ И ПРОЗРАЧНОСТЬ
+    onObjectColorChange(e) {
+        if (this.selectedObjects.length !== 1) return;
+
+        const object = this.selectedObjects[0];
+        let material = object.material;
+
+        if (!material) {
+            material = new THREE.MeshStandardMaterial({
+                color: 0x808080,
+                side: THREE.FrontSide
+            });
+            object.material = material;
+
+            if (!object.userData.originalMaterial) {
+                object.userData.originalMaterial = material.clone();
+            }
+        }
+
+        if (!material.color) {
+            this.showStatus('Материал объекта не поддерживает изменение цвета', 'error');
+            return;
+        }
+
+        const newColor = e.target.value;
+        const previousColor = material.color.getHex ? material.color.getHex() : 0x808080;
+
+        this.setObjectColor(object, newColor);
+
+        this.history.addAction({
+            type: 'modify_color',
+            object: object.uuid,
+            data: {
+                color: newColor,
+                previousColor: previousColor
+            }
+        });
+    }
+
+    onObjectOpacityChange(e) {
+        if (this.selectedObjects.length !== 1) return;
+
+        const object = this.selectedObjects[0];
+        let material = object.material;
+
+        if (!material) {
+            material = new THREE.MeshStandardMaterial({
+                color: 0x808080,
+                side: THREE.FrontSide,
+                transparent: true
+            });
+            object.material = material;
+
+            if (!object.userData.originalMaterial) {
+                object.userData.originalMaterial = material.clone();
+            }
+        }
+
+        const opacity = parseFloat(e.target.value);
+        const previousOpacity = material.opacity !== undefined ? material.opacity : 1.0;
+
+        this.setObjectOpacity(object, opacity);
+
+        this.history.addAction({
+            type: 'modify_opacity',
+            object: object.uuid,
+            data: {
+                opacity: opacity,
+                previousOpacity: previousOpacity
+            }
+        });
+    }
+
+    setObjectColor(object, colorValue) {
+        if (!object) return;
+
+        const newColor = new THREE.Color(colorValue);
+
+        if (!object.material) {
+            object.material = new THREE.MeshStandardMaterial({
+                color: newColor,
+                side: THREE.FrontSide
+            });
+            object.material.needsUpdate = true;
+
+            object.userData.originalMaterial = object.material.clone();
+            object.userData.currentColor = colorValue;
+            return;
+        }
+
+        if (object.userData.originalMaterial) {
+            const originalClone = object.userData.originalMaterial.clone();
+            originalClone.color.copy(newColor);
+            object.userData.originalMaterial = originalClone;
+        } else {
+            object.userData.originalMaterial = object.material.clone();
+            object.userData.originalMaterial.color.copy(newColor);
+        }
+
+        object.material.color.copy(newColor);
+        object.material.needsUpdate = true;
+        object.userData.currentColor = colorValue;
+    }
+
+    setObjectOpacity(object, opacity) {
+        if (!object) return;
+
+        if (!object.material) {
+            object.material = new THREE.MeshStandardMaterial({
+                color: 0x808080,
+                side: THREE.FrontSide,
+                transparent: opacity < 1.0,
+                opacity: opacity
+            });
+            object.material.needsUpdate = true;
+
+            object.userData.originalMaterial = object.material.clone();
+            object.userData.currentOpacity = opacity;
+            return;
+        }
+
+        if (object.userData.originalMaterial) {
+            const originalClone = object.userData.originalMaterial.clone();
+            originalClone.opacity = opacity;
+            originalClone.transparent = opacity < 1.0;
+            object.userData.originalMaterial = originalClone;
+        } else {
+            object.userData.originalMaterial = object.material.clone();
+            object.userData.originalMaterial.opacity = opacity;
+            object.userData.originalMaterial.transparent = opacity < 1.0;
+        }
+
+        object.material.opacity = opacity;
+        object.material.transparent = opacity < 1.0;
+        object.material.needsUpdate = true;
+        object.userData.currentOpacity = opacity;
+    }
+
+    // ПОИСК ОБЪЕКТОВ
     findObjectByUuid(uuid) {
         return this.objects.find(obj => obj.uuid === uuid) || null;
     }
+
+    // GETTERS
+//    get gizmoGroup() {
+//        return this.transformControls ? this.transformControls.gizmoGroup : null;
+//    }
 }
 
 // Инициализация редактора

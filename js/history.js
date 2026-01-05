@@ -7,14 +7,16 @@ class HistoryManager {
     }
 
     addAction(action) {
+        console.log('History addAction:', action.type, action);
+
         // Удаляем все действия после текущего индекса
         if (this.currentIndex < this.history.length - 1) {
             this.history = this.history.slice(0, this.currentIndex + 1);
         }
 
-        // Для действий модификации сохраняем предыдущее состояние ТОЛЬКО ЕСЛИ ЕГО ЕЩЁ НЕТ
-        if (['modify_position', 'modify_scale', 'modify_rotation', 'modify_size', 'modify_color', 'modify_opacity'].includes(action.type)) {
-            const obj = this.findObjectByUuid(action.object);
+        // Для действий трансформации сохраняем предыдущее состояние
+        if (action.type.startsWith('modify_') && action.object) {
+            const obj = this.editor.findObjectByUuid(action.object);
             if (obj) {
                 if (!action.data) action.data = {};
 
@@ -24,15 +26,15 @@ class HistoryManager {
                             action.data.previousPosition = obj.position.toArray();
                         }
                         break;
-                    case 'modify_scale':
-                        if (!action.data.previousScale) {
-                            action.data.previousScale = obj.scale.toArray();
-                        }
-                        break;
                     case 'modify_rotation':
                         if (!action.data.previousRotation) {
                             const euler = new THREE.Euler().setFromQuaternion(obj.quaternion, 'XYZ');
                             action.data.previousRotation = [euler.x, euler.y, euler.z];
+                        }
+                        break;
+                    case 'modify_scale':
+                        if (!action.data.previousScale) {
+                            action.data.previousScale = obj.scale.toArray();
                         }
                         break;
                     case 'modify_size':
@@ -45,68 +47,60 @@ class HistoryManager {
                             };
                         }
                         break;
-                    case 'modify_color':
-                        if (!action.data.previousColor && obj.material) {
-                            action.data.previousColor = obj.material.color.getHexString();
-                        }
-                        break;
-                    case 'modify_opacity':
-                        if (!action.data.previousOpacity && obj.material) {
-                            action.data.previousOpacity = obj.material.opacity;
-                        }
-                        break;
                 }
             }
         }
 
-        // Для действий удаления сохраняем полные данные объектов
+        // Для удаления сохраняем ПОЛНЫЕ данные объектов
         if (action.type === 'delete' && action.objects) {
-            action.objects = action.objects.map(objData => {
-                const obj = this.findObjectByUuid(objData.uuid);
-                if (obj) {
+            action.objects = action.objects.map(obj => {
+                const fullObj = this.editor.findObjectByUuid(obj.uuid);
+                if (fullObj) {
                     return {
-                        uuid: obj.uuid,
-                        data: {
-                            userData: { ...obj.userData },
-                            position: obj.position.toArray(),
-                            rotation: obj.rotation.toArray(),
-                            scale: obj.scale.toArray(),
-                            type: obj.userData.type,
-                            name: obj.userData.name
-                        }
+                        uuid: fullObj.uuid,
+                        data: this.editor.projectManager.serializeObjectForHistory(fullObj)
                     };
                 }
-                return objData;
+                return obj;
             });
         }
 
-        // Для булевых операций сохраняем полные данные исходных объектов
+        // Для булевых операций сохраняем ПОЛНЫЕ данные исходных объектов
+        // В методе addAction добавьте проверку:
         if (action.type === 'boolean' && action.sourceObjects) {
-            action.originalObjects = action.sourceObjects.map(uuid => {
-                const obj = this.findObjectByUuid(uuid);
-                if (obj) {
-                    return {
-                        uuid: obj.uuid,
-                        data: {
-                            userData: { ...obj.userData },
-                            position: obj.position.toArray(),
-                            rotation: obj.rotation.toArray(),
-                            scale: obj.scale.toArray(),
-                            type: obj.userData.type,
-                            name: obj.userData.name
+            console.log('=== Saving boolean operation to history ===');
+            console.log('Source objects:', action.sourceObjects);
+
+            // Проверяем, есть ли уже originalObjects
+            if (!action.originalObjects || action.originalObjects.length === 0) {
+                console.log('No originalObjects provided, collecting them...');
+                action.originalObjects = action.sourceObjects.map(uuid => {
+                    const obj = this.editor.findObjectByUuid(uuid);
+                    if (obj) {
+                        console.log('Found object:', obj.uuid, obj.userData?.type);
+                        const data = this.editor.projectManager.serializeObjectForHistory(obj);
+                        if (data) {
+                            return {
+                                uuid: obj.uuid,
+                                data: data
+                            };
                         }
-                    };
-                }
-                return null;
-            }).filter(obj => obj !== null);
+                    }
+                    return null;
+                }).filter(obj => obj !== null);
+
+                console.log('Collected originalObjects:', action.originalObjects);
+            }
         }
 
-        // Добавляем новое действие
-        this.history.push({
+        // Добавляем действие с уникальным ID
+        const newAction = {
             ...action,
-            timestamp: new Date().toISOString(),
-            id: 'act_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9)
-        });
+            id: 'act_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+            timestamp: new Date().toISOString()
+        };
+
+        this.history.push(newAction);
 
         // Ограничиваем размер истории
         if (this.history.length > this.maxSize) {
@@ -115,8 +109,14 @@ class HistoryManager {
             this.currentIndex = this.history.length - 1;
         }
 
+        console.log('History after add:', {
+            index: this.currentIndex,
+            total: this.history.length,
+            lastAction: newAction
+        });
+
         this.updateHistoryUI();
-        return this.history[this.currentIndex];
+        return newAction;
     }
 
 
@@ -129,6 +129,7 @@ class HistoryManager {
     undo() {
         if (this.currentIndex >= 0) {
             const action = this.history[this.currentIndex];
+            console.log('History undo:', action.type, 'index:', this.currentIndex);
             this.currentIndex--;
             this.updateHistoryUI();
             return action;
@@ -140,6 +141,7 @@ class HistoryManager {
         if (this.currentIndex < this.history.length - 1) {
             this.currentIndex++;
             const action = this.history[this.currentIndex];
+            console.log('History redo:', action.type, 'index:', this.currentIndex);
             this.updateHistoryUI();
             return action;
         }
