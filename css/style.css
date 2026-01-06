@@ -303,7 +303,7 @@ body.dark-theme {
 
 /* История действий */
 .history-list {
-    max-height: 400px;
+    max-height: 85%;
     overflow-y: auto;
     margin-bottom: 20px;
 }
@@ -736,7 +736,6 @@ body.dark-theme {
 
 /* Списки */
 .scene-list,
-.history-list,
 .layers-panel {
     max-height: 300px;
     overflow-y: auto;
