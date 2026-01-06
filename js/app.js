@@ -53,7 +53,8 @@ class CADEditor {
         this.projectManager = null;
 
         // Инструменты (теперь создаются через toolManager)
-        this.sketchTools = null;
+      //  this.sketchTools = null;
+        this.sketchManager = null;
         this.gearGenerator = null;
         this.rulerTool = null;
         this.threadGenerator = null;
@@ -173,7 +174,9 @@ class CADEditor {
 
     initTools() {
         // Инициализируем инструменты скетча (должны быть созданы до регистрации SketchTool)
-        this.sketchTools = new SketchTools(this);
+
+        // Вместо: this.sketchTools = new SketchTools(this);
+        this.sketchManager = new SketchManager(this);
 
         // Инициализируем генераторы
         this.gearGenerator = new GearGenerator(this);
@@ -343,22 +346,22 @@ class CADEditor {
         document.querySelectorAll('.sketch-tool-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const tool = e.currentTarget.dataset.sketchTool;
-                if (this.sketchTools) {
-                    this.sketchTools.setCurrentTool(tool);
+                if (this.sketchManager) {
+                    this.sketchManager.setCurrentTool(tool);
                 }
             });
         });
 
         document.getElementById('sketchDeleteBtn').addEventListener('click', () => {
-            if (this.sketchTools) this.sketchTools.deleteSelected();
+            if (this.sketchManager) this.sketchManager.deleteSelected();
         });
 
         document.getElementById('sketchClearBtn').addEventListener('click', () => {
-            if (this.sketchTools) this.sketchTools.clearSketch();
+            if (this.sketchManager) this.sketchManager.clearSketch();
         });
 
         document.getElementById('exitSketchBtn').addEventListener('click', () => {
-            if (this.sketchTools) {
+            if (this.sketchManager) {
                 const sketchTool = this.toolManager.getTool('sketch');
                 if (sketchTool) {
                     sketchTool.exitSketchMode();
@@ -367,9 +370,9 @@ class CADEditor {
         });
 
         document.getElementById('toggleSketchGrid').addEventListener('click', () => {
-            if (this.sketchTools) {
-                this.sketchTools.toggleGrid();
-                this.showStatus(`Сетка скетча: ${this.sketchTools.gridVisible ? 'вкл' : 'выкл'}`, 'info');
+            if (this.sketchManager) {
+                this.sketchManager.toggleGrid();
+                this.showStatus(`Сетка скетча: ${this.sketchManager.gridVisible ? 'вкл' : 'выкл'}`, 'info');
             }
         });
     }
@@ -1532,9 +1535,9 @@ class CADEditor {
         TWEEN.update();
         this.controls.update();
 
-//        if (this.transformControls) {
-//            this.transformControls.update();
-//        }
+        if (this.transformControls) {
+            this.transformControls.update();
+        }
 
         this.renderer.render(this.scene, this.camera);
         this.updateFPS();

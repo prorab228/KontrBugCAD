@@ -99,6 +99,18 @@
                 <button class="tool-btn sketch-tool-btn" data-sketch-tool="text" title="Текст">
                     <i class="fas fa-font"></i>
                 </button>
+                <button class="tool-btn sketch-tool-btn" data-sketch-tool="oval" title="Овал">
+                    <i class="fas fa-egg"></i>
+                </button>
+                <button class="tool-btn sketch-tool-btn" data-sketch-tool="stadium" title="Стадион">
+                    <i class="fas fa-running"></i>
+                </button>
+                <button class="tool-btn sketch-tool-btn" data-sketch-tool="arc" title="Дуга">
+                    <i class="fas fa-arc"></i>
+                </button>
+                <button class="tool-btn sketch-tool-btn" data-sketch-tool="mirror" title="Симметрия">
+                    <i class="fas fa-balance-scale"></i>
+                </button>
                 <button class="tool-btn" id="sketchDeleteBtn" title="Удалить элемент скетча">
                     <i class="fas fa-trash"></i>
                 </button>
@@ -640,7 +652,7 @@
 
     <script src="js/history.js"></script>
     <script src="js/ContourDetector.js"></script>
-    <script src="js/sketch.js"></script>
+
     <script src="js/operations.js"></script>
     <script src="js/storage.js"></script>
     <script src="js/transforms.js"></script>
@@ -665,13 +677,35 @@
     <script src="js/tools/move-tool.js"></script>
     <script src="js/tools/rotate-tool.js"></script>
     <script src="js/tools/scale-tool.js"></script>
-    <script src="js/tools/sketch-tool.js"></script>
+
     <script src="js/tools/extrude-tool.js"></script>
     <script src="js/tools/workplane-tool.js"></script>
     <script src="js/tools/gear-tool.js"></script>
     <script src="js/tools/thread-tool.js"></script>
     <script src="js/tools/ruler-tool.js"></script>
     <script src="js/tools/boolean-tool.js"></script>
+
+
+<!--    скетч-->
+
+    <script src="js/tools/sketch/sketch-tool-base.js"></script>
+    <script src="js/tools/sketch/sketch-utils.js"></script>
+<!--    инструменты-->
+    <script src="js/tools/sketch/sketch-tools/circle-tool.js"></script>
+    <script src="js/tools/sketch/sketch-tools/line-tool.js"></script>
+    <script src="js/tools/sketch/sketch-tools/curve-tool.js"></script>
+    <script src="js/tools/sketch/sketch-tools/polygon-tool.js"></script>
+    <script src="js/tools/sketch/sketch-tools/polyline-tool.js"></script>
+    <script src="js/tools/sketch/sketch-tools/rectangle-tool.js"></script>
+    <script src="js/tools/sketch/sketch-tools/select-tool.js"></script>
+    <script src="js/tools/sketch/sketch-tools/text-tool.js"></script>
+    <script src="js/tools/sketch/sketch-tools/mirror-tool.js"></script>
+    <script src="js/tools/sketch/sketch-tools/oval-tool.js"></script>
+    <script src="js/tools/sketch/sketch-tools/stadium-tool.js"></script>
+    <script src="js/tools/sketch/sketch-tools/arc-tool.js"></script>
+
+    <script src="js/tools/sketch/sketch-manager.js"></script>
+    <script src="js/tools/sketch/sketch-tool.js"></script>
 
 
 

@@ -564,7 +564,7 @@ class LibraryManager {
         const material = new THREE.MeshPhongMaterial({
             color: colors[type] || 0xAAAAAA,
             transparent: true,
-            opacity: 0.8,
+            opacity: 1,
             side: THREE.DoubleSide
         });
 

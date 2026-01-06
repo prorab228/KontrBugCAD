@@ -905,7 +905,7 @@ class ExtrudeManager {
                 break;
         }
 
-        this.cancelExtrudeMode();
+        this.exitExtrudeMode();
         this.editor.showStatus(`Выполнено выдавливание (${height} мм)`, 'success');
     }
 
@@ -1190,7 +1190,7 @@ class ExtrudeManager {
         document.querySelector('.viewport-container').appendChild(container);
 
         container.querySelector('#cancelExtrude').addEventListener('click', () => {
-            this.cancelExtrudeMode();
+            this.exitExtrudeMode();
         });
 
         container.querySelector('#performExtrude').addEventListener('click', () => {
@@ -1384,7 +1384,10 @@ class ExtrudeManager {
         }
     }
 
-
+    exitExtrudeMode()
+    {
+        this.editor.setCurrentTool('select');
+    }
 
 
     cancelExtrudeMode() {
@@ -1420,6 +1423,7 @@ class ExtrudeManager {
             this.editor.objectsManager.safeRestoreElementColor(element);
         });
 
+      //  this.editor.setCurrentTool('select');
         document.body.style.cursor = 'default';
         this.dragging = false;
 
