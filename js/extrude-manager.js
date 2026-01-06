@@ -893,15 +893,45 @@ class ExtrudeManager {
             return;
         }
 
+        // СОХРАНЯЕМ ИСХОДНЫЕ КОНТУРЫ ДЛЯ ИСТОРИИ
+        const sourceContourData = selectedContours.map(contour => {
+            return this.editor.projectManager.serializeObject(contour);
+        });
+
+        // Получаем родительскую плоскость для сохранения ее данных
+        const sketchPlane = this.findSketchPlaneForElement(selectedContours[0]);
+        let planeData = null;
+        if (sketchPlane) {
+            planeData = this.editor.projectManager.serializeObject(sketchPlane);
+        }
+
         switch (operation) {
             case 'new':
-                this.handleNewOperation(mesh);
+                this.handleNewOperation(mesh, {
+                    sourceContours: sourceContourData,
+                    sketchPlane: planeData,
+                    height: height,
+                    direction: direction,
+                    operation: operation
+                });
                 break;
             case 'cut':
-                this.handleCutOperation(mesh);
+                this.handleCutOperation(mesh, {
+                    sourceContours: sourceContourData,
+                    sketchPlane: planeData,
+                    height: height,
+                    direction: direction,
+                    operation: operation
+                });
                 break;
             case 'join':
-                this.handleJoinOperation(mesh);
+                this.handleJoinOperation(mesh, {
+                    sourceContours: sourceContourData,
+                    sketchPlane: planeData,
+                    height: height,
+                    direction: direction,
+                    operation: operation
+                });
                 break;
         }
 
@@ -909,41 +939,80 @@ class ExtrudeManager {
         this.editor.showStatus(`Выполнено выдавливание (${height} мм)`, 'success');
     }
 
-    handleNewOperation(mesh) {
+    handleNewOperation(mesh, historyData) {
+        // Сохраняем финальную позицию и масштаб
+        const finalPosition = mesh.position.clone();
+        const finalScale = mesh.scale.clone();
+
         this.editor.objectsGroup.add(mesh);
         this.editor.objects.push(mesh);
 
-        mesh.scale.set(0.1, 0.1, 0.1);
-        new TWEEN.Tween(mesh.scale)
-            .to({ x: 1, y: 1, z: 1 }, 300)
-            .easing(TWEEN.Easing.Elastic.Out)
-            .start();
+        // Запускаем анимацию
+//        mesh.scale.set(0.1, 0.1, 0.1);
+//        new TWEEN.Tween(mesh.scale)
+//            .to({ x: finalScale.x, y: finalScale.y, z: finalScale.z }, 300)
+//            .easing(TWEEN.Easing.Elastic.Out)
+//            .start()
+//            .onComplete(() => {
+//                // Обновляем userData после анимации
+//                mesh.userData.finalPosition = finalPosition.toArray();
+//                mesh.userData.finalScale = finalScale.toArray();
+//            });
 
         this.editor.selectObject(mesh);
+
+        // ДОБАВЛЯЕМ В ИСТОРИЮ с информацией о финальном состоянии
+        const serializedMesh = this.editor.projectManager.serializeObjectForHistory(mesh);
+        // Добавляем информацию о финальном состоянии
+        serializedMesh.userData.finalPosition = finalPosition.toArray();
+        serializedMesh.userData.finalScale = finalScale.toArray();
+
+        this.editor.history.addAction({
+            type: 'create',
+            subtype: 'extrude',
+            object: mesh.uuid,
+            data: {
+                ...historyData,
+                objectData: serializedMesh,
+                finalPosition: finalPosition.toArray(),
+                finalScale: finalScale.toArray()
+            }
+        });
     }
 
-    handleCutOperation(mesh) {
+
+    handleCutOperation(mesh, historyData) {
         const intersectingObjects = this.findIntersectingObjects(mesh);
 
         if (intersectingObjects.length === 0) {
             this.editor.showStatus('Нет пересекающихся объектов для вырезания', 'warning');
-            this.handleNewOperation(mesh);
+            this.handleNewOperation(mesh, historyData);
             return;
         }
 
         if (!this.editor.booleanOps) {
             this.editor.showStatus('Булевы операции не доступны', 'error');
-            this.handleNewOperation(mesh);
+            this.handleNewOperation(mesh, historyData);
             return;
         }
 
+        // СОХРАНЯЕМ ДАННЫЕ ИСХОДНЫХ ОБЪЕКТОВ ДЛЯ ИСТОРИИ
+        const targetObjectsData = intersectingObjects.map(obj => {
+            return this.editor.projectManager.serializeObjectForHistory(obj);
+        });
+
         let operationSuccess = false;
+        let booleanResult = null;
 
         intersectingObjects.forEach(targetObject => {
             try {
                 const result = this.editor.booleanOps.subtract(targetObject, mesh);
                 if (result && result.geometry && result.geometry.attributes.position.count > 0) {
-                    this.replaceObjectWithResult(targetObject, result, 'cut');
+                    booleanResult = result;
+                    this.replaceObjectWithResult(targetObject, result, 'cut', {
+                        sourceExtrude: historyData,
+                        targetObjectData: targetObjectsData
+                    });
                     operationSuccess = true;
                 }
             } catch (error) {
@@ -953,38 +1022,48 @@ class ExtrudeManager {
 
         if (!operationSuccess) {
             this.editor.showStatus('Не удалось выполнить вырезание', 'error');
-            this.handleNewOperation(mesh);
+            this.handleNewOperation(mesh, historyData);
         }
     }
 
-    handleJoinOperation(mesh) {
+    handleJoinOperation(mesh, historyData) {
         const intersectingObjects = this.findIntersectingObjects(mesh);
 
         if (intersectingObjects.length === 0) {
             this.editor.showStatus('Нет пересекающихся объектов для соединения', 'warning');
-            this.handleNewOperation(mesh);
+            this.handleNewOperation(mesh, historyData);
             return;
         }
 
         if (!this.editor.booleanOps) {
             this.editor.showStatus('Булевы операции не доступны', 'error');
-            this.handleNewOperation(mesh);
+            this.handleNewOperation(mesh, historyData);
             return;
         }
+
+        // СОХРАНЯЕМ ДАННЫЕ ДЛЯ ИСТОРИИ
+        const objectsData = intersectingObjects.map(obj => {
+            return this.editor.projectManager.serializeObjectForHistory(obj);
+        });
+        const extrudeData = this.editor.projectManager.serializeObjectForHistory(mesh);
 
         try {
             const objectsToUnion = [...intersectingObjects, mesh];
             const result = this.editor.booleanOps.unionMultiple(objectsToUnion);
 
             if (result && result.geometry && result.geometry.attributes.position.count > 0) {
-                this.replaceObjectsWithResult(objectsToUnion, result, 'join');
+                this.replaceObjectsWithResult(objectsToUnion, result, 'join', {
+                    sourceObjectsData: objectsData,
+                    extrudeData: extrudeData,
+                    sourceExtrude: historyData
+                });
             } else {
                 throw new Error('Результат объединения пуст');
             }
         } catch (error) {
             console.error('Ошибка соединения:', error);
             this.editor.showStatus('Не удалось выполнить соединение', 'error');
-            this.handleNewOperation(mesh);
+            this.handleNewOperation(mesh, historyData);
         }
     }
 
@@ -1009,7 +1088,12 @@ class ExtrudeManager {
         return intersectingObjects;
     }
 
-    replaceObjectWithResult(originalObject, result, operationType) {
+    replaceObjectWithResult(originalObject, result, operationType, historyContext) {
+        // СОХРАНЯЕМ ПРЕЖНИЙ РАЗМЕР И ПОЗИЦИЮ
+        const originalBox = new THREE.Box3().setFromObject(originalObject);
+        const originalSize = new THREE.Vector3();
+        originalBox.getSize(originalSize);
+
         const originalIndex = this.editor.objects.indexOf(originalObject);
         if (originalIndex > -1) {
             this.editor.objectsGroup.remove(originalObject);
@@ -1024,22 +1108,54 @@ class ExtrudeManager {
             type: 'boolean_result',
             operation: operationType,
             originalObjects: [originalObject.uuid],
-            createdAt: new Date().toISOString()
+            createdAt: new Date().toISOString(),
+            originalSize: originalSize.toArray(),
+            originalPosition: originalObject.position.toArray()
         };
 
         this.editor.objectsGroup.add(result);
         this.editor.objects.push(result);
 
-        result.scale.set(0.1, 0.1, 0.1);
-        new TWEEN.Tween(result.scale)
-            .to({ x: 1, y: 1, z: 1 }, 300)
-            .easing(TWEEN.Easing.Elastic.Out)
-            .start();
+//        result.scale.set(0.1, 0.1, 0.1);
+//        new TWEEN.Tween(result.scale)
+//            .to({ x: 1, y: 1, z: 1 }, 300)
+//            .easing(TWEEN.Easing.Elastic.Out)
+//            .start();
 
         this.editor.selectObject(result);
+
+        // ДОБАВЛЯЕМ В ИСТОРИЮ
+        this.editor.history.addAction({
+            type: 'boolean',
+            operation: 'subtract',
+            result: result.uuid,
+            sourceObjects: [originalObject.uuid],
+            originalObjects: historyContext ? [{
+                uuid: originalObject.uuid,
+                data: historyContext.targetObjectData[0]
+            }] : [],
+            resultData: this.editor.projectManager.serializeObjectForHistory(result),
+            context: historyContext?.sourceExtrude
+        });
+
     }
 
-    replaceObjectsWithResult(originalObjects, result, operationType) {
+
+    replaceObjectsWithResult(originalObjects, result, operationType, historyContext) {
+        // СОХРАНЯЕМ ДАННЫЕ ОРИГИНАЛЬНЫХ ОБЪЕКТОВ
+        const originalData = originalObjects.map(obj => {
+            const box = new THREE.Box3().setFromObject(obj);
+            const size = new THREE.Vector3();
+            box.getSize(size);
+
+            return {
+                uuid: obj.uuid,
+                position: obj.position.toArray(),
+                size: size.toArray(),
+                data: this.editor.projectManager.serializeObjectForHistory(obj)
+            };
+        });
+
         originalObjects.forEach(obj => {
             const index = this.editor.objects.indexOf(obj);
             if (index > -1) {
@@ -1056,19 +1172,32 @@ class ExtrudeManager {
             type: 'boolean_result',
             operation: operationType,
             originalObjects: originalObjects.map(o => o.uuid),
-            createdAt: new Date().toISOString()
+            createdAt: new Date().toISOString(),
+            originalSizes: originalData.map(d => d.size),
+            originalPositions: originalData.map(d => d.position)
         };
 
         this.editor.objectsGroup.add(result);
         this.editor.objects.push(result);
 
-        result.scale.set(0.1, 0.1, 0.1);
-        new TWEEN.Tween(result.scale)
-            .to({ x: 1, y: 1, z: 1 }, 300)
-            .easing(TWEEN.Easing.Elastic.Out)
-            .start();
+//        result.scale.set(0.1, 0.1, 0.1);
+//        new TWEEN.Tween(result.scale)
+//            .to({ x: 1, y: 1, z: 1 }, 300)
+//            .easing(TWEEN.Easing.Elastic.Out)
+//            .start();
 
         this.editor.selectObject(result);
+
+        // ДОБАВЛЯЕМ В ИСТОРИЮ
+        this.editor.history.addAction({
+            type: 'boolean',
+            operation: 'union',
+            result: result.uuid,
+            sourceObjects: originalObjects.map(o => o.uuid),
+            originalObjects: originalData.map(d => ({ uuid: d.uuid, data: d.data })),
+            resultData: this.editor.projectManager.serializeObjectForHistory(result),
+            context: historyContext?.sourceExtrude
+        });
     }
 
     createExtrusionMesh(geometry, height, direction, sourceContours) {

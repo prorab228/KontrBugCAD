@@ -19,112 +19,143 @@ class BooleanOperations {
      * three-bvh-csg требует, чтобы геометрия была "two-manifold" (водонепроницаемой)[citation:1].
      */
     prepareObjectForCSG(object3D) {
-        if (!object3D || !object3D.geometry) {
-            console.error('Объект не содержит geometry');
-            return null;
-        }
-
-        // 1. Клонируем объект и его геометрию, чтобы не нарушить исходные
-        const clonedMesh = object3D.clone();
-
-        // 2. Глубоко клонируем геометрию, чтобы точно получить отдельный экземпляр
-        const originalGeo = clonedMesh.geometry;
-        const repairedGeometry = this.repairGeometry(originalGeo); // <-- Используем ремонт
-
-         // 3. СБРАСЫВАЕМ ТРАНСФОРМАЦИИ КЛОНА перед вычислением мировой матрицы
-        clonedMesh.position.set(0, 0, 0);
-        clonedMesh.rotation.set(0, 0, 0);
-        clonedMesh.scale.set(1, 1, 1);
-        clonedMesh.updateMatrixWorld(true); // Матрица теперь единичная
-
-        // 4. Применяем ИСХОДНУЮ мировую матрицу объекта к геометрии
-        object3D.updateMatrixWorld(true);
-        repairedGeometry.applyMatrix4(object3D.matrixWorld);
-
-        // 5. Создаём Brush. Его трансформации оставляем нулевыми.
-        const brush = new THREE_BVH_CSG.Brush(repairedGeometry, clonedMesh.material);
-        // Не копируем позицию/вращение! Геометрия уже на месте.
-        brush.updateMatrixWorld();
-
-        return brush;
+    if (!object3D || !object3D.geometry) {
+        console.error('Объект не содержит geometry');
+        return null;
     }
 
-    /**
-     * Основной метод выполнения булевой операции[citation:1]
-     */
-    performOperation(objects, operation) {
-        if (!objects || objects.length < 2) {
-            this.showError('Для операции нужно минимум 2 объекта');
-            return null;
-        }
+    // 1. Клонируем объект
+    const clonedMesh = object3D.clone();
 
-        // Подготавливаем объекты (преобразуем в Brush)
-        const brushes = objects.map(obj => this.prepareObjectForCSG(obj)).filter(b => b);
+    // 2. Ремонтируем геометрию
+    const repairedGeometry = this.repairGeometry(clonedMesh.geometry);
 
-        if (brushes.length < 2) {
-            this.showError('Не удалось подготовить объекты для операции');
-            return null;
-        }
+    // 3. НЕ применяем матрицу к геометрии!
+    // three-bvh-csg будет использовать трансформации Brush
 
-        try {
-            // Выполняем операцию. Первый объект (A) изменяется вторым (B)
-            let resultBrush = brushes[0];
-            for (let i = 1; i < brushes.length; i++) {
-                resultBrush = this.evaluator.evaluate(resultBrush, brushes[i], operation);
-            }
+    // 4. Создаём Brush с исходными трансформациями
+    const brush = new THREE_BVH_CSG.Brush(repairedGeometry, clonedMesh.material);
 
-             // Берем материал из первого объекта, если он существует
-            let material;
-            if (objects[0] && objects[0].material) {
-                // Клонируем материал, чтобы не изменять оригинал
-                material = objects[0].material.clone();
+    // Копируем трансформации из исходного объекта
+    brush.position.copy(object3D.position);
+    brush.rotation.copy(object3D.rotation);
+    brush.scale.copy(object3D.scale);
+    brush.updateMatrixWorld();
 
-                // Сбрасываем свойства выделения
-                material.emissive = new THREE.Color(0x000000);
-                material.emissiveIntensity = 0;
-                material.transparent = false;
-                material.opacity = 1.0;
-                material.wireframe = false;
-            } else {
-                // Иначе создаем новый материал
-                material = new THREE.MeshStandardMaterial({
-                    color: 0x808080, // Серый цвет по умолчанию
-                    side: THREE.FrontSide,
-                    transparent: false,
-                    wireframe: false
-                });
-            }
+    console.log(`Brush создан для объекта ${object3D.uuid}:`);
+    console.log(`  Позиция: (${brush.position.x}, ${brush.position.y}, ${brush.position.z})`);
+    console.log(`  Вращение: (${brush.rotation.x}, ${brush.rotation.y}, ${brush.rotation.z})`);
 
-            // Конвертируем Brush обратно в стандартный THREE.Mesh для сцены
-            const resultMesh = new THREE.Mesh(resultBrush.geometry, material);
-            resultMesh.position.copy(resultBrush.position);
-            resultMesh.rotation.copy(resultBrush.rotation);
-            resultMesh.scale.copy(resultBrush.scale);
+    return brush;
+}
 
-            // Настраиваем свойства материала (не используйте THREE.DoubleSide, это может вызвать артефакты[citation:9])
-            resultMesh.material.side = THREE.FrontSide;
-            resultMesh.material.transparent = false; // Прозрачность также может вызывать проблемы[citation:9]
-
-            // Настройка теней и пользовательских данных
-            resultMesh.castShadow = true;
-            resultMesh.receiveShadow = true;
-            resultMesh.userData = {
-                id: 'csg_' + Date.now(),
-                name: this.getOperationName(operation),
-                type: 'boolean',
-                operation: operation,
-                sourceObjects: objects.map(obj => obj.uuid),
-                createdAt: new Date().toISOString()
-            };
-
-            return resultMesh;
-
-        } catch (error) {
-            console.error(`Ошибка операции ${operation}:`, error);
-            this.showError(`Ошибка ${this.getOperationName(operation)}: ${error.message}`);
-            return null;
-        }
+performOperation(objects, operation) {
+    if (!objects || objects.length < 2) {
+        this.showError('Для операции нужно минимум 2 объекта');
+        return null;
     }
+
+    console.log(`=== Выполнение операции ${operation} ===`);
+    console.log(`Количество объектов: ${objects.length}`);
+    objects.forEach((obj, i) => {
+        console.log(`  Объект ${i}: ${obj.userData?.name || obj.uuid}, позиция: (${obj.position.x}, ${obj.position.y}, ${obj.position.z})`);
+    });
+
+    // Подготавливаем объекты
+    const brushes = objects.map(obj => this.prepareObjectForCSG(obj)).filter(b => b);
+
+    if (brushes.length < 2) {
+        this.showError('Не удалось подготовить объекты для операции');
+        return null;
+    }
+
+    try {
+        // Выполняем операцию
+        let resultBrush = brushes[0];
+        console.log(`Начальный brush позиция: (${resultBrush.position.x}, ${resultBrush.position.y}, ${resultBrush.position.z})`);
+
+        for (let i = 1; i < brushes.length; i++) {
+            console.log(`Объединение с brush ${i}: позиция (${brushes[i].position.x}, ${brushes[i].position.y}, ${brushes[i].position.z})`);
+            resultBrush = this.evaluator.evaluate(resultBrush, brushes[i], operation);
+            console.log(`Результат после шага ${i}: позиция brush (${resultBrush.position.x}, ${resultBrush.position.y}, ${resultBrush.position.z})`);
+        }
+
+        // Создаём материал
+        let material;
+        if (objects[0] && objects[0].material) {
+            material = objects[0].material.clone();
+            material.emissive = new THREE.Color(0x000000);
+            material.emissiveIntensity = 0;
+            material.transparent = false;
+            material.opacity = 1.0;
+            material.wireframe = false;
+        } else {
+            material = new THREE.MeshStandardMaterial({
+                color: 0x808080,
+                side: THREE.FrontSide,
+                transparent: false,
+                wireframe: false
+            });
+        }
+
+        // Создаём результирующий меш из геометрии Brush
+        const resultMesh = new THREE.Mesh(resultBrush.geometry, material);
+
+        // ВАЖНО: После операции three-bvh-csg сбрасывает позицию Brush в (0,0,0)
+        // Но геометрия уже находится в правильном месте (мировых координатах)
+
+        // Вычисляем bounding box геометрии в её текущем положении
+        resultMesh.geometry.computeBoundingBox();
+        const bbox = resultMesh.geometry.boundingBox;
+        const geometryCenter = new THREE.Vector3();
+        bbox.getCenter(geometryCenter);
+
+        console.log(`Центр геометрии resultBrush: (${geometryCenter.x}, ${geometryCenter.y}, ${geometryCenter.z})`);
+
+        // Сдвигаем геометрию так, чтобы её центр был в (0,0,0) локальных координат
+        resultMesh.geometry.translate(-geometryCenter.x, -geometryCenter.y, -geometryCenter.z);
+
+        // Устанавливаем позицию меша так, чтобы центр геометрии оказался в том же месте
+        // где он был до смещения (т.е. в geometryCenter)
+        resultMesh.position.copy(geometryCenter);
+
+        // Обнуляем вращение и масштаб, так как они уже учтены в геометрии
+        resultMesh.rotation.set(0, 0, 0);
+        resultMesh.scale.set(1, 1, 1);
+        resultMesh.updateMatrixWorld(true);
+
+        console.log(`Итоговая позиция меша: (${resultMesh.position.x}, ${resultMesh.position.y}, ${resultMesh.position.z})`);
+
+        // Вычисляем bounding box окончательного меша для проверки
+        const finalBox = new THREE.Box3().setFromObject(resultMesh);
+        const finalCenter = new THREE.Vector3();
+        finalBox.getCenter(finalCenter);
+        console.log(`Финальный центр меша в мировых координатах: (${finalCenter.x}, ${finalCenter.y}, ${finalCenter.z})`);
+
+        // Настройка теней и пользовательских данных
+        resultMesh.castShadow = true;
+        resultMesh.receiveShadow = true;
+        resultMesh.userData = {
+            id: 'csg_' + Date.now(),
+            name: this.getOperationName(operation),
+            type: 'boolean',
+            operation: operation,
+            sourceObjects: objects.map(obj => obj.uuid),
+            createdAt: new Date().toISOString(),
+            debug: {
+                originalGeometryCenter: geometryCenter.toArray(),
+                finalPosition: resultMesh.position.toArray()
+            }
+        };
+
+        return resultMesh;
+
+    } catch (error) {
+        console.error(`Ошибка операции ${operation}:`, error);
+        this.showError(`Ошибка ${this.getOperationName(operation)}: ${error.message}`);
+        return null;
+    }
+}
 
     // Публичные методы для операций (оставьте без изменений, они уже вызывают performOperation)
     unionMultiple(objects) { return this.performOperation(objects, this.OPS.ADDITION); }

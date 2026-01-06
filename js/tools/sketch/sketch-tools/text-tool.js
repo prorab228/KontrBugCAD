@@ -1,110 +1,207 @@
 /**
- * Инструмент "Текст" (исправленный для контуров)
+ * Упрощенный инструмент "Текст" с правильным порядком событий
  */
 class TextSketchTool extends SketchToolBase {
     constructor(sketchManager) {
         super(sketchManager, 'text', 'fa-font');
         this.fontSize = 20;
-        this.currentText = 'Text';
+        this.currentText = 'Текст';
 
+        // Состояние инструмента
+        this.isWaitingForInput = false;
+        this.clickPosition = null;
+
+        // Временный элемент для предпросмотра
+        this.previewElement = null;
+
+        // Конфигурация полей ввода
         this.dimensionFields = [
-            { label: 'Текст', type: 'text', value: this.currentText, unit: '', placeholder: 'Введите текст' },
-            { label: 'Размер шрифта', type: 'number', value: this.fontSize, unit: 'px', min: 5, max: 100, step: 1 }
+            {
+                label: 'Текст',
+                type: 'text',
+                value: this.currentText,
+                unit: '',
+                placeholder: 'Введите текст'
+            },
+            {
+                label: 'Размер',
+                type: 'number',
+                value: this.fontSize,
+                unit: 'мм',
+                min: 5,
+                max: 100,
+                step: 1
+            }
         ];
     }
 
     onMouseDown(e) {
+        // Если активно поле ввода, пропускаем обработку
         if (this.sketchManager.isInputActive) {
-            this.sketchManager.applyDimensionInput();
-            return true;
+            return false;
         }
 
+        // Получаем позицию клика
         const point = this.getPointOnPlane(e);
-        if (!point) return false;
+        if (!point) {
+            console.warn('Не удалось определить позицию на плоскости');
+            return false;
+        }
 
-        this.tempElement = {
-            type: 'text',
-            position: point.clone(),
-            content: this.currentText,
-            fontSize: this.fontSize,
-            color: this.sketchManager.sketchColor,
-            contours: [] // Здесь будут контуры для каждого символа
-        };
+        console.log('Текстовый инструмент: клик в позиции', point);
 
-        // Создаем предварительный просмотр контуров
-        this.updateTextPreview();
+        // Сохраняем позицию клика
+        this.clickPosition = point.clone();
+        this.isWaitingForInput = true;
 
-        // Показываем поле ввода
-        const config = this.getDimensionConfig();
-        this.sketchManager.showDimensionInput(e, config);
+        // Создаем временный маркер позиции
+        this.createPositionMarker(point);
+
+        // Показываем поле ввода через небольшой таймаут, чтобы избежать конфликтов
+        setTimeout(() => {
+            const config = this.getDimensionConfig();
+            console.log('Показываем поле ввода с конфигом:', config);
+            this.sketchManager.showDimensionInput(e, config);
+        }, 10);
 
         return true;
     }
 
-    // Удаляем createTextPreview и заменяем на updateTextPreview
-    updateTextPreview() {
+    createPositionMarker(position) {
         this.clearTempGeometry();
 
-        if (!this.tempElement || !this.tempElement.content) return;
+        // Создаем простой крест для маркера позиции
+        const size = 5;
+        const geometry = new THREE.BufferGeometry();
+        const vertices = new Float32Array([
+            position.x - size, position.y, 0.1,
+            position.x + size, position.y, 0.1,
+            position.x, position.y - size, 0.1,
+            position.x, position.y + size, 0.1
+        ]);
 
-        // Рассчитываем контуры для предпросмотра
-        this.tempElement.contours = this.calculateTextContours();
+        geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
 
-        // Создаем геометрию для предпросмотра
-        this.createPreviewGeometry();
-    }
-
-    createPreviewGeometry() {
-        if (!this.tempElement || !this.tempElement.contours) return;
-
-        // Создаем группу для всех контуров
-        const textGroup = new THREE.Group();
-
-        this.tempElement.contours.forEach((contour, index) => {
-            const vertices = [];
-
-            contour.forEach(point => {
-                const localPoint = this.sketchManager.currentPlane.worldToLocal(point.clone());
-                vertices.push(localPoint.x, localPoint.y, 0);
-            });
-
-            const geometry = new THREE.BufferGeometry();
-            geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
-
-            const mesh = new THREE.LineLoop(geometry, new THREE.LineBasicMaterial({
-                color: this.tempElement.color,
-                linewidth: 2,
-                transparent: true,
-                opacity: 0.7
-            }));
-
-            textGroup.add(mesh);
+        const material = new THREE.LineBasicMaterial({
+            color: 0xFFFF00,
+            linewidth: 2
         });
 
-        this.tempGeometry = textGroup;
-        this.sketchManager.currentPlane.add(textGroup);
+        const lines = new THREE.LineSegments(geometry, material);
+
+        // Преобразуем в локальные координаты плоскости
+        const localPos = this.sketchManager.currentPlane.worldToLocal(position.clone());
+        lines.position.set(localPos.x, localPos.y, 0.1);
+
+        this.tempGeometry = lines;
+        this.sketchManager.currentPlane.add(lines);
+
+        console.log('Маркер позиции создан в', position);
     }
 
-    calculateTextContours() {
-        if (!this.sketchManager.currentPlane || !this.tempElement || !this.tempElement.content) {
+    onMouseMove(e) {
+        // Если ждем ввода и поле ввода не активно, обновляем позицию маркера
+        if (this.isWaitingForInput && !this.sketchManager.isInputActive && this.clickPosition) {
+            const point = this.getPointOnPlane(e);
+            if (point) {
+                this.clickPosition.copy(point);
+                this.updatePositionMarker(point);
+            }
+        }
+    }
+
+    updatePositionMarker(position) {
+        if (!this.tempGeometry) return;
+
+        const size = 5;
+        const vertices = new Float32Array([
+            position.x - size, position.y, 0.1,
+            position.x + size, position.y, 0.1,
+            position.x, position.y - size, 0.1,
+            position.x, position.y + size, 0.1
+        ]);
+
+        this.tempGeometry.geometry.setAttribute('position',
+            new THREE.BufferAttribute(vertices, 3));
+        this.tempGeometry.geometry.attributes.position.needsUpdate = true;
+
+        // Обновляем позицию в локальных координатах
+        const localPos = this.sketchManager.currentPlane.worldToLocal(position.clone());
+        this.tempGeometry.position.set(localPos.x, localPos.y, 0.1);
+    }
+
+    onKeyDown(e) {
+        if (e.key === 'Escape') {
+            this.onCancel();
+            return true;
+        }
+
+        // Если активно поле ввода, обрабатываем Enter
+        if (this.sketchManager.isInputActive && e.key === 'Enter') {
+            this.applyDimensionInput();
+            return true;
+        }
+
+        return false;
+    }
+
+    applyDimensionInput() {
+        console.log('Применение ввода текста');
+
+        if (!this.clickPosition) {
+            console.error('Нет позиции для текста');
+            this.onCancel();
+            return;
+        }
+
+        // Получаем значения из полей ввода
+        const textValue = this.sketchManager.inputField1?.value || this.currentText;
+        const sizeValue = parseFloat(this.sketchManager.inputField2?.value) || this.fontSize;
+
+        if (!textValue.trim()) {
+            console.warn('Текст не может быть пустым');
+            this.onCancel();
+            return;
+        }
+
+        // Создаем элемент текста
+        const textElement = {
+            type: 'text',
+            position: this.clickPosition.clone(),
+            content: textValue,
+            fontSize: Math.max(5, Math.min(100, sizeValue)),
+            color: this.sketchManager.sketchColor,
+            contours: this.generateSimpleTextContours(textValue, this.clickPosition, sizeValue)
+        };
+
+        console.log('Создан текстовый элемент:', textElement);
+
+        // Добавляем элемент
+        this.sketchManager.addElement(textElement);
+
+        // Сбрасываем состояние
+        this.onCancel();
+    }
+
+    generateSimpleTextContours(text, position, fontSize) {
+        if (!text || !this.sketchManager.currentPlane) {
+            console.warn('Невозможно сгенерировать контуры: нет текста или плоскости');
             return [];
         }
 
-        const localPos = this.sketchManager.currentPlane.worldToLocal(this.tempElement.position.clone());
         const contours = [];
+        const scale = fontSize / 100;
+        const charWidth = fontSize * 0.6;
+        const charHeight = fontSize;
+        const spacing = fontSize * 0.1;
 
-        // Параметры символов
-        const charWidth = this.tempElement.fontSize * 0.6;
-        const charHeight = this.tempElement.fontSize;
-        const spacing = this.tempElement.fontSize * 0.1;
+        // Простые прямоугольные контуры для каждого символа
+        for (let i = 0; i < text.length; i++) {
+            const char = text[i];
+            const x = position.x + i * (charWidth + spacing);
+            const y = position.y;
 
-        // Для каждого символа создаем прямоугольный контур
-        for (let i = 0; i < this.tempElement.content.length; i++) {
-            const char = this.tempElement.content[i];
-            const x = localPos.x + i * (charWidth + spacing);
-            const y = localPos.y;
-
-            // Прямоугольник символа
+            // Прямоугольник для символа (упрощенный контур)
             const charPoints = [
                 new THREE.Vector3(x, y, 0),
                 new THREE.Vector3(x + charWidth, y, 0),
@@ -114,77 +211,101 @@ class TextSketchTool extends SketchToolBase {
             ];
 
             // Преобразуем в мировые координаты
-            const worldPoints = charPoints.map(p => this.sketchManager.currentPlane.localToWorld(p));
+            const worldPoints = charPoints.map(p =>
+                this.sketchManager.currentPlane.localToWorld(p)
+            );
+
             contours.push(worldPoints);
         }
 
+        console.log(`Сгенерировано ${contours.length} контуров для текста "${text}"`);
         return contours;
     }
 
-    onMouseMove(e) {
-        // Для текста мы не обновляем позицию при перемещении мыши
-        // Позиция устанавливается при клике и больше не меняется
+    handleInputChange(fieldNum, value) {
+        console.log(`Изменение поля ${fieldNum}:`, value);
+
+        if (!this.clickPosition) return;
+
+        if (fieldNum === 1) {
+            // Изменение текста - обновляем предпросмотр
+            this.currentText = value || '';
+            this.updatePreview();
+        } else if (fieldNum === 2) {
+            // Изменение размера
+            const fontSize = parseFloat(value) || this.fontSize;
+            this.fontSize = Math.max(5, Math.min(100, fontSize));
+            this.updatePreview();
+        }
     }
 
-    onKeyDown(e) {
-        if (e.key === 'Escape') {
-            this.onCancel();
-            return true;
-        } else if (e.key === 'Enter' && this.sketchManager.isInputActive) {
-            // При нажатии Enter применяем введенные значения
-            this.applyDimensions({
-                value1: this.sketchManager.inputField1?.value || '',
-                value2: parseFloat(this.sketchManager.inputField2?.value) || this.fontSize
+    updatePreview() {
+        // Очищаем старый предпросмотр
+        if (this.previewElement && this.previewElement.parent) {
+            this.previewElement.parent.remove(this.previewElement);
+            if (this.previewElement.geometry) this.previewElement.geometry.dispose();
+            if (this.previewElement.material) this.previewElement.material.dispose();
+        }
+
+        // Создаем новый предпросмотр
+        if (this.currentText && this.clickPosition) {
+            const contours = this.generateSimpleTextContours(
+                this.currentText,
+                this.clickPosition,
+                this.fontSize
+            );
+
+            const previewGroup = new THREE.Group();
+
+            contours.forEach((contour, index) => {
+                if (contour.length < 3) return;
+
+                const vertices = [];
+                contour.forEach(point => {
+                    const localPoint = this.sketchManager.currentPlane.worldToLocal(point.clone());
+                    vertices.push(localPoint.x, localPoint.y, 0.1);
+                });
+
+                const geometry = new THREE.BufferGeometry();
+                geometry.setAttribute('position',
+                    new THREE.Float32BufferAttribute(vertices, 3));
+
+                const material = new THREE.LineBasicMaterial({
+                    color: 0xFFFF00,
+                    linewidth: 2,
+                    transparent: true,
+                    opacity: 0.7
+                });
+
+                const line = new THREE.LineLoop(geometry, material);
+                previewGroup.add(line);
             });
-            return true;
+
+            this.previewElement = previewGroup;
+            this.sketchManager.currentPlane.add(previewGroup);
         }
-        return false;
-    }
-
-    applyDimensions(values) {
-        if (!this.tempElement) return;
-
-        // Обновляем текст и размер шрифта
-        if (values.value1 !== undefined) {
-            this.tempElement.content = values.value1;
-        }
-        if (values.value2 && values.value2 > 0) {
-            this.tempElement.fontSize = values.value2;
-        }
-
-        // Обновляем предпросмотр с новыми параметрами
-        this.updateTextPreview();
-
-        // Добавляем финальный элемент
-        this.sketchManager.addElement(this.tempElement);
-
-        // Очищаем временные данные
-        this.clearTempGeometry();
-        this.tempElement = null;
-
-        // Скрываем поле ввода
-        this.sketchManager.hideDimensionInput();
     }
 
     onCancel() {
+        console.log('Отмена создания текста');
+
+        // Очищаем временные элементы
         this.clearTempGeometry();
-        this.tempElement = null;
+
+        if (this.previewElement && this.previewElement.parent) {
+            this.previewElement.parent.remove(this.previewElement);
+            if (this.previewElement.geometry) this.previewElement.geometry.dispose();
+            if (this.previewElement.material) this.previewElement.material.dispose();
+            this.previewElement = null;
+        }
+
+        // Сбрасываем состояние
+        this.clickPosition = null;
+        this.isWaitingForInput = false;
         this.sketchManager.hideDimensionInput();
     }
 
-    // Метод для обработки изменений в полях ввода в реальном времени
-    handleInputChange(fieldNum, value) {
-        if (!this.tempElement) return;
-
-        if (fieldNum === 1) {
-            // Изменение текста
-            this.tempElement.content = value;
-            this.updateTextPreview();
-        } else if (fieldNum === 2) {
-            // Изменение размера шрифта
-            const fontSize = parseFloat(value) || this.fontSize;
-            this.tempElement.fontSize = Math.max(5, Math.min(100, fontSize));
-            this.updateTextPreview();
-        }
+    onDeactivate() {
+        this.onCancel();
     }
 }

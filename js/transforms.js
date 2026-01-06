@@ -438,43 +438,9 @@ class TransformControls {
         if (this.isDragging) {
             this.isDragging = false;
 
-            if (this.transformMode === 'scale' && this.attachedObject) {
-                const finalDimensions = this.getObjectDimensions(this.attachedObject);
-                if (!this.attachedObject.userData.originalSize) {
-                    this.attachedObject.userData.originalSize = {
-                        x: finalDimensions.x,
-                        y: finalDimensions.y,
-                        z: finalDimensions.z
-                    };
-                    this.attachedObject.userData.originalScale = { x: 1, y: 1, z: 1 };
-                }
-                this.attachedObject.userData.currentScale = this.attachedObject.scale.clone();
-            }
+            this.saveHistory();
 
-            if (this.editor.history && this.attachedObject) {
-                const actionType = this.transformMode === 'translate' ? 'modify_position' :
-                                 this.transformMode === 'scale' ? 'modify_size' :
-                                 'modify_rotation';
-
-                const actionData = {
-                    type: actionType,
-                    object: this.attachedObject.uuid,
-                    data: {
-                        position: this.attachedObject.position.clone(),
-                        rotation: this.attachedObject.rotation.clone(),
-                        scale: this.attachedObject.scale.clone(),
-                        dimensions: this.getObjectDimensions(this.attachedObject)
-                    }
-                };
-
-                if (actionType === 'modify_size') {
-                    actionData.data.originalDimensions = this.sizeStartDimensions;
-                    actionData.data.originalScale = this.attachedObject.userData.originalScale || { x: 1, y: 1, z: 1 };
-                }
-
-                this.editor.history.addAction(actionData);
-            }
-
+            // Очистка состояния...
             this.currentAxis = null;
             this.sizeStartDimensions = null;
             this.startProjection = null;
@@ -880,6 +846,49 @@ class TransformControls {
             x: (vector.x * 0.5 + 0.5) * width,
             y: (-vector.y * 0.5 + 0.5) * height
         };
+    }
+
+    saveHistory()
+    {
+        // Сохраняем историю
+        if (this.editor.history && this.attachedObject) {
+            const actionType = this.transformMode === 'translate' ? 'modify_position' :
+                             this.transformMode === 'scale' ? 'modify_size' :
+                             'modify_rotation';
+
+            const actionData = {
+                type: actionType,
+                object: this.attachedObject.uuid,
+                data: {}
+            };
+
+            switch (actionType) {
+                case 'modify_position':
+                    actionData.data.position = this.attachedObject.position.toArray();
+                    actionData.data.previousPosition = this.startPosition.toArray();
+                    break;
+
+                case 'modify_size':
+                    actionData.data.dimensions = this.getObjectDimensions(this.attachedObject);
+                    actionData.data.previousDimensions = this.sizeStartDimensions;
+                    break;
+
+                case 'modify_rotation':
+                    actionData.data.rotation = [
+                        this.attachedObject.rotation.x,
+                        this.attachedObject.rotation.y,
+                        this.attachedObject.rotation.z
+                    ];
+                    actionData.data.previousRotation = [
+                        this.startRotation.x,
+                        this.startRotation.y,
+                        this.startRotation.z
+                    ];
+                    break;
+            }
+
+            this.editor.history.addAction(actionData);
+        }
     }
 
     removeTooltip() {

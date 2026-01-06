@@ -511,6 +511,23 @@ class LibraryManager {
         }
     }
 
+    safeCloneParameters(parameters) {
+        const cloned = {};
+        for (const key in parameters) {
+            const value = parameters[key];
+            if (value && value.isVector3) {
+                cloned[key] = value.toArray();
+            } else if (value && value.isEuler) {
+                cloned[key] = [value.x, value.y, value.z];
+            } else if (value && value.isColor) {
+                cloned[key] = value.getHex();
+            } else if (typeof value !== 'function') {
+                cloned[key] = value;
+            }
+        }
+        return cloned;
+    }
+
     // ОБЩИЙ МЕТОД ДЛЯ СОЗДАНИЯ ПРИМИТИВОВ
     createPrimitive(type, position) {
         let geometry;
@@ -585,26 +602,47 @@ class LibraryManager {
             mesh.rotation.x = -Math.PI / 2;
         }
 
-        // Настройка пользовательских данных
+
+        // ВАЖНО: Сохраняем оригинальную позицию ДО анимации
+        const originalPosition = mesh.position.clone();
+        const originalScale = mesh.scale.clone();
+
+        // Настройка пользовательских данных с сохранением размеров
         mesh.userData = {
             id: `${type}_${Date.now()}`,
             name: this.getPrimitiveName(type),
             type: type,
             originalSize: { x: size, y: size, z: size },
+            originalPosition: originalPosition.toArray(), // Сохраняем позицию
+            originalScale: originalScale.toArray(), // Сохраняем масштаб
+            geometryType: geometry.type,
+            geometryParams: geometry.parameters ? this.safeCloneParameters(geometry.parameters) : {},
+            materialColor: colors[type] || 0xAAAAAA,
             createdAt: new Date().toISOString(),
-            unit: 'mm'
+            unit: 'mm',
+            // Добавляем флаг для восстановления
+            needsAnimation: true
         };
+
+        // Сохраняем originalMaterial с правильным цветом
+        const originalMaterial = material.clone();
+        originalMaterial.color.setHex(colors[type] || 0xAAAAAA);
+        mesh.userData.originalMaterial = originalMaterial;
 
         // Добавляем в сцену
         this.editor.objectsGroup.add(mesh);
         this.editor.objects.push(mesh);
 
-        // Анимация появления
+        // Анимация появления - но сохраняем оригинальное состояние
         mesh.scale.set(0.1, 0.1, 0.1);
         new TWEEN.Tween(mesh.scale)
             .to({ x: 1, y: 1, z: 1 }, 300)
             .easing(TWEEN.Easing.Elastic.Out)
-            .start();
+            .start()
+            .onComplete(() => {
+                // После анимации обновляем originalScale
+                mesh.userData.originalScale = [1, 1, 1];
+            });
 
         // Выбираем созданный объект
         this.editor.clearSelection();
@@ -614,15 +652,13 @@ class LibraryManager {
         this.editor.objectsManager.updateSceneStats();
         this.editor.objectsManager.updateSceneList();
 
-        // Добавляем в историю
+        // ДОБАВЛЯЕМ В ИСТОРИЮ с полной сериализацией объекта
+        const serializedObject = this.editor.projectManager.serializeObjectForHistory(mesh);
         this.editor.history.addAction({
             type: 'create',
+            subtype: 'library',
             object: mesh.uuid,
-            data: {
-                name: mesh.userData.name,
-                type: mesh.userData.type,
-                position: mesh.position.toArray()
-            }
+            data: serializedObject
         });
 
         return mesh;
@@ -723,7 +759,8 @@ class LibraryManager {
         }
     }
 
-    // ИСПРАВЛЕННЫЙ МЕТОД ОБРАБОТКИ STL (добавлен параметр filePath)
+    //МЕТОД ОБРАБОТКИ STL
+
     processSTLBuffer(buffer, modelName, position, filePath) {
         try {
             if (!buffer || buffer.byteLength === 0) {
@@ -752,6 +789,23 @@ class LibraryManager {
 
             console.log('STL geometry created, vertices:', geometry.attributes.position?.count || 0);
 
+            // Вычисляем центр ограничивающей рамки геометрии
+            geometry.computeBoundingBox();
+            const box = geometry.boundingBox;
+            const center = new THREE.Vector3();
+            box.getCenter(center);
+
+            // Сдвигаем геометрию так, чтобы ее центр был в начале координат
+            const positions = geometry.attributes.position.array;
+            for (let i = 0; i < positions.length; i += 3) {
+                positions[i] -= center.x;
+                positions[i + 1] -= center.y;
+                positions[i + 2] -= center.z;
+            }
+            geometry.attributes.position.needsUpdate = true;
+
+            // Пересчитываем ограничивающую рамку после сдвига
+            geometry.computeBoundingBox();
 
             // Поворачиваем геометрию для нашей системы координат (Y-up)
             geometry.rotateX(-Math.PI / 2);
@@ -770,22 +824,23 @@ class LibraryManager {
             mesh.castShadow = true;
             mesh.receiveShadow = true;
 
-            // Центрируем объект
-            geometry.computeBoundingBox();
-            const box = geometry.boundingBox;
-            const center = new THREE.Vector3();
-            box.getCenter(center);
-            mesh.position.sub(center);
-
             // Устанавливаем позицию (если указана)
             if (position) {
                 mesh.position.copy(position);
 
-                // Поднимаем на половину высоты для правильного отображения
-                const bbox = new THREE.Box3().setFromObject(mesh);
+                // Теперь меш уже центрирован, просто поднимаем на половину высоты
+                geometry.computeBoundingBox();
+                const bbox = geometry.boundingBox;
                 const size = new THREE.Vector3();
                 bbox.getSize(size);
                 mesh.position.y += size.y / 2;
+            } else {
+                // По умолчанию ставим на рабочую плоскость
+                geometry.computeBoundingBox();
+                const bbox = geometry.boundingBox;
+                const size = new THREE.Vector3();
+                bbox.getSize(size);
+                mesh.position.y = size.y / 2; // Поднимаем на половину высоты
             }
 
             // Извлекаем имя файла из filePath
@@ -800,8 +855,13 @@ class LibraryManager {
                 unit: 'mm',
                 filename: filename,
                 vertexCount: geometry.attributes.position?.count || 0,
-                sourcePath: filePath
+                sourcePath: filePath,
+                originalGeometry: geometry // Сохраняем ссылку на геометрию
             };
+
+            // Сохраняем originalMaterial
+            const originalMaterial = material.clone();
+            mesh.userData.originalMaterial = originalMaterial;
 
             // Добавляем в сцену
             this.editor.objectsGroup.add(mesh);
@@ -822,16 +882,13 @@ class LibraryManager {
             this.editor.objectsManager.updateSceneStats();
             this.editor.objectsManager.updateSceneList();
 
-            // Добавляем в историю
+            // ДОБАВЛЯЕМ В ИСТОРИЮ с полной сериализацией
+            const serializedObject = this.editor.projectManager.serializeObjectForHistory(mesh);
             this.editor.history.addAction({
                 type: 'import',
                 format: 'stl',
                 object: mesh.uuid,
-                data: {
-                    name: modelName,
-                    filename: filename,
-                    vertexCount: mesh.userData.vertexCount
-                }
+                data: serializedObject
             });
 
             this.editor.showStatus(`Модель "${modelName}" загружена (${mesh.userData.vertexCount} вершин)`, 'success');

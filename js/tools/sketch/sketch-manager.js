@@ -742,9 +742,10 @@ class SketchManager {
 
     // sketch-manager.js - заменяем метод showDimensionInput
     showDimensionInput(event, config) {
-        if (!this.dimensionInput) return;
+        if (!this.dimensionInput || !config) return;
 
-        // Позиционируем рядом с курсором
+        // Устанавливаем позицию рядом с курсором
+        const rect = this.editor.renderer.domElement.getBoundingClientRect();
         this.dimensionInput.style.left = `${event.clientX + 15}px`;
         this.dimensionInput.style.top = `${event.clientY - 10}px`;
         this.dimensionInput.style.opacity = '1';
@@ -908,12 +909,14 @@ class SketchManager {
         if (!element) return;
 
         if (element.type === 'text') {
-            // Для текста создаем группу контуров
+            // Создаем группу для контуров текста
             const textGroup = new THREE.Group();
 
+            // Для каждого контура создаем отдельную линию
             if (element.contours && element.contours.length > 0) {
-                element.contours.forEach((contour, index) => {
-                    const geometry = new THREE.BufferGeometry();
+                element.contours.forEach((contour, contourIndex) => {
+                    if (contour.length < 3) return;
+
                     const vertices = [];
 
                     // Преобразуем мировые координаты в локальные
@@ -922,63 +925,33 @@ class SketchManager {
                         vertices.push(localPoint.x, localPoint.y, 0);
                     });
 
+                    const geometry = new THREE.BufferGeometry();
                     geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
 
                     const mesh = new THREE.LineLoop(geometry, new THREE.LineBasicMaterial({
-                        color: new THREE.Color(element.color),
+                        color: new THREE.Color(element.color || this.sketchColor),
                         linewidth: 2
                     }));
 
                     mesh.userData = {
                         type: 'sketch_element',
-                        elementType: element.type,
-                        isClosed: true,
-                        textIndex: index,
-                        totalParts: element.contours.length,
-                        originalColor: new THREE.Color(element.color)
+                        elementType: 'text_contour',
+                        contourIndex: contourIndex,
+                        totalContours: element.contours.length,
+                        originalColor: new THREE.Color(element.color || this.sketchColor),
+                        isClosed: true
                     };
 
                     textGroup.add(mesh);
                 });
-            } else {
-                // Если нет контуров, создаем простой прямоугольник
-                const geometry = new THREE.BufferGeometry();
-                const charWidth = element.fontSize * 0.6 * element.content.length;
-                const charHeight = element.fontSize;
-                const localPos = this.currentPlane.worldToLocal(element.position.clone());
-
-                const vertices = [
-                    localPos.x, localPos.y, 0,
-                    localPos.x + charWidth, localPos.y, 0,
-                    localPos.x + charWidth, localPos.y + charHeight, 0,
-                    localPos.x, localPos.y + charHeight, 0,
-                    localPos.x, localPos.y, 0
-                ];
-
-                geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
-
-                const mesh = new THREE.LineLoop(geometry, new THREE.LineBasicMaterial({
-                    color: new THREE.Color(element.color),
-                    linewidth: 2
-                }));
-
-                mesh.userData = {
-                    type: 'sketch_element',
-                    elementType: element.type,
-                    isClosed: true,
-                    isText: true,
-                    originalColor: new THREE.Color(element.color)
-                };
-
-                textGroup.add(mesh);
             }
 
             textGroup.userData = {
                 type: 'sketch_element',
-                elementType: element.type,
+                elementType: 'text',
                 isClosed: true,
                 isText: true,
-                originalColor: new THREE.Color(element.color),
+                originalColor: new THREE.Color(element.color || this.sketchColor),
                 sketchPlaneId: this.currentPlane.uuid,
                 content: element.content,
                 fontSize: element.fontSize,
@@ -989,7 +962,6 @@ class SketchManager {
             this.currentPlane.add(textGroup);
             element.mesh = textGroup;
             this.elements.push(element);
-
         } else {
             // ... существующий код для других элементов ...
             const isClosed = ['line','polyline','rectangle', 'circle', 'polygon', 'oval', 'stadium'].includes(element.type);

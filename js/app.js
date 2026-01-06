@@ -2,9 +2,9 @@
 class CADEditor {
     constructor() {
         // Константы версии
-        this.APP_VERSION = '0.5.1';
+        this.APP_VERSION = '0.6.0';
         this.APP_NAME = 'КонтрБагCAD';
-        this.APP_AUTHOR = 'Лунев Валерий Константинович';
+        this.APP_AUTHOR = 'Лунев Валерий Константинович ';
 
         // Основные свойства
         this.scene = new THREE.Scene();
@@ -1011,6 +1011,9 @@ class CADEditor {
                         const snapped = this.dragManager.toggleSnapToGrid();
                         document.getElementById('toggleGrid').classList.toggle('active', snapped);
                     }
+                    if (this.sketchManager ) {
+                            this.sketchManager.snapEnabled = !this.sketchManager.snapEnabled;
+                        }
                 }
                 break;
         }
@@ -1220,313 +1223,26 @@ class CADEditor {
 
     // ИСТОРИЯ ДЕЙСТВИЙ
     undo() {
-        const action = this.history.undo();
-        if (action) {
-            this.applyHistoryAction(action, true);
-            this.showStatus('Отменено: ' + action.type, 'info');
+        if (this.history) {
+            const success = this.history.undo();
+            if (success) {
+                this.showStatus('Отменено', 'info');
+            }
         }
     }
 
     redo() {
-        const action = this.history.redo();
-        if (action) {
-            this.applyHistoryAction(action, false);
-            this.showStatus('Повторено: ' + action.type, 'info');
+        if (this.history) {
+            const success = this.history.redo();
+            if (success) {
+                this.showStatus('Повторено', 'info');
+            }
         }
     }
 
-    applyHistoryAction(action, isUndo) {
-        console.log('=== APPLY HISTORY ACTION ===');
-        console.log('Action type:', action.type);
-        console.log('isUndo:', isUndo);
-        console.log('Action data:', action);
-
-        if (!action) return;
-
-        switch (action.type) {
-            case 'create':
-                if (isUndo) {
-                    const obj = this.findObjectByUuid(action.object);
-                    if (obj) {
-                        this.objectsGroup.remove(obj);
-                        this.objects = this.objects.filter(o => o.uuid !== action.object);
-                        this.selectedObjects = this.selectedObjects.filter(o => o.uuid !== action.object);
-
-                        if (obj.userData.type === 'sketch_plane') {
-                            this.sketchPlanes = this.sketchPlanes.filter(p => p.uuid !== action.object);
-                        } else if (obj.userData.type === 'work_plane') {
-                            this.workPlanes = this.workPlanes.filter(p => p.uuid !== action.object);
-                        }
-
-                        if (obj.geometry) obj.geometry.dispose();
-                        if (obj.material) obj.material.dispose();
-
-                        this.objectsManager.updateSceneStats();
-                        this.objectsManager.updateSceneList();
-                    }
-                } else {
-                    if (action.data && this.projectManager) {
-                        const objData = {
-                            uuid: action.object,
-                            userData: action.data,
-                            position: action.data.position || [0, 0, 0],
-                            rotation: action.data.rotation || [0, 0, 0],
-                            scale: action.data.scale || [1, 1, 1]
-                        };
-
-                        const obj = this.projectManager.deserializeObjectOptimized(objData);
-                        if (obj) {
-                            this.objectsGroup.add(obj);
-                            this.objects.push(obj);
-
-                            if (obj.userData.type === 'sketch_plane') {
-                                this.sketchPlanes.push(obj);
-                            } else if (obj.userData.type === 'work_plane') {
-                                this.workPlanes.push(obj);
-                            }
-
-                            this.objectsManager.updateSceneStats();
-                            this.objectsManager.updateSceneList();
-                        }
-                    }
-                }
-                break;
-
-            case 'delete':
-                if (isUndo) {
-                    action.objects.forEach(objData => {
-                        if (objData.data && this.projectManager) {
-                            const fullData = {
-                                uuid: objData.uuid,
-                                userData: objData.data.userData,
-                                position: objData.data.position || [0, 0, 0],
-                                rotation: objData.data.rotation || [0, 0, 0],
-                                scale: objData.data.scale || [1, 1, 1],
-                                type: objData.data.type || 'object'
-                            };
-
-                            const obj = this.projectManager.deserializeObjectOptimized(fullData);
-                            if (obj) {
-                                this.objectsGroup.add(obj);
-                                this.objects.push(obj);
-
-                                if (obj.userData.type === 'sketch_plane') {
-                                    this.sketchPlanes.push(obj);
-                                } else if (obj.userData.type === 'work_plane') {
-                                    this.workPlanes.push(obj);
-                                }
-                            }
-                        }
-                    });
-                    this.objectsManager.updateSceneStats();
-                    this.objectsManager.updateSceneList();
-                } else {
-                    action.objects.forEach(objData => {
-                        const obj = this.findObjectByUuid(objData.uuid);
-                        if (obj) {
-                            this.objectsGroup.remove(obj);
-                            this.objects = this.objects.filter(o => o.uuid !== objData.uuid);
-                            this.selectedObjects = this.selectedObjects.filter(o => o.uuid !== objData.uuid);
-
-                            if (obj.userData.type === 'sketch_plane') {
-                                this.sketchPlanes = this.sketchPlanes.filter(p => p.uuid !== objData.uuid);
-                            } else if (obj.userData.type === 'work_plane') {
-                                this.workPlanes = this.workPlanes.filter(p => p.uuid !== objData.uuid);
-                            }
-
-                            if (obj.geometry) obj.geometry.dispose();
-                            if (obj.material) obj.material.dispose();
-                        }
-                    });
-                    this.objectsManager.updateSceneStats();
-                    this.objectsManager.updateSceneList();
-                }
-                break;
-
-            case 'modify_position':
-                const posObj = this.findObjectByUuid(action.object);
-                if (posObj) {
-                    if (isUndo) {
-                        posObj.position.fromArray(action.data.previousPosition || [0, 0, 0]);
-                    } else {
-                        posObj.position.fromArray(action.data.position || [0, 0, 0]);
-                    }
-                    this.updatePropertiesPanel();
-                }
-                break;
-
-            case 'modify_scale':
-                const scaleObj = this.findObjectByUuid(action.object);
-                if (scaleObj) {
-                    if (isUndo) {
-                        scaleObj.scale.fromArray(action.data.previousScale || [1, 1, 1]);
-                    } else {
-                        scaleObj.scale.fromArray(action.data.scale || [1, 1, 1]);
-                    }
-                    this.updatePropertiesPanel();
-                }
-                break;
-
-            case 'modify_rotation':
-                const rotObj = this.findObjectByUuid(action.object);
-                if (rotObj) {
-                    if (isUndo) {
-                        rotObj.rotation.fromArray(action.data.previousRotation || [0, 0, 0]);
-                    } else {
-                        rotObj.rotation.fromArray(action.data.rotation || [0, 0, 0]);
-                    }
-                    this.updatePropertiesPanel();
-                }
-                break;
-
-            case 'modify_size':
-                const sizeObj = this.findObjectByUuid(action.object);
-                if (sizeObj && this.transformControls) {
-                    if (isUndo) {
-                        this.transformControls.updateObjectSizeDirect(sizeObj, action.data.previousDimensions);
-                    } else {
-                        this.transformControls.updateObjectSizeDirect(sizeObj, action.data.dimensions);
-                    }
-                    this.updatePropertiesPanel();
-                    this.objectsManager.updateSceneStats();
-                }
-                break;
-
-            case 'modify_color':
-                const colorObj = this.findObjectByUuid(action.object);
-                if (colorObj && colorObj.material) {
-                    if (isUndo) {
-                        this.setObjectColor(colorObj, action.data.previousColor);
-                    } else {
-                        this.setObjectColor(colorObj, action.data.color);
-                    }
-                    this.updatePropertiesPanel();
-                }
-                break;
-
-            case 'modify_opacity':
-                const opacityObj = this.findObjectByUuid(action.object);
-                if (opacityObj && opacityObj.material) {
-                    if (isUndo) {
-                        this.setObjectOpacity(opacityObj, action.data.previousOpacity);
-                    } else {
-                        this.setObjectOpacity(opacityObj, action.data.opacity);
-                    }
-                    this.updatePropertiesPanel();
-                }
-                break;
-
-            case 'boolean':
-                console.log('=== BOOLEAN HISTORY ACTION ===');
-                console.log('Operation:', action.operation);
-                console.log('isUndo:', isUndo);
-
-                if (isUndo) {
-                    const resultObj = this.findObjectByUuid(action.result);
-                    if (resultObj) {
-                        console.log('Removing boolean result:', resultObj.uuid);
-                        this.objectsGroup.remove(resultObj);
-                        this.objects = this.objects.filter(o => o.uuid !== action.result);
-                        this.selectedObjects = this.selectedObjects.filter(o => o.uuid !== action.result);
-
-                        if (resultObj.geometry) resultObj.geometry.dispose();
-                        if (resultObj.material) resultObj.material.dispose();
-                    }
-
-                    if (action.originalObjects && action.originalObjects.length > 0) {
-                        console.log('Restoring original objects:', action.originalObjects.length);
-
-                        action.originalObjects.forEach((objData, index) => {
-                            try {
-                                console.log(`Restoring object ${index}:`, objData.uuid);
-
-                                if (objData.data) {
-                                    const restoredObj = this.projectManager.deserializeObject({
-                                        uuid: objData.uuid,
-                                        ...objData.data
-                                    });
-
-                                    if (restoredObj) {
-                                        this.objectsGroup.add(restoredObj);
-                                        this.objects.push(restoredObj);
-                                        console.log('Successfully restored:', restoredObj.uuid);
-                                    } else {
-                                        console.error('Failed to restore object:', objData);
-                                    }
-                                }
-                            } catch (error) {
-                                console.error(`Error restoring object ${index}:`, error);
-                            }
-                        });
-                    } else {
-                        console.warn('No original objects to restore!');
-                    }
-                } else {
-                    console.log('Redoing boolean operation');
-                    try {
-                        if (action.resultData) {
-                            const resultObj = this.projectManager.deserializeObject({
-                                uuid: action.result,
-                                ...action.resultData
-                            });
-
-                            if (resultObj) {
-                                this.objectsGroup.add(resultObj);
-                                this.objects.push(resultObj);
-                                this.selectObject(resultObj);
-                                console.log('Recreated boolean result:', resultObj.uuid);
-                            }
-                        }
-                    } catch (error) {
-                        console.error('Error redoing boolean:', error);
-                    }
-                }
-
-                this.objectsManager.updateSceneStats();
-                this.objectsManager.updateSceneList();
-                break;
-
-            case 'modify_position_multiple':
-            case 'modify_rotation_multiple':
-            case 'modify_scale_multiple':
-                if (action.objects && Array.isArray(action.objects)) {
-                    action.objects.forEach(objData => {
-                        const obj = this.findObjectByUuid(objData.uuid);
-                        if (obj) {
-                            if (isUndo) {
-                                switch(action.type) {
-                                    case 'modify_position_multiple':
-                                        obj.position.fromArray(objData.previousPosition || [0, 0, 0]);
-                                        break;
-                                    case 'modify_rotation_multiple':
-                                        obj.rotation.fromArray(objData.previousRotation || [0, 0, 0]);
-                                        break;
-                                    case 'modify_scale_multiple':
-                                        obj.scale.fromArray(objData.previousScale || [1, 1, 1]);
-                                        break;
-                                }
-                            } else {
-                                switch(action.type) {
-                                    case 'modify_position_multiple':
-                                        obj.position.fromArray(objData.position || [0, 0, 0]);
-                                        break;
-                                    case 'modify_rotation_multiple':
-                                        obj.rotation.fromArray(objData.rotation || [0, 0, 0]);
-                                        break;
-                                    case 'modify_scale_multiple':
-                                        obj.scale.fromArray(objData.scale || [1, 1, 1]);
-                                        break;
-                                }
-                            }
-                        }
-                    });
-                }
-                break;
-
-            default:
-                console.warn('Unknown action type:', action.type);
-        }
-    }
+//    applyHistoryAction(action, isUndo) {
+//
+//    }
 
     // ОСНОВНОЙ ЦИКЛ
     animate() {

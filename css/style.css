@@ -301,6 +301,32 @@ body.dark-theme {
     font-size: 28px;
 }
 
+/* История действий */
+.history-list {
+    max-height: 400px;
+    overflow-y: auto;
+    margin-bottom: 20px;
+}
+
+.history-item {
+    padding: 12px 15px;
+    border-left: 3px solid var(--primary-color);
+    margin-bottom: 8px;
+    border-radius: 4px;
+    font-size: 13px;
+}
+
+
+
+.history-item i {
+    margin-right: 8px;
+    color: var(--primary-color);
+}
+
+.history-controls {
+    text-align: center;
+}
+
 /*project-info*/
 .project-info {
   display: flex;
@@ -319,6 +345,7 @@ body.dark-theme {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  margin-right: 100px;
  }
 
  .status {
@@ -330,6 +357,8 @@ body.dark-theme {
   min-width: 80px;
   text-align: center;
   box-shadow: 0 2px 8px rgba(0, 200, 83, 0.3);
+  position: absolute;
+  right: 10px;
 }
 
 .controls-hint {
@@ -440,7 +469,8 @@ body.dark-theme {
 .sketch-tool:hover,
 .view-btn-compact:hover,
 .view-controls button:hover,
-.camera-controls button:hover {
+.camera-controls button:hover,
+.history-item:hover{
     background: var(--active-overlay);
     border-color: var(--primary-color);
     transform: translateY(-1px);
