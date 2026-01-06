@@ -8,14 +8,13 @@ class CircleSketchTool extends SketchToolBase {
         this.diameter = 0;
         this.segments = 32;
 
-        // Конфигурация полей ввода
         this.dimensionFields = [
-            { label: 'Диаметр', type: 'number', value: 10, unit: 'мм', min: 1, step: 1 },
+            { label: 'Диаметр', type: 'number', value: 10, unit: 'мм', min: 0, step: 1 },
             { label: 'Сегменты', type: 'number', value: this.segments, unit: 'шт', min: 8, max: 64, step: 4 }
         ];
     }
 
-   onMouseDown(e) {
+    onMouseDown(e) {
         if (this.sketchManager.isInputActive) {
             this.sketchManager.applyDimensionInput();
             return true;
@@ -54,25 +53,29 @@ class CircleSketchTool extends SketchToolBase {
         );
 
         this.updateTempGeometry();
+        this.updateCircleDimensions(this.tempElement.center, this.tempElement.radius);
 
-        // Обновляем поле ввода
         if (this.sketchManager.isInputActive) {
             this.updateInputFields();
         }
     }
 
-
     onMouseUp(e) {
         if (!this.isDrawing) return;
 
         const point = this.getPointOnPlane(e);
-        if (point) {
+        if (point && this.tempElement) {
             this.finishDrawing(e);
         }
         this.isDrawing = false;
     }
 
     finishDrawing(e) {
+        if (!this.tempElement) {
+            this.onCancel();
+            return;
+        }
+
         const config = this.getDimensionConfig();
         config.fields[0].value = this.tempElement.diameter.toFixed(1);
         config.fields[1].value = this.tempElement.segments;
@@ -117,24 +120,86 @@ class CircleSketchTool extends SketchToolBase {
 
         this.sketchManager.addElement(this.tempElement);
         this.clearTempGeometry();
+        this.sketchManager.clearDimensionObjects();
         this.tempElement = null;
     }
 
+    updateCircleDimensions(center, radius) {
+        this.sketchManager.clearDimensionObjects();
+        this.createCircleDimensions(center, radius);
+    }
 
+    createCircleDimensions(center, radius) {
+        if (!this.sketchManager.currentPlane) return;
 
-    updateCircleDiameter(diameter) {
-        if (!this.tempElement) return;
+        const localCenter = this.sketchManager.currentPlane.worldToLocal(center.clone());
 
-        this.tempElement.diameter = diameter;
-        this.tempElement.radius = diameter / 2;
-        this.tempElement.points = this.calculateCirclePoints(
-            this.tempElement.center,
-            this.tempElement.radius,
-            this.segments
+        // Линия диаметра (горизонтальная)
+        const diamStart = new THREE.Vector3(localCenter.x - radius, localCenter.y, 0.1);
+        const diamEnd = new THREE.Vector3(localCenter.x + radius, localCenter.y, 0.1);
+
+        const diamGeometry = new THREE.BufferGeometry().setFromPoints([diamStart, diamEnd]);
+        const diamMaterial = new THREE.LineBasicMaterial({
+            color: this.sketchManager.dimensionColor,
+            linewidth: 2
+        });
+        const diamLine = new THREE.Line(diamGeometry, diamMaterial);
+
+        // Выносные линии для диаметра
+        const extLine1 = new THREE.Line(
+            new THREE.BufferGeometry().setFromPoints([
+                new THREE.Vector3(localCenter.x - radius, localCenter.y - 5, 0.1),
+                new THREE.Vector3(localCenter.x - radius, localCenter.y + 5, 0.1)
+            ]),
+            new THREE.LineBasicMaterial({ color: this.sketchManager.dimensionColor, linewidth: 1 })
         );
 
-        this.updateTempGeometry();
-        this.sketchManager.updateCircleDimensions(this.tempElement.center, this.tempElement.radius);
+        const extLine2 = new THREE.Line(
+            new THREE.BufferGeometry().setFromPoints([
+                new THREE.Vector3(localCenter.x + radius, localCenter.y - 5, 0.1),
+                new THREE.Vector3(localCenter.x + radius, localCenter.y + 5, 0.1)
+            ]),
+            new THREE.LineBasicMaterial({ color: this.sketchManager.dimensionColor, linewidth: 1 })
+        );
+
+        // Текст диаметра (под линией)
+        const textPos = new THREE.Vector3(localCenter.x, localCenter.y - 10, 0.1);
+        this.createDimensionText(textPos, `Ø${(radius * 2).toFixed(1)}`);
+
+        [diamLine, extLine1, extLine2].forEach(obj => {
+            obj.userData.isDimension = true;
+            this.sketchManager.currentPlane.add(obj);
+            this.sketchManager.dimensionObjects.push(obj);
+        });
+    }
+
+    createDimensionText(position, text) {
+        const canvas = document.createElement('canvas');
+        const context = canvas.getContext('2d');
+        canvas.width = 256;
+        canvas.height = 64;
+
+        context.clearRect(0, 0, canvas.width, canvas.height);
+        context.font = 'bold 16px Arial';
+        context.fillStyle = '#00C853';
+        context.textAlign = 'center';
+        context.textBaseline = 'middle';
+        context.fillText(text, canvas.width / 2, canvas.height / 2);
+
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.minFilter = THREE.LinearFilter;
+        const spriteMaterial = new THREE.SpriteMaterial({
+            map: texture,
+            transparent: true
+        });
+
+        const sprite = new THREE.Sprite(spriteMaterial);
+        sprite.position.copy(position);
+        sprite.scale.set(20, 5, 1);
+        sprite.userData.isDimension = true;
+
+        this.sketchManager.currentPlane.add(sprite);
+        this.sketchManager.dimensionObjects.push(sprite);
     }
 
     calculateCirclePoints(center, radius, segments) {

@@ -348,6 +348,10 @@ class CADEditor {
                 const tool = e.currentTarget.dataset.sketchTool;
                 if (this.sketchManager) {
                     this.sketchManager.setCurrentTool(tool);
+                    // При смене инструмента сбрасываем выделение фигур
+                    if (this.extrudeManager) {
+                        this.extrudeManager.clearFigureSelection();
+                    }
                 }
             });
         });

@@ -1,111 +1,155 @@
-// extrude-tool.js (полная версия)
+// extrude-tool.js
 class ExtrudeTool extends Tool {
     constructor(editor) {
         super('extrude', 'fa-arrows-alt-v', editor);
         this.extrudeManager = editor.extrudeManager;
-        this.extrudeMode = false;
-        this.selectedContour = null;
-        this.extrudeArrow = null;
+        this.isExtrudeMode = false;
     }
-
-    // МЕТОДЫ ВЫДАВЛИВАНИЯ (ранее были в app.js)
 
     startExtrudeMode() {
-        // Используем менеджер объектов для получения элементов
-        const closedContours = this.editor.objectsManager.getClosedSketchElements();
-
-        console.log("Замкнутых контуров для выдавливания:", closedContours.length);
-
-        if (closedContours.length === 0) {
-            this.editor.showStatus('Нет замкнутых контуров для вытягивания', 'error');
-
-            // Для отладки покажем все элементы
-            const allElements = this.editor.objectsManager.getAllSketchElements();
-            console.log("Всего скетч-элементов:", allElements.length);
-            allElements.forEach((element, index) => {
-                console.log(`Элемент ${index}:`, {
-                    type: element.userData?.elementType,
-                    isClosed: element.userData?.isClosed,
-                    userData: element.userData
-                });
-            });
-
-            return false;
-        }
-
-        this.extrudeMode = true;
-        this.selectedContour = null;
-
+        this.isExtrudeMode = true;
+        
+        // Подсвечиваем доступные фигуры
+        this.extrudeManager.highlightExtrudableFigures();
+        
+        // Показываем UI для вытягивания
         this.extrudeManager.showExtrudeUI();
-        this.editor.showStatus('Выберите замкнутый контур скетча для вытягивания. Подсвечены доступные контуры.', 'info');
-
-        // Подсвечиваем замкнутые контуры
-        this.extrudeManager.highlightExtrudableContours();
-        return true;
+        
+        // Устанавливаем обработчики событий
+        this.attachEventListeners();
+        
+        this.editor.showStatus('Режим вытягивания: выберите фигуру(ы)', 'info');
     }
 
-    extrudeSketch() {
-        if (this.editor.selectedObjects.length === 1 &&
-            this.editor.selectedObjects[0].userData.type === 'sketch') {
-            this.startExtrudeMode();
-        } else {
-            this.editor.showStatus('Выберите скетч для вытягивания', 'error');
-        }
+    attachEventListeners() {
+        this.mouseDownHandler = (e) => this.onMouseDown(e);
+        this.mouseMoveHandler = (e) => this.onMouseMove(e);
+        this.mouseUpHandler = (e) => this.onMouseUp(e);
+        this.keyDownHandler = (e) => this.onKeyDown(e);
+        
+        const canvas = this.editor.renderer.domElement;
+        canvas.addEventListener('mousedown', this.mouseDownHandler);
+        canvas.addEventListener('mousemove', this.mouseMoveHandler);
+        canvas.addEventListener('mouseup', this.mouseUpHandler);
+        document.addEventListener('keydown', this.keyDownHandler);
     }
 
-    cutSketch() {
-        this.editor.showStatus('Вырезание скетча (в разработке)', 'info');
+    detachEventListeners() {
+        const canvas = this.editor.renderer.domElement;
+        if (this.mouseDownHandler) canvas.removeEventListener('mousedown', this.mouseDownHandler);
+        if (this.mouseMoveHandler) canvas.removeEventListener('mousemove', this.mouseMoveHandler);
+        if (this.mouseUpHandler) canvas.removeEventListener('mouseup', this.mouseUpHandler);
+        if (this.keyDownHandler) document.removeEventListener('keydown', this.keyDownHandler);
     }
 
-    // ОБРАБОТКА СОБЫТИЙ
+    exitExtrudeMode() {
+        this.isExtrudeMode = false;
+        this.extrudeManager.cancelExtrudeMode();
+        this.detachEventListeners();
+        this.editor.showStatus('Режим вытягивания завершен', 'info');
+    }
 
+    // Обработчики событий
     onActivate() {
-        return this.startExtrudeMode();
+        this.startExtrudeMode();
     }
 
     onDeactivate() {
-        if (this.extrudeMode) {
-            this.extrudeManager.cancelExtrudeMode();
-            this.extrudeMode = false;
-            this.selectedContour = null;
-            this.extrudeArrow = null;
-        }
+        this.exitExtrudeMode();
     }
 
     onMouseDown(e) {
-        if (!this.extrudeMode) return false;
+        if (e.button !== 0) return false;
 
-        if (this.extrudeManager.handleArrowDragStart(e)) {
-            return true;
+        if (this.isExtrudeMode) {
+            // Сначала проверяем перетаскивание стрелки
+            if (this.extrudeManager.handleArrowDragStart(e)) {
+                return true;
+            }
+
+            // Если не перетаскиваем стрелку, то выбираем фигуру
+            const handled = this.extrudeManager.selectFigureForExtrude(e);
+            if (handled) {
+                e.preventDefault();
+                e.stopPropagation();
+                return true;
+            }
         }
-        if (this.extrudeManager.selectContourForExtrude(e)) {
-            return true;
+
+        return false;
+    }
+
+
+    onMouseMove(e) {
+        if (this.isExtrudeMode) {
+            // Если идет перетаскивание стрелки
+            if (this.extrudeManager.isDraggingArrow) {
+                this.extrudeManager.handleArrowDrag(e);
+            } else {
+                // Иначе подсвечиваем фигуры при наведении
+                this.extrudeManager.highlightFiguresOnHover(e);
+            }
+        }
+    }
+
+    onMouseUp(e) {
+        if (this.isExtrudeMode && e.button === 0) {
+            // Завершаем перетаскивание стрелки
+            if (this.extrudeManager.isDraggingArrow) {
+                this.extrudeManager.handleArrowDragEnd();
+            }
         }
         return false;
     }
 
-    onMouseMove(e) {
-        if (!this.extrudeMode) return;
-
-        if (this.extrudeManager.dragging) {
-            this.extrudeManager.handleArrowDrag(e);
-            return;
-        }
-        this.extrudeManager.highlightContoursOnHover(e);
-    }
-
-    onMouseUp(e) {
-        if (!this.extrudeMode) return;
-
-        if (this.extrudeManager.dragging) {
-            this.extrudeManager.handleArrowDragEnd();
-        }
-    }
-
     onKeyDown(e) {
-        if (e.key === 'Escape' && this.extrudeMode) {
+        if (e.key === 'Escape' && this.isExtrudeMode) {
+            this.exitExtrudeMode();
             this.editor.toolManager.setCurrentTool('select');
             return true;
+        }
+        
+        // Ctrl+Z для отмены
+        if ((e.key === 'z' || e.key === 'я') && (e.ctrlKey || e.metaKey)) {
+            if (this.extrudeManager.isDraggingArrow) {
+                // Отменяем перетаскивание стрелки
+                this.extrudeManager.handleArrowDragEnd();
+                return true;
+            }
+        }
+        
+        return false;
+    }
+
+    onDoubleClick(e) {
+        if (e.button !== 0) return false;
+        
+        // При двойном клике на плоскость скетча переходим в режим редактирования
+        this.editor.updateMousePosition(e);
+        this.editor.raycaster.setFromCamera(this.editor.mouse, this.editor.camera);
+        
+        const intersects = this.editor.raycaster.intersectObjects(
+            this.editor.objectsGroup.children,
+            true
+        );
+        
+        if (intersects.length > 0) {
+            const object = this.editor.objectsManager.findTopParent(intersects[0].object);
+            
+            if (object.userData.type === 'sketch_plane' ||
+                object.userData.type === 'work_plane') {
+                
+                const hasSketchElements = this.editor.objectsManager.checkPlaneForSketchElements(object);
+                
+                if (hasSketchElements) {
+                    this.editor.selectSingleObject(object);
+                    const sketchTool = this.editor.toolManager.getTool('sketch');
+                    if (sketchTool) {
+                        sketchTool.editExistingSketch(object);
+                    }
+                    return true;
+                }
+            }
         }
         return false;
     }

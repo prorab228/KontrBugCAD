@@ -145,7 +145,7 @@ class RulerTool extends Tool {
         const line = new THREE.Line(lineGeometry, this.lineMaterial);
         this.measurementGroup.add(line);
 
-        const sphereGeometry = new THREE.SphereGeometry(1, 8, 8);
+        const sphereGeometry = new THREE.SphereGeometry(0.2, 8, 8);
         const sphereMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
 
         const sphere1 = new THREE.Mesh(sphereGeometry, sphereMaterial);

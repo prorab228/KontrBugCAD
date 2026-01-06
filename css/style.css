@@ -737,7 +737,7 @@ body.dark-theme {
 /* Списки */
 .scene-list,
 .layers-panel {
-    max-height: 300px;
+    max-height: 80%;
     overflow-y: auto;
     margin-bottom: 20px;
 }

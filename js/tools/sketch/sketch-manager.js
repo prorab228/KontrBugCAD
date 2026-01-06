@@ -1,3 +1,4 @@
+
 /**
  * SketchManager - менеджер для работы со скетчами
  */
@@ -54,10 +55,6 @@ class SketchManager {
         // Инструменты
         this.tools = {};
         this.activeTool = null;
-
-//        //привязка линии
-//        this.snapToPointsEnabled = true;
-//        this.snapRadius = 10; // Радиус привязки в пикселях
 
         this.initialize();
     }
@@ -128,7 +125,6 @@ class SketchManager {
 
         this.elements = [];
         this.selectedElements = [];
-        //this.clearTempGeometry();
         this.clearDimensionObjects();
         this.setCurrentTool('line');
         this.attachMouseHandlers();
@@ -218,7 +214,6 @@ class SketchManager {
         this.tempElement = null;
         this.isDrawing = false;
 
-     //   this.clearTempGeometry();
         this.clearDimensionObjects();
         this.hideDimensionInput();
         this.detachMouseHandlers();
@@ -252,7 +247,6 @@ class SketchManager {
         }
         return false;
     }
-
 
     onMouseMove(e) {
         const point = this.getPointOnPlane(e);
@@ -458,210 +452,6 @@ class SketchManager {
         this.editor.controls.update();
     }
 
-    // === Размерные линии ===
-
-    createDimensionLine(start, end) {
-        this.clearDimensionObjects();
-
-        if (!this.currentPlane) return;
-
-        const localStart = this.currentPlane.worldToLocal(start.clone());
-        const localEnd = this.currentPlane.worldToLocal(end.clone());
-
-        const dx = localEnd.x - localStart.x;
-        const dy = localEnd.y - localStart.y;
-        const length = Math.sqrt(dx * dx + dy * dy);
-
-        const direction = new THREE.Vector3(dx, dy, 0).normalize();
-        const perpendicular = new THREE.Vector3(-direction.y, direction.x, 0).normalize();
-        const offsetDist = 10;
-
-        const lineStart = new THREE.Vector3(
-            localStart.x + perpendicular.x * offsetDist,
-            localStart.y + perpendicular.y * offsetDist,
-            0.1
-        );
-        const lineEnd = new THREE.Vector3(
-            localEnd.x + perpendicular.x * offsetDist,
-            localEnd.y + perpendicular.y * offsetDist,
-            0.1
-        );
-
-        const lineGeometry = new THREE.BufferGeometry().setFromPoints([lineStart, lineEnd]);
-        const lineMaterial = new THREE.LineBasicMaterial({
-            color: this.dimensionColor,
-            linewidth: 2
-        });
-        const line = new THREE.Line(lineGeometry, lineMaterial);
-
-        const extLine1 = new THREE.Line(
-            new THREE.BufferGeometry().setFromPoints([
-                new THREE.Vector3(localStart.x, localStart.y, 0.1),
-                lineStart
-            ]),
-            new THREE.LineBasicMaterial({ color: this.dimensionColor, linewidth: 1 })
-        );
-
-        const extLine2 = new THREE.Line(
-            new THREE.BufferGeometry().setFromPoints([
-                new THREE.Vector3(localEnd.x, localEnd.y, 0.1),
-                lineEnd
-            ]),
-            new THREE.LineBasicMaterial({ color: this.dimensionColor, linewidth: 1 })
-        );
-
-        const textPos = new THREE.Vector3()
-            .addVectors(lineStart, lineEnd)
-            .multiplyScalar(0.5)
-            .add(new THREE.Vector3(
-                -perpendicular.y * 5,
-                perpendicular.x * 5,
-                0.1
-            ));
-
-        this.createDimensionText(textPos, `${length.toFixed(1)} мм`);
-
-        [line, extLine1, extLine2].forEach(obj => {
-            obj.userData.isDimension = true;
-            this.currentPlane.add(obj);
-            this.dimensionObjects.push(obj);
-        });
-    }
-
-    updateDimensionLine(start, end) {
-        this.clearDimensionObjects();
-        this.createDimensionLine(start, end);
-    }
-
-    createRectangleDimensions(start, end) {
-        this.clearDimensionObjects();
-
-        if (!this.currentPlane) return;
-
-        const localStart = this.currentPlane.worldToLocal(start.clone());
-        const localEnd = this.currentPlane.worldToLocal(end.clone());
-
-        const minX = Math.min(localStart.x, localEnd.x);
-        const maxX = Math.max(localStart.x, localEnd.x);
-        const minY = Math.min(localStart.y, localEnd.y);
-        const maxY = Math.max(localStart.y, localEnd.y);
-
-        const width = maxX - minX;
-        const height = maxY - minY;
-
-        // Ширина
-        const widthLineStart = new THREE.Vector3(minX, minY - 10, 0.1);
-        const widthLineEnd = new THREE.Vector3(maxX, minY - 10, 0.1);
-
-        const widthGeometry = new THREE.BufferGeometry().setFromPoints([widthLineStart, widthLineEnd]);
-        const widthMaterial = new THREE.LineBasicMaterial({
-            color: this.dimensionColor,
-            linewidth: 2
-        });
-        const widthLine = new THREE.Line(widthGeometry, widthMaterial);
-
-        const widthExt1 = new THREE.Line(
-            new THREE.BufferGeometry().setFromPoints([
-                new THREE.Vector3(minX, minY, 0.1),
-                new THREE.Vector3(minX, minY - 10, 0.1)
-            ]),
-            new THREE.LineBasicMaterial({ color: this.dimensionColor, linewidth: 1 })
-        );
-
-        const widthExt2 = new THREE.Line(
-            new THREE.BufferGeometry().setFromPoints([
-                new THREE.Vector3(maxX, minY, 0.1),
-                new THREE.Vector3(maxX, minY - 10, 0.1)
-            ]),
-            new THREE.LineBasicMaterial({ color: this.dimensionColor, linewidth: 1 })
-        );
-
-        const widthTextPos = new THREE.Vector3(minX + width / 2, minY - 15, 0.1);
-        this.createDimensionText(widthTextPos, `${width.toFixed(1)} мм`);
-
-        // Высота
-        const heightLineStart = new THREE.Vector3(maxX + 10, minY, 0.1);
-        const heightLineEnd = new THREE.Vector3(maxX + 10, maxY, 0.1);
-
-        const heightGeometry = new THREE.BufferGeometry().setFromPoints([heightLineStart, heightLineEnd]);
-        const heightMaterial = new THREE.LineBasicMaterial({
-            color: this.dimensionColor,
-            linewidth: 2
-        });
-        const heightLine = new THREE.Line(heightGeometry, heightMaterial);
-
-        const heightExt1 = new THREE.Line(
-            new THREE.BufferGeometry().setFromPoints([
-                new THREE.Vector3(maxX, minY, 0.1),
-                new THREE.Vector3(maxX + 10, minY, 0.1)
-            ]),
-            new THREE.LineBasicMaterial({ color: this.dimensionColor, linewidth: 1 })
-        );
-
-        const heightExt2 = new THREE.Line(
-            new THREE.BufferGeometry().setFromPoints([
-                new THREE.Vector3(maxX, maxY, 0.1),
-                new THREE.Vector3(maxX + 10, maxY, 0.1)
-            ]),
-            new THREE.LineBasicMaterial({ color: this.dimensionColor, linewidth: 1 })
-        );
-
-        const heightTextPos = new THREE.Vector3(maxX + 15, minY + height / 2, 0.1);
-        this.createDimensionText(heightTextPos, `${height.toFixed(1)} мм`);
-
-        [widthLine, widthExt1, widthExt2, heightLine, heightExt1, heightExt2].forEach(obj => {
-            obj.userData.isDimension = true;
-            this.currentPlane.add(obj);
-            this.dimensionObjects.push(obj);
-        });
-    }
-
-    updateRectangleDimensions(start, end) {
-        this.clearDimensionObjects();
-        this.createRectangleDimensions(start, end);
-    }
-
-    createDimensionText(position, text) {
-        const canvas = document.createElement('canvas');
-        const context = canvas.getContext('2d');
-        canvas.width = 256;
-        canvas.height = 64;
-
-        context.clearRect(0, 0, canvas.width, canvas.height);
-        context.font = 'bold 16px Arial';
-        context.fillStyle = '#00C853';
-        context.textAlign = 'center';
-        context.textBaseline = 'middle';
-        context.fillText(text, canvas.width / 2, canvas.height / 2);
-
-        const texture = new THREE.CanvasTexture(canvas);
-        texture.minFilter = THREE.LinearFilter;
-        const spriteMaterial = new THREE.SpriteMaterial({
-            map: texture,
-            transparent: true
-        });
-
-        const sprite = new THREE.Sprite(spriteMaterial);
-        sprite.position.copy(position);
-        sprite.scale.set(20, 5, 1);
-        sprite.userData.isDimension = true;
-
-        this.currentPlane.add(sprite);
-        this.dimensionObjects.push(sprite);
-    }
-
-    clearDimensionObjects() {
-        this.dimensionObjects.forEach(obj => {
-            if (obj.parent) {
-                obj.parent.remove(obj);
-            }
-            if (obj.geometry) obj.geometry.dispose();
-            if (obj.material) obj.material.dispose();
-            if (obj.map) obj.map.dispose();
-        });
-        this.dimensionObjects = [];
-    }
-
     // === Ввод размеров ===
 
     createDimensionInput() {
@@ -688,7 +478,7 @@ class SketchManager {
         `;
         this.dimensionInput.innerHTML = `
             <div style="display: flex; flex-direction: column; gap: 6px; min-width: 150px;">
-                <div class="input-row" id="inputRow1" style="display: flex; align-items: center; gap: 8px;">
+                <div class="input-row" id="inputRow1" style="display: none; align-items: center; gap: 8px;">
                     <label style="min-width: 40px; color: #aaa;">Длина:</label>
                     <input type="number" id="dimensionInput1" style="width: 80px; padding: 4px 6px; background: #333; color: white; border: 1px solid #666; border-radius: 3px; outline: none;">
                     <span style="color: #aaa;">мм</span>
@@ -740,7 +530,6 @@ class SketchManager {
         });
     }
 
-    // sketch-manager.js - заменяем метод showDimensionInput
     showDimensionInput(event, config) {
         if (!this.dimensionInput || !config) return;
 
@@ -790,7 +579,6 @@ class SketchManager {
         this.isInputActive = true;
     }
 
-    // Добавляем метод applyDimensionInput для новых инструментов
     applyDimensionInput() {
         if (!this.activeTool || !this.activeTool.tempElement) {
             this.hideDimensionInput();
@@ -822,7 +610,9 @@ class SketchManager {
         }
 
         this.hideDimensionInput();
-        tool.clearTempGeometry();
+        if (tool.clearTempGeometry) {
+            tool.clearTempGeometry();
+        }
         tool.tempElement = null;
     }
 
@@ -832,10 +622,6 @@ class SketchManager {
         this.dimensionInput.style.opacity = '0';
         this.dimensionInput.style.pointerEvents = 'none';
         this.isInputActive = false;
-
-        if (this.inputField1) {
-            this.inputField1.type = 'number';
-        }
     }
 
     handleInputKeyDown(e, fieldNum) {
@@ -848,7 +634,9 @@ class SketchManager {
                 break;
             case 'Escape':
                 this.hideDimensionInput();
-                this.cancelCurrentOperation();
+                if (this.activeTool) {
+                    this.activeTool.onCancel();
+                }
                 e.preventDefault();
                 break;
             case 'Tab':
@@ -861,7 +649,7 @@ class SketchManager {
     handleInputChange(e, fieldNum) {
         if (!this.activeTool || !this.activeTool.tempElement) return;
 
-        const value = fieldNum === 1 ? e.target.value : parseFloat(e.target.value) || 0;
+        const value = parseFloat(e.target.value) || 0;
 
         // Если инструмент имеет свой метод handleInputChange, вызываем его
         if (this.activeTool && this.activeTool.handleInputChange) {
@@ -869,27 +657,26 @@ class SketchManager {
             return;
         }
 
-        // Старая логика для обратной совместимости (можно удалить позже)
-//        const value = parseFloat(e.target.value) || 0;
-//        const tool = this.activeTool;
-//
-//        switch (tool.tempElement.type) {
-//            case 'line':
-//                if (fieldNum === 1) tool.updateLineLength(value);
-//                break;
-//            case 'rectangle':
-//                if (fieldNum === 1) tool.updateRectangleWidth(value);
-//                if (fieldNum === 2) tool.updateRectangleHeight(value);
-//                break;
-//            case 'circle':
-//                if (fieldNum === 1) tool.updateCircleDiameter(value);
-//                if (fieldNum === 2) tool.updateCircleSegments(value);
-//                break;
-//            case 'polygon':
-//                if (fieldNum === 1) tool.updatePolygonDiameter(value);
-//                if (fieldNum === 2) tool.updatePolygonSides(value);
-//                break;
-//        }
+        // Старая логика для обратной совместимости
+        const tool = this.activeTool;
+
+        switch (tool.tempElement.type) {
+            case 'line':
+                if (fieldNum === 1) tool.updateLineLength(value);
+                break;
+            case 'rectangle':
+                if (fieldNum === 1) tool.updateRectangleWidth(value);
+                if (fieldNum === 2) tool.updateRectangleHeight(value);
+                break;
+            case 'circle':
+                if (fieldNum === 1) tool.updateCircleDiameter(value);
+                if (fieldNum === 2) tool.updateCircleSegments(value);
+                break;
+            case 'polygon':
+                if (fieldNum === 1) tool.updatePolygonDiameter(value);
+                if (fieldNum === 2) tool.updatePolygonSides(value);
+                break;
+        }
     }
 
     focusNextInput(currentField) {
@@ -901,7 +688,6 @@ class SketchManager {
             fields[nextIndex].select();
         }
     }
-
 
     // === Управление элементами ===
 
@@ -1220,7 +1006,6 @@ class SketchManager {
 
         this.elements = [];
         this.selectedElements = [];
-       // this.clearTempGeometry();
         this.saveToHistory();
         this.editor.showStatus('Чертеж очищен', 'success');
     }
@@ -1417,293 +1202,15 @@ class SketchManager {
         this.deleteAllElements();
     }
 
-
-    // ============= РАЗМЕРНЫЕ ЛИНИИ =============
-
-createCircleDimensions(center, radius) {
-    this.clearDimensionObjects();
-
-    if (!this.currentPlane) return;
-
-    const localCenter = this.currentPlane.worldToLocal(center.clone());
-
-    // Линия диаметра (горизонтальная)
-    const diamStart = new THREE.Vector3(localCenter.x - radius, localCenter.y, 0.1);
-    const diamEnd = new THREE.Vector3(localCenter.x + radius, localCenter.y, 0.1);
-
-    const diamGeometry = new THREE.BufferGeometry().setFromPoints([diamStart, diamEnd]);
-    const diamMaterial = new THREE.LineBasicMaterial({
-        color: this.dimensionColor,
-        linewidth: 2
-    });
-    const diamLine = new THREE.Line(diamGeometry, diamMaterial);
-
-    // Выносные линии для диаметра
-    const extLine1 = new THREE.Line(
-        new THREE.BufferGeometry().setFromPoints([
-            new THREE.Vector3(localCenter.x - radius, localCenter.y - 5, 0.1),
-            new THREE.Vector3(localCenter.x - radius, localCenter.y + 5, 0.1)
-        ]),
-        new THREE.LineBasicMaterial({ color: this.dimensionColor, linewidth: 1 })
-    );
-
-    const extLine2 = new THREE.Line(
-        new THREE.BufferGeometry().setFromPoints([
-            new THREE.Vector3(localCenter.x + radius, localCenter.y - 5, 0.1),
-            new THREE.Vector3(localCenter.x + radius, localCenter.y + 5, 0.1)
-        ]),
-        new THREE.LineBasicMaterial({ color: this.dimensionColor, linewidth: 1 })
-    );
-
-    // Текст диаметра (под линией)
-    const textPos = new THREE.Vector3(localCenter.x, localCenter.y - 10, 0.1);
-    this.createDimensionText(textPos, `Ø${(radius * 2).toFixed(1)}`);
-
-    [diamLine, extLine1, extLine2].forEach(obj => {
-        obj.userData.isDimension = true;
-        this.currentPlane.add(obj);
-        this.dimensionObjects.push(obj);
-    });
-}
-
-updateCircleDimensions(center, radius) {
-    this.clearDimensionObjects();
-    this.createCircleDimensions(center, radius);
-}
-
-createRectangleDimensions(start, end) {
-    this.clearDimensionObjects();
-
-    if (!this.currentPlane) return;
-
-    const localStart = this.currentPlane.worldToLocal(start.clone());
-    const localEnd = this.currentPlane.worldToLocal(end.clone());
-
-    const minX = Math.min(localStart.x, localEnd.x);
-    const maxX = Math.max(localStart.x, localEnd.x);
-    const minY = Math.min(localStart.y, localEnd.y);
-    const maxY = Math.max(localStart.y, localEnd.y);
-
-    const width = maxX - minX;
-    const height = maxY - minY;
-
-    // Ширина
-    const widthLineStart = new THREE.Vector3(minX, minY - 10, 0.1);
-    const widthLineEnd = new THREE.Vector3(maxX, minY - 10, 0.1);
-
-    const widthGeometry = new THREE.BufferGeometry().setFromPoints([widthLineStart, widthLineEnd]);
-    const widthMaterial = new THREE.LineBasicMaterial({
-        color: this.dimensionColor,
-        linewidth: 2
-    });
-    const widthLine = new THREE.Line(widthGeometry, widthMaterial);
-
-    const widthExt1 = new THREE.Line(
-        new THREE.BufferGeometry().setFromPoints([
-            new THREE.Vector3(minX, minY, 0.1),
-            new THREE.Vector3(minX, minY - 10, 0.1)
-        ]),
-        new THREE.LineBasicMaterial({ color: this.dimensionColor, linewidth: 1 })
-    );
-
-    const widthExt2 = new THREE.Line(
-        new THREE.BufferGeometry().setFromPoints([
-            new THREE.Vector3(maxX, minY, 0.1),
-            new THREE.Vector3(maxX, minY - 10, 0.1)
-        ]),
-        new THREE.LineBasicMaterial({ color: this.dimensionColor, linewidth: 1 })
-    );
-
-    const widthTextPos = new THREE.Vector3(minX + width/2, minY - 15, 0.1);
-    this.createDimensionText(widthTextPos, `${width.toFixed(1)} мм`);
-
-    // Высота
-    const heightLineStart = new THREE.Vector3(maxX + 10, minY, 0.1);
-    const heightLineEnd = new THREE.Vector3(maxX + 10, maxY, 0.1);
-
-    const heightGeometry = new THREE.BufferGeometry().setFromPoints([heightLineStart, heightLineEnd]);
-    const heightMaterial = new THREE.LineBasicMaterial({
-        color: this.dimensionColor,
-        linewidth: 2
-    });
-    const heightLine = new THREE.Line(heightGeometry, heightMaterial);
-
-    const heightExt1 = new THREE.Line(
-        new THREE.BufferGeometry().setFromPoints([
-            new THREE.Vector3(maxX, minY, 0.1),
-            new THREE.Vector3(maxX + 10, minY, 0.1)
-        ]),
-        new THREE.LineBasicMaterial({ color: this.dimensionColor, linewidth: 1 })
-    );
-
-    const heightExt2 = new THREE.Line(
-        new THREE.BufferGeometry().setFromPoints([
-            new THREE.Vector3(maxX, maxY, 0.1),
-            new THREE.Vector3(maxX + 10, maxY, 0.1)
-        ]),
-        new THREE.LineBasicMaterial({ color: this.dimensionColor, linewidth: 1 })
-    );
-
-    const heightTextPos = new THREE.Vector3(maxX + 15, minY + height/2, 0.1);
-    this.createDimensionText(heightTextPos, `${height.toFixed(1)} мм`);
-
-    [widthLine, widthExt1, widthExt2, heightLine, heightExt1, heightExt2].forEach(obj => {
-        obj.userData.isDimension = true;
-        this.currentPlane.add(obj);
-        this.dimensionObjects.push(obj);
-    });
-}
-
-updateRectangleDimensions(start, end) {
-    this.clearDimensionObjects();
-    this.createRectangleDimensions(start, end);
-}
-
-createPolygonDimensions(center, radius, sides) {
-    this.clearDimensionObjects();
-
-    if (!this.currentPlane) return;
-
-    const localCenter = this.currentPlane.worldToLocal(center.clone());
-
-    // Линия радиуса
-    const radiusEnd = new THREE.Vector3(localCenter.x + radius, localCenter.y, 0.1);
-
-    const radiusGeometry = new THREE.BufferGeometry().setFromPoints([
-        new THREE.Vector3(localCenter.x, localCenter.y, 0.1),
-        radiusEnd
-    ]);
-    const radiusMaterial = new THREE.LineBasicMaterial({
-        color: this.dimensionColor,
-        linewidth: 2
-    });
-    const radiusLine = new THREE.Line(radiusGeometry, radiusMaterial);
-
-    // Текст с количеством сторон
-    const textPos = new THREE.Vector3(localCenter.x, localCenter.y - 10, 0.1);
-    this.createDimensionText(textPos, `${sides}-угольник`);
-
-    radiusLine.userData.isDimension = true;
-    this.currentPlane.add(radiusLine);
-    this.dimensionObjects.push(radiusLine);
-}
-
-updatePolygonDimensions(center, radius, sides) {
-    this.clearDimensionObjects();
-    this.createPolygonDimensions(center, radius, sides);
-}
-
-createDimensionLine(start, end) {
-    this.clearDimensionObjects();
-
-    if (!this.currentPlane) return;
-
-    const localStart = this.currentPlane.worldToLocal(start.clone());
-    const localEnd = this.currentPlane.worldToLocal(end.clone());
-
-    const dx = localEnd.x - localStart.x;
-    const dy = localEnd.y - localStart.y;
-    const length = Math.sqrt(dx * dx + dy * dy);
-
-    const direction = new THREE.Vector3(dx, dy, 0).normalize();
-    const perpendicular = new THREE.Vector3(-direction.y, direction.x, 0).normalize();
-    const offsetDist = 10;
-
-    const lineStart = new THREE.Vector3(
-        localStart.x + perpendicular.x * offsetDist,
-        localStart.y + perpendicular.y * offsetDist,
-        0.1
-    );
-    const lineEnd = new THREE.Vector3(
-        localEnd.x + perpendicular.x * offsetDist,
-        localEnd.y + perpendicular.y * offsetDist,
-        0.1
-    );
-
-    const lineGeometry = new THREE.BufferGeometry().setFromPoints([lineStart, lineEnd]);
-    const lineMaterial = new THREE.LineBasicMaterial({
-        color: this.dimensionColor,
-        linewidth: 2
-    });
-    const line = new THREE.Line(lineGeometry, lineMaterial);
-
-    const extLine1 = new THREE.Line(
-        new THREE.BufferGeometry().setFromPoints([
-            new THREE.Vector3(localStart.x, localStart.y, 0.1),
-            lineStart
-        ]),
-        new THREE.LineBasicMaterial({ color: this.dimensionColor, linewidth: 1 })
-    );
-
-    const extLine2 = new THREE.Line(
-        new THREE.BufferGeometry().setFromPoints([
-            new THREE.Vector3(localEnd.x, localEnd.y, 0.1),
-            lineEnd
-        ]),
-        new THREE.LineBasicMaterial({ color: this.dimensionColor, linewidth: 1 })
-    );
-
-    const textPos = new THREE.Vector3()
-        .addVectors(lineStart, lineEnd)
-        .multiplyScalar(0.5)
-        .add(new THREE.Vector3(
-            -perpendicular.y * 5,
-            perpendicular.x * 5,
-            0.1
-        ));
-
-    this.createDimensionText(textPos, `${length.toFixed(1)} мм`);
-
-    [line, extLine1, extLine2].forEach(obj => {
-        obj.userData.isDimension = true;
-        this.currentPlane.add(obj);
-        this.dimensionObjects.push(obj);
-    });
-}
-
-updateDimensionLine(start, end) {
-    this.clearDimensionObjects();
-    this.createDimensionLine(start, end);
-}
-
-createDimensionText(position, text) {
-    const canvas = document.createElement('canvas');
-    const context = canvas.getContext('2d');
-    canvas.width = 256;
-    canvas.height = 64;
-
-    context.clearRect(0, 0, canvas.width, canvas.height);
-    context.font = 'bold 16px Arial';
-    context.fillStyle = '#00C853';
-    context.textAlign = 'center';
-    context.textBaseline = 'middle';
-    context.fillText(text, canvas.width / 2, canvas.height / 2);
-
-    const texture = new THREE.CanvasTexture(canvas);
-    texture.minFilter = THREE.LinearFilter;
-    const spriteMaterial = new THREE.SpriteMaterial({
-        map: texture,
-        transparent: true
-    });
-
-    const sprite = new THREE.Sprite(spriteMaterial);
-    sprite.position.copy(position);
-    sprite.scale.set(20, 5, 1);
-    sprite.userData.isDimension = true;
-
-    this.currentPlane.add(sprite);
-    this.dimensionObjects.push(sprite);
-}
-
-clearDimensionObjects() {
-    this.dimensionObjects.forEach(obj => {
-        if (obj.parent) {
-            obj.parent.remove(obj);
-        }
-        if (obj.geometry) obj.geometry.dispose();
-        if (obj.material) obj.material.dispose();
-        if (obj.map) obj.map.dispose();
-    });
-    this.dimensionObjects = [];
-}
+    clearDimensionObjects() {
+        this.dimensionObjects.forEach(obj => {
+            if (obj.parent) {
+                obj.parent.remove(obj);
+            }
+            if (obj.geometry) obj.geometry.dispose();
+            if (obj.material) obj.material.dispose();
+            if (obj.map) obj.map.dispose();
+        });
+        this.dimensionObjects = [];
+    }
 }

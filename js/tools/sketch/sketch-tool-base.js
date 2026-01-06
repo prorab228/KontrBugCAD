@@ -1,5 +1,5 @@
 /**
- * Базовый класс для инструментов скетча
+ * Базовый класс для инструментов скетча (модифицированный)
  */
 class SketchToolBase {
     constructor(sketchManager, name, icon) {
@@ -10,24 +10,42 @@ class SketchToolBase {
         this.tempElement = null;
         this.tempGeometry = null;
 
+        // Для двухэтапного рисования
+        this.drawingStage = 0; // 0: не начато, 1: первый клик, 2: завершение
+
         // Конфигурация полей ввода для инструмента
         this.dimensionFields = [];
     }
 
-    // Базовые методы (должны быть переопределены)
-    onMouseDown(e) { return false; }
+    // === ОСНОВНЫЕ МЕТОДЫ ===
+
+    onMouseDown(e) {
+        if (this.sketchManager.isInputActive) {
+            this.sketchManager.applyDimensionInput();
+            return true;
+        }
+        return false;
+    }
+
     onMouseMove(e) { }
     onMouseUp(e) { }
     onKeyDown(e) { return false; }
-    onCancel() { }
-    finishDrawing() { }
 
-    // Общие методы
+    // Метод отмены (должен быть переопределен)
+    onCancel() {
+        this.isDrawing = false;
+        this.drawingStage = 0;
+        this.clearTempGeometry();
+        this.tempElement = null;
+        this.sketchManager.clearDimensionObjects();
+    }
+
+    // === ОБЩИЕ МЕТОДЫ ===
+
     getPointOnPlane(event) {
         return this.sketchManager.getPointOnPlane(event);
     }
 
-    // Метод для получения конфигурации полей ввода
     getDimensionConfig() {
         return {
             fields: this.dimensionFields,
@@ -35,13 +53,39 @@ class SketchToolBase {
         };
     }
 
-    // Метод для применения размеров (должен быть переопределен)
     applyDimensions(values) {
         // По умолчанию добавляем элемент без изменений
         if (this.tempElement) {
             this.sketchManager.addElement(this.tempElement);
         }
+        this.clearToolState();
     }
+
+    clearToolState() {
+        this.isDrawing = false;
+        this.drawingStage = 0;
+        this.clearTempGeometry();
+        this.tempElement = null;
+        this.sketchManager.clearDimensionObjects();
+        this.sketchManager.hideDimensionInput();
+    }
+
+    showDimensionInput(e, values) {
+        const config = this.getDimensionConfig();
+
+        // Заполняем текущими значениями
+        if (values && this.tempElement) {
+            config.fields.forEach((field, index) => {
+                if (values[index] !== undefined) {
+                    config.fields[index].value = values[index];
+                }
+            });
+        }
+
+        this.sketchManager.showDimensionInput(e, config);
+    }
+
+    // === МЕТОДЫ ДЛЯ ГЕОМЕТРИИ ===
 
     createTempGeometry() {
         this.clearTempGeometry();
@@ -70,11 +114,8 @@ class SketchToolBase {
         }
     }
 
-    showDimensionInput(type, values) {
-        this.sketchManager.showDimensionInput(type, values);
-    }
+    // === АБСТРАКТНЫЕ МЕТОДЫ ===
 
-    // Абстрактные методы (должны быть переопределены)
     createGeometry(element) { return null; }
     updateGeometry(mesh, element) { }
     createDimensionHelpers(element) { }

@@ -1,4 +1,4 @@
-// ExtrudeManager.js - полностью исправленная версия
+// ExtrudeManager.js - полностью доработанная версия
 class ExtrudeManager {
     constructor(cadEditor) {
         this.editor = cadEditor;
@@ -7,15 +7,451 @@ class ExtrudeManager {
         this.dragging = false;
         this.startHeight = 0;
         this.startMouseY = 0;
-        this.currentOperation = 'new'; // 'new', 'cut', 'join'
-        this.currentDirection = 'positive'; // 'positive', 'negative', 'both'
+        this.currentOperation = 'new';
+        this.currentDirection = 'positive';
         this.selectedContours = [];
         this.previewMaterial = null;
         this.arrowHandle = null;
         this.lastIntersectPoint = null;
+        this.selectedFigures = [];
+        this.basePlane = null;
+        this.figureCache = null;
+        this.figureCacheTimestamp = 0;
+        this.lineGraphs = new Map();
+        this.selectionMode = 'figure';
+        this.autoDetectFigures = true;
+        
+        // Для стрелки вытягивания
+        this.extrudeArrow = null;
+        this.isDraggingArrow = false;
+        this.arrowStartPosition = null;
+        this.arrowStartHeight = 0;
+
     }
 
-    // Основные методы
+    // === МЕТОДЫ ДЛЯ СТРЕЛКИ ВЫТЯГИВАНИЯ ===
+
+    createExtrudeDirectionIndicator(figures) {
+        // Удаляем старую стрелку
+        if (this.extrudeArrow) {
+            if (this.extrudeArrow.parent) {
+                this.extrudeArrow.parent.remove(this.extrudeArrow);
+            }
+            this.extrudeArrow = null;
+        }
+
+        if (!figures || figures.length === 0 || !this.basePlane) return;
+
+        const figure = figures[0];
+        const planeNormal = new THREE.Vector3(0, 0, 1);
+        planeNormal.applyQuaternion(this.basePlane.quaternion);
+        planeNormal.normalize();
+
+        // Создаем группу для стрелки
+        this.extrudeArrow = new THREE.Group();
+        this.extrudeArrow.userData.isExtrudeArrow = true;
+        this.extrudeArrow.userData.isDraggable = true;
+
+        // Отключаем raycast для всей группы стрелки
+        this.extrudeArrow.raycast = () => {};
+
+        // Параметры стрелки
+        const arrowLength = 25;
+        const arrowHeadLength = 8;
+        const arrowHeadWidth = 4;
+
+        // Линия стрелки
+        const lineGeometry = new THREE.CylinderGeometry(0.8, 0.8, arrowLength, 8);
+        const lineMaterial = new THREE.MeshBasicMaterial({
+            color: 0x00FF00,
+            transparent: true,
+            opacity: 0.9
+        });
+        const line = new THREE.Mesh(lineGeometry, lineMaterial);
+        line.position.y = arrowLength / 2;
+        line.userData.isArrowPart = true;
+        line.userData.isDraggable = false;
+        line.raycast = () => {};
+        this.extrudeArrow.add(line);
+
+        // Наконечник стрелки
+        const coneGeometry = new THREE.ConeGeometry(arrowHeadWidth, arrowHeadLength, 8);
+        const coneMaterial = new THREE.MeshBasicMaterial({
+            color: 0x00FF00,
+            transparent: true,
+            opacity: 0.9
+        });
+        const cone = new THREE.Mesh(coneGeometry, coneMaterial);
+        cone.position.y = arrowLength + arrowHeadLength / 2;
+        cone.userData.isArrowPart = true;
+        cone.userData.isArrowHandle = true;
+        cone.userData.isDraggable = true;
+
+        // Добавляем на кончик большую невидимую сферу для лучшего захвата
+        const handleGeometry = new THREE.SphereGeometry(arrowHeadWidth * 1.5, 8, 8);
+        const handleMaterial = new THREE.MeshBasicMaterial({
+            color: 0xFF0000,
+            transparent: true,
+            opacity: 0.2,
+            visible: true,
+            depthTest: true,
+            depthWrite: false
+        });
+
+        this.arrowHandle = new THREE.Mesh(handleGeometry, handleMaterial);
+        this.arrowHandle.position.y = arrowLength + arrowHeadLength;
+        this.arrowHandle.userData.isArrowHandle = true;
+        this.arrowHandle.userData.isDraggable = true;
+
+        // Добавляем конус и ручку в группу стрелки
+        this.extrudeArrow.add(cone);
+        this.extrudeArrow.add(this.arrowHandle);
+
+        // Ориентируем стрелку по нормали плоскости
+        const up = new THREE.Vector3(0, 1, 0);
+        const rotationQuaternion = new THREE.Quaternion().setFromUnitVectors(
+            up,
+            planeNormal.clone().normalize()
+        );
+        this.extrudeArrow.quaternion.copy(rotationQuaternion);
+
+        // Позиционируем стрелку
+        this.updateArrowPosition();
+
+        // Добавляем стрелку в сцену
+        this.editor.scene.add(this.extrudeArrow);
+    }
+
+    updateArrowPosition() {
+        if (!this.extrudeArrow || !this.basePlane) return;
+
+        const height = parseFloat(document.getElementById('extrudeHeight')?.value) || 10;
+        const direction = document.getElementById('extrudeDirection')?.value || 'positive';
+
+        const selectedFigures = this.getSelectedFigures();
+        if (selectedFigures.length === 0) return;
+
+        // Получаем нормаль плоскости
+        const planeNormal = new THREE.Vector3(0, 0, 1);
+        planeNormal.applyQuaternion(this.basePlane.quaternion);
+        planeNormal.normalize();
+
+        // Получаем СРЕДНЮЮ ТОЧКУ ВСЕХ ВЫБРАННЫХ ФИГУР
+        const figuresCenter = this.getFiguresCenter(selectedFigures);
+
+        // Преобразуем локальный центр в мировые координаты
+        const worldCenter = this.basePlane.localToWorld(figuresCenter.clone());
+
+        // Получаем позицию плоскости в мировых координатах
+        const planePos = new THREE.Vector3();
+        this.basePlane.getWorldPosition(planePos);
+
+        // Вектор от плоскости до центра фигур
+        const offsetVector = new THREE.Vector3().subVectors(worldCenter, planePos);
+
+        // Базовое положение стрелки (на плоскости в центре фигур)
+        const basePos = planePos.clone().add(offsetVector);
+
+        // Рассчитываем смещение стрелки в зависимости от направления
+        let previewCenterOffset = 0;
+
+        if (direction === 'positive') {
+            previewCenterOffset = height / 2;
+        } else if (direction === 'negative') {
+            previewCenterOffset = -height / 2;
+        } else if (direction === 'both') {
+            previewCenterOffset = 0;
+        }
+
+        // Позиция стрелки = базовое положение + смещение по нормали
+        const arrowPos = basePos.clone().add(
+            planeNormal.clone().multiplyScalar(previewCenterOffset + 2)
+        );
+
+        // Обновляем позицию стрелки
+        this.extrudeArrow.position.copy(arrowPos);
+
+        // Обновляем мировую матрицу
+        this.extrudeArrow.updateMatrixWorld(true);
+    }
+
+    getFiguresCenter(figures) {
+        const center = new THREE.Vector3(0, 0, 0);
+        let totalWeight = 0;
+        
+        figures.forEach(figure => {
+            const figCenter = figure.outer.center;
+            const weight = figure.outer.area || 1;
+            center.x += figCenter.x * weight;
+            center.y += figCenter.y * weight;
+            totalWeight += weight;
+        });
+        
+        if (totalWeight > 0) {
+            center.x /= totalWeight;
+            center.y /= totalWeight;
+        }
+        
+        return center;
+    }
+
+    handleArrowDrag(event) {
+        if (!this.isDraggingArrow || !this.extrudeArrow || !this.basePlane) return;
+
+        // Рассчитываем изменение высоты на основе движения мыши по Y
+        const deltaY = this.startMouseY - event.clientY; // Инвертируем для интуитивного управления
+        const sensitivity = 0.5; // Чувствительность
+
+        let newHeight = this.arrowStartHeight + deltaY * sensitivity;
+        newHeight = Math.max(0.1, Math.min(newHeight, 1000)); // Ограничиваем 1000 мм
+        newHeight = Math.round(newHeight * 10) / 10;
+
+        // Обновляем поле ввода высоты
+        const heightInput = document.getElementById('extrudeHeight');
+        if (heightInput) {
+            heightInput.value = newHeight;
+
+            // НЕ триггерим событие input во время перетаскивания - обновляем напрямую
+            // Это предотвратит многократные обновления превью
+            if (this.extrudePreviewGroup) {
+                // Обновляем превью напрямую
+                this.updateExtrudePreviewDirect(newHeight);
+            }
+
+            // Обновляем позицию стрелки
+            this.updateArrowPositionDirect(newHeight);
+        }
+
+        event.preventDefault();
+    }
+
+    // Прямое обновление позиции стрелки
+    updateArrowPositionDirect(height) {
+        if (!this.extrudeArrow || !this.basePlane) return;
+
+        const direction = document.getElementById('extrudeDirection')?.value || 'positive';
+        const selectedFigures = this.getSelectedFigures();
+        if (selectedFigures.length === 0) return;
+
+        // Получаем нормаль плоскости
+        const planeNormal = new THREE.Vector3(0, 0, 1);
+        planeNormal.applyQuaternion(this.basePlane.quaternion);
+        planeNormal.normalize();
+
+        // Получаем СРЕДНЮЮ ТОЧКУ ВСЕХ ВЫБРАННЫХ ФИГУР
+        const figuresCenter = this.getFiguresCenter(selectedFigures);
+        const worldCenter = this.basePlane.localToWorld(figuresCenter.clone());
+
+        // Получаем позицию плоскости в мировых координатах
+        const planePos = new THREE.Vector3();
+        this.basePlane.getWorldPosition(planePos);
+
+        // Вектор от плоскости до центра фигур
+        const offsetVector = new THREE.Vector3().subVectors(worldCenter, planePos);
+
+        // Базовое положение стрелки (на плоскости в центре фигур)
+        const basePos = planePos.clone().add(offsetVector);
+
+        // Рассчитываем смещение стрелки в зависимости от направления
+        let previewCenterOffset = 0;
+
+        if (direction === 'positive') {
+            previewCenterOffset = height / 2;
+        } else if (direction === 'negative') {
+            previewCenterOffset = -height / 2;
+        } else if (direction === 'both') {
+            previewCenterOffset = 0;
+        }
+
+        // Позиция стрелки = базовое положение + смещение по нормали
+        const arrowPos = basePos.clone().add(
+            planeNormal.clone().multiplyScalar(previewCenterOffset + 2)
+        );
+
+        // Обновляем позицию стрелки
+        this.extrudeArrow.position.copy(arrowPos);
+        this.extrudeArrow.updateMatrixWorld(true);
+    }
+
+    // Прямое обновление превью без полной перестройки
+    updateExtrudePreviewDirect(height) {
+        if (!this.extrudePreviewGroup || !this.basePlane) return;
+
+        const direction = document.getElementById('extrudeDirection')?.value || 'positive';
+        const selectedFigures = this.getSelectedFigures();
+
+        // Получаем нормаль плоскости
+        const planeNormal = new THREE.Vector3(0, 0, 1);
+        planeNormal.applyQuaternion(this.basePlane.quaternion);
+        planeNormal.normalize();
+
+        // Получаем позицию плоскости
+        const planePos = new THREE.Vector3();
+        this.basePlane.getWorldPosition(planePos);
+
+        // Обновляем только масштаб по Z у превью меша
+        const previewMesh = this.extrudePreviewGroup.children[0];
+        if (previewMesh && previewMesh.geometry) {
+            // Масштабируем по Z
+            const scaleZ = height / 10; // 10 - базовая высота
+            previewMesh.scale.z = scaleZ;
+
+            // Обновляем позицию в зависимости от направления
+            let positionOffset = 0;
+            if (direction === 'positive') {
+                positionOffset = height / 2 + 0.1;
+            } else if (direction === 'negative') {
+                positionOffset = -height / 2 + 0.1;
+            } else {
+                positionOffset = 0.1;
+            }
+
+            // Позиция меша
+            previewMesh.position.copy(planePos);
+            previewMesh.position.add(planeNormal.clone().multiplyScalar(positionOffset));
+        }
+    }
+
+
+
+    handleArrowDrag(event) {
+        if (!this.isDraggingArrow || !this.extrudeArrow || !this.basePlane) return;
+
+        const selectedFigures = this.getSelectedFigures();
+        if (selectedFigures.length === 0) return;
+
+        // Рассчитываем изменение высоты на основе движения мыши по Y
+        const deltaY = event.clientY - this.startMouseY;
+        const sensitivity = 0.1; // Уменьшаем чувствительность
+        let heightChange = deltaY * sensitivity; // Инвертируем, так как движение вниз должно уменьшать высоту
+
+        // Определяем, с какой стороны плоскости находится камера
+        const planeNormal = new THREE.Vector3(0, 0, 1);
+        planeNormal.applyQuaternion(this.basePlane.quaternion);
+        planeNormal.normalize();
+
+        const cameraPosition = this.editor.camera.position;
+        const planeWorldPos = new THREE.Vector3();
+        this.basePlane.getWorldPosition(planeWorldPos);
+        const cameraToPlane = new THREE.Vector3().subVectors(cameraPosition, planeWorldPos).normalize();
+        const dot = cameraToPlane.dot(planeNormal);
+
+        // Если камера с обратной стороны, инвертируем изменение высоты
+        if (dot < 0) {
+            heightChange = -heightChange;
+        }
+
+        let newHeight = this.arrowStartHeight + heightChange;
+        newHeight = Math.max(0.1, newHeight);
+        newHeight = Math.round(newHeight * 10) / 10;
+
+        // Обновляем поле ввода высоты
+        const heightInput = document.getElementById('extrudeHeight');
+        if (heightInput) {
+            heightInput.value = newHeight;
+
+            // Триггерим событие input для обновления превью
+            const inputEvent = new Event('input', { bubbles: true });
+            heightInput.dispatchEvent(inputEvent);
+
+            this.updateExtrudePreview();
+            this.updateArrowPosition();
+        }
+
+        event.preventDefault();
+    }
+
+    handleArrowDragStart(event) {
+        if (!this.extrudeArrow) return false;
+
+        this.editor.updateMousePosition(event);
+        this.editor.raycaster.setFromCamera(this.editor.mouse, this.editor.camera);
+
+        // Собираем все перетаскиваемые части стрелки
+        const draggableParts = [];
+
+        if (this.extrudeArrow) {
+            this.extrudeArrow.traverse((child) => {
+                if (child.userData && child.userData.isDraggable) {
+                    draggableParts.push(child);
+                }
+            });
+        }
+
+        if (draggableParts.length === 0) return false;
+
+        // Обновляем мировые матрицы
+        draggableParts.forEach(part => part.updateMatrixWorld(true));
+
+        // Проверяем пересечение с перетаскиваемыми частями
+        const intersects = this.editor.raycaster.intersectObjects(draggableParts, true);
+
+        if (intersects.length > 0) {
+            this.isDraggingArrow = true;
+            this.startMouseY = event.clientY; // Сохраняем начальную позицию мыши
+            this.arrowStartHeight = parseFloat(document.getElementById('extrudeHeight')?.value) || 10;
+            document.body.style.cursor = 'grabbing';
+
+            // Захватываем события мыши на весь документ
+            this.bindGlobalDragHandlers();
+
+            event.stopPropagation();
+            event.preventDefault();
+            return true;
+        }
+
+        return false;
+    }
+
+    // Добавьте методы для глобального захвата событий
+    bindGlobalDragHandlers() {
+        this.globalMouseMoveHandler = (e) => {
+            if (this.isDraggingArrow) {
+                this.handleArrowDrag(e);
+            }
+        };
+
+        this.globalMouseUpHandler = (e) => {
+            if (this.isDraggingArrow && e.button === 0) {
+                this.handleArrowDragEnd();
+            }
+        };
+
+        document.addEventListener('mousemove', this.globalMouseMoveHandler);
+        document.addEventListener('mouseup', this.globalMouseUpHandler);
+    }
+
+    unbindGlobalDragHandlers() {
+        if (this.globalMouseMoveHandler) {
+            document.removeEventListener('mousemove', this.globalMouseMoveHandler);
+            this.globalMouseMoveHandler = null;
+        }
+
+        if (this.globalMouseUpHandler) {
+            document.removeEventListener('mouseup', this.globalMouseUpHandler);
+            this.globalMouseUpHandler = null;
+        }
+    }
+
+
+
+    // При завершении перетаскивания обновляем превью полностью
+    handleArrowDragEnd() {
+        this.isDraggingArrow = false;
+        this.unbindGlobalDragHandlers();
+        document.body.style.cursor = 'default';
+
+        // Полностью обновляем превью для чистоты геометрии
+        this.updateExtrudePreview();
+        this.updateArrowPosition();
+
+        // Сохраняем конечную высоту
+        const height = parseFloat(document.getElementById('extrudeHeight')?.value) || 10;
+        this.editor.showStatus(`Высота установлена: ${height.toFixed(1)} мм`, 'info');
+    }
+
+    // === ОСНОВНЫЕ МЕТОДЫ ===
+
     isSketchElementClosed(element) {
         if (!element || !element.userData) return false;
 
@@ -24,7 +460,9 @@ class ExtrudeManager {
         }
 
         const type = element.userData.elementType;
-        if (type === 'rectangle' || type === 'circle') {
+        if (type === 'rectangle' || type === 'circle' || 
+            type === 'polygon' || type === 'oval' || 
+            type === 'stadium' || type === 'arc') {
             return true;
         }
 
@@ -73,682 +511,722 @@ class ExtrudeManager {
                this.editor.workPlanes[0] : null;
     }
 
+    // === МЕТОДЫ ДЛЯ РАБОТЫ С ФИГУРАМИ ===
 
-
-    // Подсветка доступных контуров
-    highlightExtrudableContours() {
-        const allElements = this.editor.objectsManager.getAllSketchElements();
-
-        // Сначала обнуляем подсветку
-        allElements.forEach(element => {
-            this.editor.objectsManager.safeRestoreElementColor(element);
-        });
-
-        // Получаем замкнутые контуры
-        const closedContours = this.getClosedContoursFromElements();
-
-        // Подсвечиваем элементы, входящие в замкнутые контуры
-        closedContours.forEach(contour => {
-            if (contour.element) {
-                this.editor.objectsManager.safeSetElementColor(contour.element, 0x2196F3);
-            }
-        });
-
-        if (closedContours.length === 0) {
-            this.editor.showStatus('Нет замкнутых контуров для вытягивания', 'warning');
+    collectAllFigures() {
+        const now = Date.now();
+        if (this.figureCache && now - this.figureCacheTimestamp < 100) {
+            return this.figureCache;
         }
+
+        const allElements = this.editor.objectsManager.getAllSketchElements();
+        
+        // 1. Собираем простые замкнутые элементы
+        const simpleContours = this.collectSimpleContours(allElements);
+        
+        // 2. Собираем контуры из линий
+        let lineContours = [];
+        if (this.autoDetectFigures) {
+            lineContours = this.collectLineContours(allElements);
+        }
+        
+        // 3. Объединяем все контуры в фигуры с учетом вложенности
+        const figures = this.groupContoursIntoFigures([...simpleContours, ...lineContours]);
+        
+        this.figureCache = figures;
+        this.figureCacheTimestamp = now;
+        return figures;
     }
 
-    // Выбор контуров
-    selectContourForExtrude(event) {
+    collectSimpleContours(allElements) {
+        const contours = [];
+        
+        allElements.forEach(element => {
+            if (this.isSketchElementClosed(element)) {
+                const points = this.getElementPoints(element);
+                const area = this.calculatePolygonArea(points);
+                const center = this.calculateContourCenter(points);
+                
+                if (points.length >= 3 && Math.abs(area) > 0.001) {
+                    contours.push({
+                        element: element,
+                        points: points,
+                        area: Math.abs(area),
+                        center: center,
+                        boundingBox: this.calculateBoundingBox(points),
+                        type: 'simple',
+                        isClockwise: area > 0,
+                        isHole: false
+                    });
+                }
+            }
+        });
+        
+        return contours;
+    }
+
+    collectLineContours(allElements) {
+        const lines = allElements.filter(element => 
+            element.userData.elementType === 'line' || 
+            element.userData.elementType === 'polyline'
+        );
+        
+        if (lines.length === 0) return [];
+        
+        const graphData = this.buildLineGraphs();
+        const rawContours = this.findClosedContoursInGraph(graphData);
+        
+        const contours = [];
+        const processedLines = new Set();
+        
+        rawContours.forEach((rawContour, index) => {
+            const contourElements = [];
+            const edgeSet = new Set();
+            
+            for (let i = 0; i < rawContour.vertices.length; i++) {
+                const v1 = rawContour.vertices[i];
+                const v2 = rawContour.vertices[(i + 1) % rawContour.vertices.length];
+                
+                const edgeKey = `${Math.min(v1, v2)}-${Math.max(v1, v2)}`;
+                if (!edgeSet.has(edgeKey)) {
+                    edgeSet.add(edgeKey);
+                    
+                    const matchingEdge = graphData.edges.find(([ev1, ev2]) => 
+                        (ev1 === v1 && ev2 === v2) || (ev1 === v2 && ev2 === v1)
+                    );
+                    
+                    if (matchingEdge) {
+                        const element = matchingEdge[2];
+                        if (!processedLines.has(element)) {
+                            contourElements.push(element);
+                            processedLines.add(element);
+                        }
+                    }
+                }
+            }
+            
+            if (contourElements.length > 0) {
+                const center = this.calculateContourCenter(rawContour.points);
+                const area = this.calculatePolygonArea(rawContour.points);
+                
+                contours.push({
+                    elements: contourElements,
+                    points: rawContour.points,
+                    area: Math.abs(area),
+                    center: center,
+                    boundingBox: this.calculateBoundingBox(rawContour.points),
+                    type: 'line',
+                    isClockwise: rawContour.isClockwise,
+                    isClosed: true,
+                    isHole: false,
+                    contourId: `line_contour_${index}`
+                });
+            }
+        });
+        
+        return contours;
+    }
+
+    buildLineGraphs() {
+        this.lineGraphs.clear();
+        
+        const allElements = this.editor.objectsManager.getAllSketchElements();
+        const lines = allElements.filter(element => 
+            element.userData.elementType === 'line' || 
+            element.userData.elementType === 'polyline'
+        );
+        
+        const vertices = new Map();
+        const edges = [];
+        
+        lines.forEach(element => {
+            const points = this.getElementPoints(element);
+            if (points.length < 2) return;
+            
+            for (let i = 0; i < points.length - 1; i++) {
+                const p1 = points[i];
+                const p2 = points[i + 1];
+                
+                const key1 = `${p1.x.toFixed(4)},${p1.y.toFixed(4)}`;
+                const key2 = `${p2.x.toFixed(4)},${p2.y.toFixed(4)}`;
+                
+                if (!vertices.has(key1)) vertices.set(key1, vertices.size);
+                if (!vertices.has(key2)) vertices.set(key2, vertices.size);
+                
+                edges.push([
+                    vertices.get(key1),
+                    vertices.get(key2),
+                    element
+                ]);
+            }
+        });
+        
+        const graph = new Map();
+        edges.forEach(([v1, v2, element]) => {
+            if (!graph.has(v1)) graph.set(v1, []);
+            if (!graph.has(v2)) graph.set(v2, []);
+            
+            graph.get(v1).push({ vertex: v2, element });
+            graph.get(v2).push({ vertex: v1, element });
+        });
+        
+        const graphData = {
+            vertices: Array.from(vertices.keys()).map(key => {
+                const [x, y] = key.split(',').map(Number);
+                return new THREE.Vector2(x, y);
+            }),
+            graph: graph,
+            edges: edges
+        };
+        
+        this.lineGraphs.set('all', graphData);
+        return graphData;
+    }
+
+    findClosedContoursInGraph(graphData) {
+        const contours = [];
+        const visitedEdges = new Set();
+        const vertexCoords = graphData.vertices;
+        const graph = graphData.graph;
+        
+        const findCycles = (startVertex, currentVertex, path, visitedVertices) => {
+            if (path.length > 1 && currentVertex === startVertex) {
+                if (path.length >= 3) {
+                    const contourPoints = path.map(v => vertexCoords[v]);
+                    const area = this.calculatePolygonArea(contourPoints);
+                    if (Math.abs(area) > 0.001) {
+                        contours.push({
+                            vertices: [...path],
+                            points: contourPoints,
+                            area: Math.abs(area),
+                            isClockwise: area > 0
+                        });
+                    }
+                }
+                return;
+            }
+            
+            if (visitedVertices.has(currentVertex)) return;
+            
+            visitedVertices.add(currentVertex);
+            
+            const neighbors = graph.get(currentVertex) || [];
+            for (const neighbor of neighbors) {
+                const edgeKey = `${Math.min(currentVertex, neighbor.vertex)}-${Math.max(currentVertex, neighbor.vertex)}`;
+                if (!visitedEdges.has(edgeKey)) {
+                    visitedEdges.add(edgeKey);
+                    path.push(neighbor.vertex);
+                    findCycles(startVertex, neighbor.vertex, path, new Set([...visitedVertices]));
+                    path.pop();
+                    visitedEdges.delete(edgeKey);
+                }
+            }
+        };
+        
+        for (let startVertex = 0; startVertex < vertexCoords.length; startVertex++) {
+            findCycles(startVertex, startVertex, [startVertex], new Set());
+        }
+        
+        const uniqueContours = [];
+        const contourHashes = new Set();
+        
+        contours.forEach(contour => {
+            const minIndex = Math.min(...contour.vertices);
+            const startIdx = contour.vertices.indexOf(minIndex);
+            const normalizedVertices = [
+                ...contour.vertices.slice(startIdx),
+                ...contour.vertices.slice(0, startIdx)
+            ];
+            
+            const hash = normalizedVertices.join('-');
+            if (!contourHashes.has(hash)) {
+                contourHashes.add(hash);
+                uniqueContours.push(contour);
+            }
+        });
+        
+        return uniqueContours;
+    }
+
+    groupContoursIntoFigures(contours) {
+        const figures = [];
+        
+        // Сортируем по площади (от больших к меньшим)
+        contours.sort((a, b) => b.area - a.area);
+        
+        // Массив для отслеживания использованных контуров
+        const usedContours = new Set();
+        
+        for (let i = 0; i < contours.length; i++) {
+            if (usedContours.has(i)) continue;
+            
+            const outerContour = contours[i];
+            const holes = [];
+            
+            // Ищем контуры, которые находятся внутри этого контура
+            for (let j = i + 1; j < contours.length; j++) {
+                if (usedContours.has(j)) continue;
+                
+                const innerContour = contours[j];
+                
+                // Проверяем вложенность
+                if (this.isContourInsideContour(innerContour, outerContour)) {
+                    // Проверяем, что этот контур не пересекается с уже добавленными отверстиями
+                    let isValidHole = true;
+                    for (const hole of holes) {
+                        if (this.doContoursIntersect(innerContour, hole)) {
+                            isValidHole = false;
+                            break;
+                        }
+                    }
+                    
+                    if (isValidHole) {
+                        innerContour.isHole = true;
+                        holes.push(innerContour);
+                        usedContours.add(j);
+                    }
+                }
+            }
+            
+            figures.push({
+                outer: outerContour,
+                holes: holes,
+                area: outerContour.area,
+                id: `figure_${Date.now()}_${i}`,
+                selected: false,
+                isStandalone: holes.length === 0,
+                canBeSelected: true
+            });
+            
+            usedContours.add(i);
+        }
+        
+        return figures;
+    }
+
+    isContourInsideContour(contourA, contourB) {
+        // Проверяем несколько точек контура A
+        const testPoints = contourA.points;
+        for (const point of testPoints) {
+            if (!this.isPointInsidePolygon(point, contourB.points)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    isPointInsidePolygon(point, polygon) {
+        let inside = false;
+        for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+            const xi = polygon[i].x, yi = polygon[i].y;
+            const xj = polygon[j].x, yj = polygon[j].y;
+            
+            const intersect = ((yi > point.y) !== (yj > point.y)) &&
+                (point.x < (xj - xi) * (point.y - yi) / (yj - yi) + xi);
+            
+            if (intersect) inside = !inside;
+        }
+        return inside;
+    }
+
+    doContoursIntersect(contourA, contourB) {
+        const bboxA = contourA.boundingBox || this.calculateBoundingBox(contourA.points);
+        const bboxB = contourB.boundingBox || this.calculateBoundingBox(contourB.points);
+        
+        return !(bboxA.max.x < bboxB.min.x || 
+                bboxA.min.x > bboxB.max.x || 
+                bboxA.max.y < bboxB.min.y || 
+                bboxA.min.y > bboxB.max.y);
+    }
+
+    // === ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ ===
+
+    getElementPoints(element) {
+        if (!element.userData) return [];
+        
+        if (element.userData.localPoints) {
+            return element.userData.localPoints.map(p => new THREE.Vector2(p.x, p.y));
+        }
+        
+        if (element.geometry && element.geometry.attributes.position) {
+            const positions = element.geometry.attributes.position.array;
+            const points = [];
+            for (let i = 0; i < positions.length; i += 3) {
+                points.push(new THREE.Vector2(positions[i], positions[i + 1]));
+            }
+            return points;
+        }
+        
+        return [];
+    }
+
+    calculatePolygonArea(points) {
+        let area = 0;
+        const n = points.length;
+        for (let i = 0; i < n; i++) {
+            const j = (i + 1) % n;
+            area += points[i].x * points[j].y;
+            area -= points[j].x * points[i].y;
+        }
+        return area / 2;
+    }
+
+    calculateContourCenter(points) {
+        const center = new THREE.Vector2(0, 0);
+        points.forEach(p => {
+            center.x += p.x;
+            center.y += p.y;
+        });
+        if (points.length > 0) {
+            center.x /= points.length;
+            center.y /= points.length;
+        }
+        return center;
+    }
+
+    calculateBoundingBox(points) {
+        if (points.length === 0) {
+            return { min: new THREE.Vector2(0, 0), max: new THREE.Vector2(0, 0) };
+        }
+        
+        const min = new THREE.Vector2(Infinity, Infinity);
+        const max = new THREE.Vector2(-Infinity, -Infinity);
+        
+        points.forEach(p => {
+            min.x = Math.min(min.x, p.x);
+            min.y = Math.min(min.y, p.y);
+            max.x = Math.max(max.x, p.x);
+            max.y = Math.max(max.y, p.y);
+        });
+        
+        return { min, max };
+    }
+
+    // === МЕТОДЫ ВЫБОРА ФИГУР ===
+
+    selectFigureForExtrude(event) {
         this.editor.raycaster.setFromCamera(this.editor.mouse, this.editor.camera);
         this.editor.raycaster.params.Line = { threshold: 5 };
 
         const allSketchElements = this.editor.objectsManager.getAllSketchElements();
-        const closedElements = allSketchElements.filter(element =>
-            this.isSketchElementClosed(element)
-        );
-
-        const intersects = this.editor.raycaster.intersectObjects(closedElements, false);
+        const intersects = this.editor.raycaster.intersectObjects(allSketchElements, false);
 
         if (intersects.length > 0) {
-            const element = intersects[0].object;
+            const clickedElement = intersects[0].object;
 
-            // Проверяем, является ли элемент вложенным
-            const isNested = this.isContourNested(element, closedElements);
+            const allFigures = this.collectAllFigures();
+            const clickedFigures = this.findFiguresContainingElement(allFigures, clickedElement);
+
+            if (clickedFigures.length === 0) return false;
+
+            // Определяем, является ли элемент частью внешнего контура или отверстия
+            const isHole = this.isElementInHole(clickedElement, clickedFigures);
 
             if (event.ctrlKey || event.metaKey) {
-                // Ctrl+клик - множественный выбор (включая вложенные)
-                this.toggleContourSelection(element);
+                // Ctrl+клик: добавляем/удаляем из выделения
+                this.handleMultiSelection(clickedFigures, isHole, clickedElement);
             } else {
-                // Обычный клик
-                this.clearContourSelection();
-
-                // Если это вложенный контур, предлагаем выбрать все вложенные контуры в этой группе
-                if (isNested) {
-                    this.selectContourGroup(element, closedElements);
-                } else {
-                    this.selectSingleContour(element);
-                }
+                // Обычный клик: выделяем фигуру
+                this.handleSingleSelection(clickedFigures, isHole, clickedElement);
             }
 
-            const selectedContours = this.getSelectedContours();
-            if (selectedContours.length > 0) {
-                this.createExtrudeDirectionIndicator(selectedContours);
-                this.updateExtrudePreview();
-            }
-
+            this.updateExtrudePreview();
             this.updateExtrudeUI();
+            this.createExtrudeDirectionIndicator(this.selectedFigures);
             return true;
         }
 
         return false;
     }
 
-    // 9. Метод для выбора группы контуров (внешний + все вложенные)
-    selectContourGroup(mainContour, allContours) {
-        if (!mainContour || !allContours) return;
-
-        // Очищаем текущее выделение
-        this.clearContourSelection();
-
-        // Добавляем основной контур
-        this.selectContour(mainContour);
-
-        // Находим все вложенные контуры внутри этого
-        for (let contour of allContours) {
-            if (contour === mainContour) continue;
-
-            const contourCenter = this.getContourCenter(contour);
-            if (this.isPointInsideContour(contourCenter, mainContour)) {
-                // Этот контур находится внутри основного
-                this.selectContour(contour);
+    isElementInHole(element, figures) {
+        for (const figure of figures) {
+            // Проверяем, находится ли элемент в отверстиях фигуры
+            for (const hole of figure.holes) {
+                if ((hole.element && hole.element === element) ||
+                    (hole.elements && hole.elements.includes(element))) {
+                    return true;
+                }
             }
         }
-
-        this.editor.showStatus(`Выбрано ${this.getSelectedContours().length} контуров (включая вложенные)`, 'info');
-    }
-
-
-    // Управление выделением контуров
-    toggleContourSelection(element) {
-        if (!element.userData.isSelected) {
-            this.selectContour(element);
-        } else {
-            this.deselectContour(element);
-        }
-    }
-
-    getClosedContoursFromElements() {
-        const contours = [];
-
-        // Используем детектор контуров из SketchTools
-        if (this.editor.sketchTools && this.editor.sketchTools.closedContours) {
-            return this.editor.sketchTools.closedContours;
-        }
-
-        // Альтернативный метод: собираем все линии и проверяем
-        const allElements = this.editor.objectsManager.getAllSketchElements();
-        const lines = allElements.filter(el => el.userData.elementType === 'line');
-
-        // Простой алгоритм поиска замкнутых контуров
-        // (Здесь нужен более сложный алгоритм для реального использования)
-
-        return contours;
-    }
-
-
-    // 1. Метод для вычисления центра фигуры (контура)
-    getContourCenter(contour) {
-        if (!contour || !contour.userData || !contour.userData.localPoints) {
-            return new THREE.Vector3();
-        }
-
-        const localPoints = contour.userData.localPoints;
-        const center = new THREE.Vector3();
-
-        // Суммируем все точки
-        localPoints.forEach(point => {
-            center.add(point);
-        });
-
-        // Делим на количество точек
-        if (localPoints.length > 0) {
-            center.divideScalar(localPoints.length);
-        }
-
-        return center;
-    }
-
-    // 2. Метод для вычисления центра нескольких контуров
-    getContoursCenter(contours) {
-        if (!contours || contours.length === 0) {
-            return new THREE.Vector3();
-        }
-
-        const totalCenter = new THREE.Vector3();
-        let totalPoints = 0;
-
-        contours.forEach(contour => {
-            const contourCenter = this.getContourCenter(contour);
-            if (contourCenter.length() > 0) {
-                totalCenter.add(contourCenter);
-                totalPoints++;
-            }
-        });
-
-        if (totalPoints > 0) {
-            totalCenter.divideScalar(totalPoints);
-        }
-
-        return totalCenter;
-    }
-
-    // 5. Метод для проверки, является ли контур вложенным
-    isContourNested(contour, allContours) {
-        if (!contour || !allContours || allContours.length < 2) return false;
-
-        const contourCenter = this.getContourCenter(contour);
-        if (contourCenter.length() === 0) return false;
-
-        // Проверяем, находится ли центр этого контура внутри другого контура
-        for (let otherContour of allContours) {
-            if (otherContour === contour) continue;
-
-            if (this.isPointInsideContour(contourCenter, otherContour)) {
-                return true; // Этот контур вложен в другой
-            }
-        }
-
         return false;
     }
 
-    // 6. Метод для проверки, находится ли точка внутри контура
-    isPointInsideContour(point, contour) {
-        if (!contour || !contour.userData || !contour.userData.localPoints) return false;
+    handleSingleSelection(figures, isHole, clickedElement) {
+        this.clearFigureSelection();
 
-        const localPoints = contour.userData.localPoints;
-        if (localPoints.length < 3) return false;
-
-        // Используем алгоритм "луч"
-        let inside = false;
-
-        for (let i = 0, j = localPoints.length - 1; i < localPoints.length; j = i++) {
-            const xi = localPoints[i].x, yi = localPoints[i].y;
-            const xj = localPoints[j].x, yj = localPoints[j].y;
-
-            const intersect = ((yi > point.y) !== (yj > point.y)) &&
-                (point.x < (xj - xi) * (point.y - yi) / (yj - yi) + xi);
-
-            if (intersect) inside = !inside;
-        }
-
-        return inside;
-    }
-
-
-    selectContour(element) {
-        element.userData.isSelected = true;
-        this.editor.objectsManager.safeSetElementColor(element, 0x0066FF);
-
-        if (!this.selectedContours.includes(element)) {
-            this.selectedContours.push(element);
-        }
-    }
-
-    deselectContour(element) {
-        element.userData.isSelected = false;
-        this.editor.objectsManager.safeRestoreElementColor(element);
-
-        const index = this.selectedContours.indexOf(element);
-        if (index > -1) {
-            this.selectedContours.splice(index, 1);
-        }
-    }
-
-    selectSingleContour(element) {
-        this.clearContourSelection();
-        this.selectContour(element);
-    }
-
-    clearContourSelection() {
-        this.selectedContours.forEach(contour => {
-            this.deselectContour(contour);
-        });
-        this.selectedContours = [];
-    }
-
-    getSelectedContours() {
-        return this.selectedContours;
-    }
-
-    // Создание стрелки направления
-    createExtrudeDirectionIndicator(contours) {
-        // Удаляем старую стрелку
-        if (this.editor.extrudeArrow) {
-            if (this.editor.extrudeArrow.parent) {
-                this.editor.extrudeArrow.parent.remove(this.editor.extrudeArrow);
+        if (isHole) {
+            // Клик по отверстию - создаем отдельную фигуру из отверстия
+            const holeFigure = this.createHoleFigure(clickedElement, figures);
+            if (holeFigure) {
+                this.selectFigure(holeFigure);
             }
-            this.editor.extrudeArrow = null;
-        }
-
-        if (!contours || contours.length === 0) return;
-
-        const contour = contours[0];
-        const sketchPlane = this.findSketchPlaneForElement(contour);
-        if (!sketchPlane) return;
-
-        const planeNormal = new THREE.Vector3(0, 0, 1);
-        planeNormal.applyQuaternion(sketchPlane.quaternion);
-        planeNormal.normalize();
-
-        // Создаем группу для стрелки
-        this.editor.extrudeArrow = new THREE.Group();
-        this.editor.extrudeArrow.userData.isExtrudeArrow = true;
-        this.editor.extrudeArrow.userData.isDraggable = true;
-
-        // Отключаем raycast для всей группы стрелки
-        this.editor.extrudeArrow.raycast = () => {};
-
-        // Параметры стрелки
-        const arrowLength = 25;
-        const arrowHeadLength = 8;
-        const arrowHeadWidth = 4;
-
-        // Линия стрелки
-        const lineGeometry = new THREE.CylinderGeometry(0.8, 0.8, arrowLength, 8);
-        const lineMaterial = new THREE.MeshBasicMaterial({
-            color: 0x00FF00,
-            transparent: true,
-            opacity: 0.9
-        });
-        const line = new THREE.Mesh(lineGeometry, lineMaterial);
-        line.position.y = arrowLength / 2;
-        line.userData.isArrowPart = true;
-        line.userData.isDraggable = false; // Линия не перетаскиваемая
-        line.raycast = () => {}; // Отключаем raycast для линии
-        this.editor.extrudeArrow.add(line);
-
-        // Наконечник стрелки - делаем его перетаскиваемым
-        const coneGeometry = new THREE.ConeGeometry(arrowHeadWidth, arrowHeadLength, 8);
-        const coneMaterial = new THREE.MeshBasicMaterial({
-            color: 0x00FF00,
-            transparent: true,
-            opacity: 0.9
-        });
-        const cone = new THREE.Mesh(coneGeometry, coneMaterial);
-        cone.position.y = arrowLength + arrowHeadLength / 2;
-        cone.userData.isArrowPart = true;
-        cone.userData.isArrowHandle = true; // Кончик стрелки - это ручка
-        cone.userData.isDraggable = true;
-
-        // Добавляем на кончик большую невидимую сферу для лучшего захвата
-        const handleGeometry = new THREE.SphereGeometry(arrowHeadWidth * 1.5, 8, 8);
-        const handleMaterial = new THREE.MeshBasicMaterial({
-            color: 0xFF0000,
-            transparent: true,
-            opacity: 0.2,
-            visible: true,
-            depthTest: true,
-            depthWrite: false
-        });
-
-        this.arrowHandle = new THREE.Mesh(handleGeometry, handleMaterial);
-        this.arrowHandle.position.y = arrowLength + arrowHeadLength;
-        this.arrowHandle.userData.isArrowHandle = true;
-        this.arrowHandle.userData.isDraggable = true;
-
-        // Добавляем конус и ручку в группу стрелки
-        this.editor.extrudeArrow.add(cone);
-        this.editor.extrudeArrow.add(this.arrowHandle);
-
-        // Ориентируем стрелку по нормали плоскости
-        const up = new THREE.Vector3(0, 1, 0);
-        const rotationQuaternion = new THREE.Quaternion().setFromUnitVectors(
-            up,
-            planeNormal.clone().normalize()
-        );
-        this.editor.extrudeArrow.quaternion.copy(rotationQuaternion);
-
-        // Добавляем стрелку в сцену
-        this.editor.scene.add(this.editor.extrudeArrow);
-
-        console.log('Стрелка создана с перетаскиванием за кончик:', {
-            cone: cone,
-            arrowHandle: this.arrowHandle,
-            coneWorldPos: cone.getWorldPosition(new THREE.Vector3()),
-            handleWorldPos: this.arrowHandle.getWorldPosition(new THREE.Vector3())
-        });
-    }
-
-
-    updateArrowPosition() {
-        if (!this.editor.extrudeArrow) return;
-
-        const height = parseFloat(document.getElementById('extrudeHeight')?.value) || 10;
-        const direction = document.getElementById('extrudeDirection')?.value || 'positive';
-
-        const selectedContours = this.getSelectedContours();
-        if (selectedContours.length === 0) return;
-
-        const sketchPlane = this.findSketchPlaneForElement(selectedContours[0]);
-        if (!sketchPlane) return;
-
-        // Получаем нормаль плоскости
-        const planeNormal = new THREE.Vector3(0, 0, 1);
-        planeNormal.applyQuaternion(sketchPlane.quaternion);
-        planeNormal.normalize();
-
-        // Получаем СРЕДНЮЮ ТОЧКУ ВСЕХ ВЫБРАННЫХ КОНТУРОВ
-        const contoursCenter = this.getContoursCenter(selectedContours);
-
-        // Преобразуем локальный центр в мировые координаты
-        const worldCenter = sketchPlane.localToWorld(contoursCenter.clone());
-
-        // Получаем позицию плоскости в мировых координатах
-        const planePos = new THREE.Vector3();
-        sketchPlane.getWorldPosition(planePos);
-
-        // Вектор от плоскости до центра контуров
-        const offsetVector = new THREE.Vector3().subVectors(worldCenter, planePos);
-
-        // Базовое положение стрелки (на плоскости в центре контуров)
-        const basePos = planePos.clone().add(offsetVector);
-
-        // Рассчитываем смещение стрелки в зависимости от направления
-        let previewCenterOffset = 0;
-
-        if (direction === 'positive') {
-            previewCenterOffset = height / 2;
-        } else if (direction === 'negative') {
-            previewCenterOffset = -height / 2;
-        } else if (direction === 'both') {
-            previewCenterOffset = 0;
-        }
-
-        // Позиция стрелки = базовое положение + смещение по нормали
-        const arrowPos = basePos.clone().add(
-            planeNormal.clone().multiplyScalar(previewCenterOffset + 2) // +2 для видимости
-        );
-
-        // Обновляем позицию стрелки
-        this.editor.extrudeArrow.position.copy(arrowPos);
-
-        // Обновляем мировую матрицу
-        this.editor.extrudeArrow.updateMatrixWorld(true);
-
-        console.log('Позиция стрелки обновлена:', {
-            direction: direction,
-            height: height,
-            basePos: basePos.toArray().map(v => v.toFixed(2)),
-            arrowPos: arrowPos.toArray().map(v => v.toFixed(2)),
-            contoursCenter: contoursCenter.toArray().map(v => v.toFixed(2))
-        });
-    }
-
-    handleArrowDragStart(event) {
-        console.log('Попытка начать перетаскивание стрелки');
-
-        if (!this.editor.extrudeArrow) {
-            console.log('Нет стрелки');
-            return false;
-        }
-
-        // Обновляем позицию мыши
-        this.editor.updateMousePosition(event);
-        this.editor.raycaster.setFromCamera(this.editor.mouse, this.editor.camera);
-
-        // Собираем все перетаскиваемые части стрелки
-        const draggableParts = [];
-
-        if (this.editor.extrudeArrow) {
-            this.editor.extrudeArrow.traverse((child) => {
-                if (child.userData && child.userData.isDraggable) {
-                    draggableParts.push(child);
+        } else {
+            // Клик по внешней фигуре - выбираем всю фигуру со всеми отверстиями
+            // Находим фигуру, которой принадлежит внешний контур
+            for (const figure of figures) {
+                if ((figure.outer.element && figure.outer.element === clickedElement) ||
+                    (figure.outer.elements && figure.outer.elements.includes(clickedElement))) {
+                    this.selectFigure(figure);
+                    break;
                 }
+            }
+        }
+    }
+
+    handleMultiSelection(figures, isHole, clickedElement) {
+        if (isHole) {
+            // Ctrl+клик по отверстию
+            const holeFigure = this.createHoleFigure(clickedElement, figures);
+            if (holeFigure) {
+                // Проверяем, не является ли это отверстие частью уже выбранной внешней фигуры
+                const parentFigure = this.findParentFigure(holeFigure);
+                if (parentFigure && this.isFigureSelected(parentFigure)) {
+                    // Если родительская фигура выбрана, удаляем это отверстие из неё
+                    this.removeHoleFromFigure(parentFigure, holeFigure);
+                    // И добавляем отверстие как отдельную фигуру
+                    this.toggleFigureSelection(holeFigure);
+                } else {
+                    this.toggleFigureSelection(holeFigure);
+                }
+            }
+        } else {
+            // Ctrl+клик по внешней фигуре
+            for (const figure of figures) {
+                if ((figure.outer.element && figure.outer.element === clickedElement) ||
+                    (figure.outer.elements && figure.outer.elements.includes(clickedElement))) {
+                    this.toggleFigureSelection(figure);
+                    break;
+                }
+            }
+        }
+    }
+
+    createHoleFigure(clickedElement, figures) {
+        // Находим отверстие, к которому принадлежит элемент
+        for (const figure of figures) {
+            for (const hole of figure.holes) {
+                if ((hole.element && hole.element === clickedElement) ||
+                    (hole.elements && hole.elements.includes(clickedElement))) {
+
+                    // Создаем отдельную фигуру из отверстия
+                    return {
+                        outer: { ...hole },
+                        holes: [],
+                        area: hole.area,
+                        id: `hole_figure_${Date.now()}_${Math.random()}`,
+                        selected: false,
+                        isStandalone: true,
+                        canBeSelected: true,
+                        isHole: true,
+                        parentFigureId: figure.id
+                    };
+                }
+            }
+        }
+        return null;
+    }
+
+    findParentFigure(holeFigure) {
+        const allFigures = this.collectAllFigures();
+        return allFigures.find(fig => fig.id === holeFigure.parentFigureId);
+    }
+
+    isFigureSelected(figure) {
+        return this.selectedFigures.some(f => f.id === figure.id);
+    }
+
+    removeHoleFromFigure(figure, holeFigure) {
+        // Находим и удаляем отверстие из списка отверстий фигуры
+        const holeIndex = figure.holes.findIndex(hole => {
+            if (holeFigure.outer.element) {
+                return hole.element === holeFigure.outer.element;
+            } else if (holeFigure.outer.elements) {
+                return hole.elements && 
+                       hole.elements.length === holeFigure.outer.elements.length &&
+                       hole.elements.every((el, idx) => el === holeFigure.outer.elements[idx]);
+            }
+            return false;
+        });
+        
+        if (holeIndex > -1) {
+            figure.holes.splice(holeIndex, 1);
+            // Обновляем подсветку
+            this.highlightFigure(figure, 0x0066FF);
+        }
+    }
+
+    findFiguresContainingElement(figures, element) {
+        const containingFigures = [];
+        
+        figures.forEach(figure => {
+            if (figure.outer.element === element || 
+                (figure.outer.elements && figure.outer.elements.includes(element))) {
+                containingFigures.push(figure);
+                return;
+            }
+            
+            if (figure.holes.some(hole => 
+                hole.element === element || 
+                (hole.elements && hole.elements.includes(element)))) {
+                containingFigures.push(figure);
+                return;
+            }
+        });
+        
+        return containingFigures;
+    }
+
+    selectFigure(figure) {
+        if (!figure.selected) {
+            const figurePlane = this.getFigurePlane(figure);
+
+            if (this.selectedFigures.length === 0) {
+                this.basePlane = figurePlane;
+                figure.selected = true;
+                this.selectedFigures.push(figure);
+                this.highlightFigure(figure, 0x0066FF);
+            } else {
+                if (this.arePlanesCompatible(figurePlane, this.basePlane)) {
+                    figure.selected = true;
+                    this.selectedFigures.push(figure);
+                    this.highlightFigure(figure, 0x0066FF);
+                } else {
+                    this.editor.showStatus('Фигура находится на другой плоскости', 'warning');
+                    return;
+                }
+            }
+        }
+    }
+
+    toggleFigureSelection(figure) {
+        if (figure.selected) {
+            this.deselectFigure(figure);
+        } else {
+            this.selectFigure(figure);
+        }
+    }
+
+    highlightFigure(figure, color) {
+        if (figure.outer.element) {
+            this.editor.objectsManager.safeSetElementColor(figure.outer.element, color);
+        } else if (figure.outer.elements) {
+            figure.outer.elements.forEach(element => {
+                this.editor.objectsManager.safeSetElementColor(element, color);
             });
         }
-
-        if (draggableParts.length === 0) {
-            console.log('Нет перетаскиваемых частей стрелки');
-            return false;
-        }
-
-        // Обновляем мировые матрицы
-        draggableParts.forEach(part => part.updateMatrixWorld(true));
-
-        // Проверяем пересечение с перетаскиваемыми частями
-        const intersects = this.editor.raycaster.intersectObjects(draggableParts, true);
-
-        if (intersects.length > 0) {
-            console.log('Пересечение с кончиком стрелки обнаружено, начинаем перетаскивание');
-            this.dragging = true;
-            this.startMouseY = event.clientY;
-            this.startHeight = parseFloat(document.getElementById('extrudeHeight').value) || 10;
-            document.body.style.cursor = 'grabbing';
-
-            // Привязываем глобальные обработчики
-            this.bindGlobalDragHandlers();
-
-            event.stopPropagation();
-            event.preventDefault();
-            return true;
-        }
-
-        console.log('Пересечение с кончиком стрелки не обнаружено');
-        return false;
+        
+        figure.holes.forEach(hole => {
+            if (hole.element) {
+                this.editor.objectsManager.safeSetElementColor(hole.element, color);
+            } else if (hole.elements) {
+                hole.elements.forEach(element => {
+                    this.editor.objectsManager.safeSetElementColor(element, color);
+                });
+            }
+        });
     }
 
-
-    handleArrowDrag(event) {
-        if (!this.dragging) return;
-
-        const selectedContours = this.getSelectedContours();
-        if (selectedContours.length === 0) return;
-
-        const sketchPlane = this.findSketchPlaneForElement(selectedContours[0]);
-        if (!sketchPlane) return;
-
-        // Получаем нормаль плоскости
-        const planeNormal = new THREE.Vector3(0, 0, 1);
-        planeNormal.applyQuaternion(sketchPlane.quaternion);
-        planeNormal.normalize();
-
-        // Получаем вектор от камеры к стрелке
-        const arrowPos = this.editor.extrudeArrow.position;
-        const cameraToArrow = new THREE.Vector3().subVectors(arrowPos, this.editor.camera.position).normalize();
-
-        // Определяем, смотрит ли камера на стрелку с той же стороны, что и нормаль плоскости
-        const dotProduct = planeNormal.dot(cameraToArrow);
-
-        // Если скалярное произведение положительное, камера смотрит в направлении нормали
-        // Если отрицательное - камера с обратной стороны
-        const isCameraFacingNormal = dotProduct > 0;
-
-        // Рассчитываем изменение высоты
-        const deltaY = event.clientY - this.startMouseY;
-        const sensitivity = 0.5;
-        let heightChange = deltaY * sensitivity;
-
-        // ИНВЕРТИРУЕМ в зависимости от положения камеры
-        if (isCameraFacingNormal) {
-            // Камера смотрит в направлении нормали
-            // Движение мыши ВВЕРХ (от плоскости) должно УВЕЛИЧИВАТЬ высоту
-            // Движение мыши ВНИЗ (к плоскости) должно УМЕНЬШАТЬ высоту
-            heightChange = -heightChange;
+    getFigurePlane(figure) {
+        let element = null;
+        
+        if (figure.outer.element) {
+            element = figure.outer.element;
+        } else if (figure.outer.elements && figure.outer.elements.length > 0) {
+            element = figure.outer.elements[0];
         }
-        // Если камера с обратной стороны, оставляем как есть
+        
+        if (element) {
+            return this.findSketchPlaneForElement(element);
+        }
+        
+        return null;
+    }
 
-        let newHeight = this.startHeight + heightChange;
-        newHeight = Math.max(0.1, newHeight);
-        newHeight = Math.round(newHeight * 10) / 10;
+    arePlanesCompatible(plane1, plane2) {
+        if (!plane1 || !plane2) return false;
+        
+        const pos1 = plane1.position;
+        const pos2 = plane2.position;
+        const quat1 = plane1.quaternion;
+        const quat2 = plane2.quaternion;
+        
+        const distance = pos1.distanceTo(pos2);
+        const angle = quat1.angleTo(quat2);
+        
+        return distance < 0.001 && angle < 0.001;
+    }
 
-        console.log('Изменение высоты:', {
-            deltaY: deltaY,
-            heightChange: heightChange,
-            oldHeight: this.startHeight,
-            newHeight: newHeight,
-            isCameraFacingNormal: isCameraFacingNormal,
-            dotProduct: dotProduct.toFixed(3)
-        });
+    deselectFigure(figure) {
+        const index = this.selectedFigures.indexOf(figure);
+        if (index > -1) {
+            this.selectedFigures.splice(index, 1);
+            figure.selected = false;
+            this.unhighlightFigure(figure);
 
-        const heightInput = document.getElementById('extrudeHeight');
-        if (heightInput) {
-            heightInput.value = newHeight;
-
-            const inputEvent = new Event('input', { bubbles: true });
-            heightInput.dispatchEvent(inputEvent);
-
-            const btn = document.getElementById('performExtrude');
-            if (btn) {
-                btn.innerHTML = `<i class="fas fa-check"></i> Выполнить (${newHeight.toFixed(1)} мм)`;
+            if (this.selectedFigures.length === 0) {
+                this.basePlane = null;
             }
         }
-
-        event.preventDefault();
-        return false;
     }
 
+    unhighlightFigure(figure) {
+        this.highlightFigure(figure, null);
+    }
 
-    // Добавьте этот новый метод для визуализации позиции стрелки (для отладки):
-    debugArrowPosition() {
-        if (!this.editor.extrudeArrow) return;
-
-        const worldPos = new THREE.Vector3();
-        this.arrowHandle.getWorldPosition(worldPos);
-
-        console.log('Позиция стрелки в мире:', {
-            x: worldPos.x.toFixed(2),
-            y: worldPos.y.toFixed(2),
-            z: worldPos.z.toFixed(2)
+    clearFigureSelection() {
+        this.selectedFigures.forEach(figure => {
+            this.deselectFigure(figure);
         });
-
-        // Создаем временную точку для визуализации
-        const sphereGeometry = new THREE.SphereGeometry(2, 8, 8);
-        const sphereMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
-        const debugSphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
-        debugSphere.position.copy(worldPos);
-        this.editor.scene.add(debugSphere);
-
-        // Удаляем через 5 секунд
-        setTimeout(() => {
-            this.editor.scene.remove(debugSphere);
-            sphereGeometry.dispose();
-            sphereMaterial.dispose();
-        }, 5000);
+        this.selectedFigures = [];
+        this.basePlane = null;
     }
 
-
-    // Новый метод для привязки глобальных обработчиков:
-    bindGlobalDragHandlers() {
-        // Сохраняем ссылки на обработчики для последующего удаления
-        this.globalMouseMoveHandler = (e) => this.handleArrowDrag(e);
-        this.globalMouseUpHandler = (e) => {
-            this.handleArrowDragEnd(e);
-            this.unbindGlobalDragHandlers();
-        };
-
-        // Добавляем обработчики на весь документ
-        document.addEventListener('mousemove', this.globalMouseMoveHandler);
-        document.addEventListener('mouseup', this.globalMouseUpHandler);
+    getSelectedFigures() {
+        return this.selectedFigures;
     }
 
-    // Новый метод для удаления глобальных обработчиков:
-    unbindGlobalDragHandlers() {
-        if (this.globalMouseMoveHandler) {
-            document.removeEventListener('mousemove', this.globalMouseMoveHandler);
-            this.globalMouseMoveHandler = null;
-        }
+    // === МЕТОДЫ СОЗДАНИЯ ГЕОМЕТРИИ ===
 
-        if (this.globalMouseUpHandler) {
-            document.removeEventListener('mouseup', this.globalMouseUpHandler);
-            this.globalMouseUpHandler = null;
-        }
-    }
-
-
-    handleArrowDrag(event) {
-        if (!this.dragging) return;
-
-        // ИСПРАВЛЕНО: инвертируем направление
-        // При движении мыши ВВЕРХ (меньший clientY) - увеличиваем высоту
-        // При движении мыши ВНИЗ (больший clientY) - уменьшаем высоту
-        const deltaY = event.clientY - this.startMouseY; // Было: this.startMouseY - event.clientY
-        const sensitivity = 0.5;
-        let heightChange = deltaY * sensitivity;
-
-        // Инвертируем изменение высоты
-        const direction = document.getElementById('extrudeDirection')?.value || 'positive';
-        if (direction === 'negative') heightChange = -heightChange;
-        let newHeight = this.startHeight + heightChange; // Было: this.startHeight + heightChange
-
-        // Ограничиваем минимальную высоту
-        newHeight = Math.max(0.1, newHeight);
-
-        // Округляем до одного десятичного знака
-        newHeight = Math.round(newHeight * 10) / 10;
-
-        console.log('Изменение высоты:', {
-            startMouseY: this.startMouseY,
-            currentMouseY: event.clientY,
-            deltaY: deltaY,
-            heightChange: heightChange,
-            oldHeight: this.startHeight,
-            newHeight: newHeight
-        });
-
-        // Обновляем поле ввода высоты
-        const heightInput = document.getElementById('extrudeHeight');
-        if (heightInput) {
-            heightInput.value = newHeight;
-
-            // Генерируем событие input для обновления предпросмотра
-            const inputEvent = new Event('input', { bubbles: true });
-            heightInput.dispatchEvent(inputEvent);
-
-            // Обновляем текст кнопки
-            const btn = document.getElementById('performExtrude');
-            if (btn) {
-                btn.innerHTML = `<i class="fas fa-check"></i> Выполнить (${newHeight.toFixed(1)} мм)`;
-            }
-        }
-
-        // Предотвращаем стандартное поведение
-        event.preventDefault();
-        return false;
-    }
-
-
-
-    handleArrowDragEnd(event) {
-        if (!this.dragging) return;
-
-        console.log('Завершено перетаскивание стрелки');
-        this.dragging = false;
-        document.body.style.cursor = 'default';
-
-        // Удаляем глобальные обработчики
-        this.unbindGlobalDragHandlers();
-    }
-
-
-    createExtrusionGeometry(contours, height, direction) {
-        if (contours.length === 0) return null;
+    createExtrusionGeometryFromFigures(figures, height, direction) {
+        if (figures.length === 0 || !this.basePlane) return null;
 
         const shapes = [];
 
-        contours.forEach(element => {
-            if (!element.userData || !element.userData.localPoints) return;
+        figures.forEach(figure => {
+            // Если это отверстие, создаем фигуру из него
+            if (figure.isHole) {
+                const points = this.getFigurePointsForBasePlane(figure);
+                if (points.length >= 3) {
+                    const shapePoints = points.map(p => new THREE.Vector2(p.x, p.y));
+                    const shape = new THREE.Shape(shapePoints);
+                    shapes.push(shape);
+                }
+            } else {
+                // Если это внешняя фигура
+                const points = this.getFigurePointsForBasePlane(figure);
 
-            const localPoints = element.userData.localPoints;
-            const shapePoints = [];
+                if (points.length < 3) return;
 
-            for (let i = 0; i < localPoints.length; i++) {
-                shapePoints.push(new THREE.Vector2(localPoints[i].x, localPoints[i].y));
-            }
-
-            if (shapePoints.length > 0) {
+                const shapePoints = points.map(p => new THREE.Vector2(p.x, p.y));
                 const shape = new THREE.Shape(shapePoints);
+
+                // Добавляем отверстия, которые не выбраны отдельно
+                figure.holes.forEach(hole => {
+                    // Проверяем, не выбрано ли это отверстие отдельно
+                    const isHoleSelected = this.selectedFigures.some(f =>
+                        f.isHole && f.outer === hole
+                    );
+
+                    if (!isHoleSelected) {
+                        const holePoints = this.getContourPointsForBasePlane(hole);
+                        if (holePoints.length >= 3) {
+                            const holePath = new THREE.Path(holePoints.map(p => new THREE.Vector2(p.x, p.y)));
+                            shape.holes.push(holePath);
+                        }
+                    }
+                });
+
                 shapes.push(shape);
             }
         });
@@ -761,36 +1239,14 @@ class ExtrudeManager {
             bevelEnabled: false,
             steps: 1
         };
-
+        
         try {
             const geometry = new THREE.ExtrudeGeometry(shapes, extrudeSettings);
 
-            // Применяем трансформации для направления вытягивания
             if (direction === 'negative') {
-                // Для отрицательного направления вращаем геометрию на 180 градусов
                 geometry.translate(0, 0, -height);
             } else if (direction === 'both') {
-                // Для обоих направлений сдвигаем геометрию на половину высоты вниз
                 geometry.translate(0, 0, -height / 2);
-            }
-
-            if (contours.length > 0) {
-                const firstContour = contours[0];
-                const sketchPlane = this.findSketchPlaneForElement(firstContour);
-
-                if (sketchPlane) {
-                    // Получаем позицию контура в локальных координатах плоскости
-                    const contourPos = new THREE.Vector3();
-                    firstContour.getWorldPosition(contourPos);
-
-                    const localPos = sketchPlane.worldToLocal(contourPos.clone());
-
-                    // Смещаем геометрию в позицию контура
-                    geometry.translate(localPos.x, localPos.y, 0);
-
-                    // Также обновляем bounding box
-                    geometry.computeBoundingBox();
-                }
             }
 
             return geometry;
@@ -800,25 +1256,75 @@ class ExtrudeManager {
         }
     }
 
+    getFigurePointsForBasePlane(figure) {
+        const figurePlane = this.getFigurePlane(figure);
+        if (!figurePlane) return figure.outer.points || [];
+        
+        if (this.arePlanesCompatible(figurePlane, this.basePlane)) {
+            return figure.outer.points || [];
+        }
+        
+        return (figure.outer.points || []).map(point => {
+            const localPoint3D = new THREE.Vector3(point.x, point.y, 0);
+            const worldPoint = figurePlane.localToWorld(localPoint3D.clone());
+            const baseLocalPoint = this.basePlane.worldToLocal(worldPoint.clone());
+            return new THREE.Vector2(baseLocalPoint.x, baseLocalPoint.y);
+        });
+    }
+
+    getContourPointsForBasePlane(contour) {
+        const figurePlane = this.getFigurePlane({ outer: contour });
+        if (!figurePlane) return contour.points || [];
+        
+        if (this.arePlanesCompatible(figurePlane, this.basePlane)) {
+            return contour.points || [];
+        }
+        
+        return (contour.points || []).map(point => {
+            const localPoint3D = new THREE.Vector3(point.x, point.y, 0);
+            const worldPoint = figurePlane.localToWorld(localPoint3D.clone());
+            const baseLocalPoint = this.basePlane.worldToLocal(worldPoint.clone());
+            return new THREE.Vector2(baseLocalPoint.x, baseLocalPoint.y);
+        });
+    }
+
+    // === МЕТОДЫ ПРЕДПРОСМОТРА ===
+
+    // Оптимизированный метод обновления превью
     updateExtrudePreview() {
-        const selectedContours = this.getSelectedContours();
-        if (selectedContours.length === 0) return;
+        const selectedFigures = this.getSelectedFigures();
+        if (selectedFigures.length === 0) {
+            this.removeExtrudePreview();
+            return;
+        }
 
         const height = parseFloat(document.getElementById('extrudeHeight')?.value) || 10;
         const direction = document.getElementById('extrudeDirection')?.value || 'positive';
 
-        // Удаляем старый предпросмотр
-        if (this.extrudePreviewGroup) {
-            this.editor.objectsGroup.remove(this.extrudePreviewGroup);
-            this.extrudePreviewGroup.traverse(child => {
-                if (child.geometry) child.geometry.dispose();
-                if (child.material) child.material.dispose();
-            });
-            this.extrudePreviewGroup = null;
-        }
+        // Если превью уже существует, просто обновляем его геометрию
+        if (this.extrudePreviewGroup && this.extrudePreviewGroup.children.length > 0) {
+            const previewMesh = this.extrudePreviewGroup.children[0];
+            const newGeometry = this.createExtrusionGeometryFromFigures(selectedFigures, height, direction);
 
-        // Создаем новый предпросмотр
-        const geometry = this.createExtrusionGeometry(selectedContours, height, direction);
+            if (newGeometry) {
+                // Заменяем только геометрию, не пересоздаем весь меш
+                previewMesh.geometry.dispose();
+                previewMesh.geometry = newGeometry;
+
+                // Обновляем позицию
+                this.updatePreviewPosition(previewMesh, height, direction);
+            }
+        } else {
+            // Создаем новое превью
+            this.createNewExtrudePreview(selectedFigures, height, direction);
+        }
+    }
+
+    // Создание нового превью (используется только при первом выборе)
+    createNewExtrudePreview(selectedFigures, height, direction) {
+        this.removeExtrudePreview();
+
+        const geometry = this.createExtrusionGeometryFromFigures(selectedFigures, height, direction);
         if (!geometry) return;
 
         if (!this.previewMaterial) {
@@ -832,43 +1338,307 @@ class ExtrudeManager {
 
         const previewMesh = new THREE.Mesh(geometry, this.previewMaterial);
 
-        const firstContour = selectedContours[0];
-        const sketchPlane = this.findSketchPlaneForElement(firstContour);
-
-        if (sketchPlane) {
-            const planeWorldPos = new THREE.Vector3();
-            sketchPlane.getWorldPosition(planeWorldPos);
-
-            previewMesh.position.copy(planeWorldPos);
-            previewMesh.quaternion.copy(sketchPlane.quaternion);
-
-            // Применяем небольшое смещение для видимости
-            const planeNormal = new THREE.Vector3(0, 0, 1);
-            planeNormal.applyQuaternion(sketchPlane.quaternion);
-            planeNormal.normalize();
-
-            if (direction === 'negative') {
-                previewMesh.position.add(planeNormal.clone().multiplyScalar(0.1));
-            } else if (direction === 'both') {
-                // Ничего не делаем
-            } else {
-                previewMesh.position.add(planeNormal.clone().multiplyScalar(0.1));
-            }
-        }
+        // Обновляем позицию
+        this.updatePreviewPosition(previewMesh, height, direction);
 
         this.extrudePreviewGroup = new THREE.Group();
         this.extrudePreviewGroup.add(previewMesh);
         this.editor.objectsGroup.add(this.extrudePreviewGroup);
+    }
 
-        this.updateArrowPosition();
+    // Обновление позиции превью
+    updatePreviewPosition(mesh, height, direction) {
+        if (!mesh || !this.basePlane) return;
+
+        const planeWorldPos = new THREE.Vector3();
+        this.basePlane.getWorldPosition(planeWorldPos);
+
+        mesh.position.copy(planeWorldPos);
+        mesh.quaternion.copy(this.basePlane.quaternion);
+
+        const planeNormal = new THREE.Vector3(0, 0, 1);
+        planeNormal.applyQuaternion(this.basePlane.quaternion);
+        planeNormal.normalize();
+
+        let offset = 0.1;
+        if (direction === 'negative') {
+            offset = -height + 0.1;
+        } else if (direction === 'both') {
+            offset = -height / 2 + 0.1;
+        }
+
+        mesh.position.add(planeNormal.clone().multiplyScalar(offset));
     }
 
 
+    removeExtrudePreview() {
+        if (this.extrudePreviewGroup) {
+            this.editor.objectsGroup.remove(this.extrudePreviewGroup);
+            this.extrudePreviewGroup.traverse(child => {
+                if (child.geometry) child.geometry.dispose();
+                if (child.material) child.material.dispose();
+            });
+            this.extrudePreviewGroup = null;
+        }
+    }
+
+    // === МЕТОДЫ ОТОБРАЖЕНИЯ И ВВОДА ===
+
+    highlightFiguresOnHover(event) {
+        if (this.dragging || this.isDraggingArrow) return;
+
+        this.editor.updateMousePosition(event);
+        this.editor.raycaster.setFromCamera(this.editor.mouse, this.editor.camera);
+
+        const allSketchElements = this.editor.objectsManager.getAllSketchElements();
+        const selectableElements = allSketchElements.filter(element =>
+            this.isSketchElementClosed(element) ||
+            element.userData.elementType === 'line' ||
+            element.userData.elementType === 'polyline'
+        );
+
+        const selectedFigures = this.getSelectedFigures();
+        const selectedElements = new Set();
+        
+        selectedFigures.forEach(figure => {
+            if (figure.outer.element) selectedElements.add(figure.outer.element);
+            if (figure.outer.elements) figure.outer.elements.forEach(el => selectedElements.add(el));
+            figure.holes.forEach(hole => {
+                if (hole.element) selectedElements.add(hole.element);
+                if (hole.elements) hole.elements.forEach(el => selectedElements.add(el));
+            });
+        });
+
+        selectableElements.forEach(element => {
+            if (!selectedElements.has(element) && element.userData.hoverHighlighted) {
+                this.editor.objectsManager.safeRestoreElementColor(element);
+                element.userData.hoverHighlighted = false;
+            }
+        });
+
+        const intersects = this.editor.raycaster.intersectObjects(selectableElements, false);
+
+        if (intersects.length > 0) {
+            const element = intersects[0].object;
+            
+            if (!selectedElements.has(element)) {
+                const allFigures = this.collectAllFigures();
+                const containingFigures = this.findFiguresContainingElement(allFigures, element);
+                
+                if (containingFigures.length > 0) {
+                    document.body.style.cursor = 'pointer';
+                    
+                    containingFigures.forEach(figure => {
+                        this.highlightFigure(figure, 0xFFFF00);
+                    });
+                    
+                    element.userData.hoverHighlighted = true;
+                } else {
+                    document.body.style.cursor = 'default';
+                }
+            } else {
+                document.body.style.cursor = 'default';
+            }
+        } else {
+            document.body.style.cursor = 'default';
+        }
+    }
+
+    showExtrudeUI() {
+        const oldUI = document.getElementById('extrudeUI');
+        if (oldUI) oldUI.remove();
+
+        const selectedFigures = this.getSelectedFigures();
+        const selectedCount = selectedFigures.length;
+
+        const container = document.createElement('div');
+        container.id = 'extrudeUI';
+        container.className = 'extrude-ui';
+        container.innerHTML = `
+            <div class="extrude-header">
+                <h3><i class="fas fa-arrows-alt-v"></i> Вытягивание фигур</h3>
+                <button id="cancelExtrude" class="btn-secondary">
+                    <i class="fas fa-times"></i> Отмена
+                </button>
+            </div>
+            <div class="extrude-controls">
+                <div class="control-group">
+                    <label>Высота (мм):</label>
+                    <input type="number" id="extrudeHeight" value="10" step="0.1" min="0.1" style="width: 100px;">
+                </div>
+                <div class="control-group">
+                    <label>Направление:</label>
+                    <select id="extrudeDirection">
+                        <option value="positive">Наружу (по нормали)</option>
+                        <option value="negative">Внутрь (против нормали)</option>
+                        <option value="both">В обе стороны</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label>Операция:</label>
+                    <select id="extrudeOperation">
+                        <option value="new">Новый объект</option>
+                        <option value="cut">Вырезать из существующих</option>
+                        <option value="join">Объединить с существующими</option>
+                    </select>
+                </div>
+                <div class="extrude-info">
+                    <div id="selectedContourInfo" style="font-size: 12px; margin: 10px 0;">
+                        ${selectedCount > 0 ? this.getFigureInfoText(selectedFigures) : 'Выберите фигуру(ы) (Ctrl+клик для выбора вложенных)'}
+                    </div>
+                    <div id="operationHint" style="font-size: 11px; color: #888; margin: 5px 0;">
+                        ${selectedCount > 0 ? this.getOperationHint() : ''}
+                    </div>
+                </div>
+                <button id="performExtrude" class="btn-primary" ${selectedCount > 0 ? '' : 'disabled'}>
+                    <i class="fas fa-check"></i> ${this.getOperationButtonText()}
+                </button>
+            </div>
+            <div class="extrude-hint">
+                <i class="fas fa-info-circle"></i>
+                <div>• Клик по внешней фигуре: вытягивание со всеми отверстиями</div>
+                <div>• Клик по внутренней фигуре: вытягивание только внутренней фигуры</div>
+                <div>• Ctrl+клик: множественный выбор фигур</div>
+                <div>• Если выделена внешняя фигура и через Ctrl выделены отверстия, они исключаются из вытягивания</div>
+                <div>• Перетаскивайте стрелку для изменения высоты</div>
+            </div>
+        `;
+
+        document.querySelector('.viewport-container').appendChild(container);
+
+        container.querySelector('#cancelExtrude').addEventListener('click', () => {
+            this.cancelExtrudeMode();
+        });
+
+        container.querySelector('#performExtrude').addEventListener('click', () => {
+            this.performExtrude();
+        });
+
+        const heightInput = container.querySelector('#extrudeHeight');
+        heightInput.addEventListener('input', (e) => {
+            this.updateExtrudePreview();
+            this.updateArrowPosition();
+            
+            const btn = document.querySelector('#performExtrude');
+            if (btn && !btn.disabled) {
+                const height = parseFloat(e.target.value) || 10;
+                btn.innerHTML = `<i class="fas fa-check"></i> ${this.getOperationButtonText(height)}`;
+            }
+        });
+
+        const directionSelect = container.querySelector('#extrudeDirection');
+        directionSelect.addEventListener('change', () => {
+            this.updateExtrudePreview();
+            this.updateArrowPosition();
+        });
+
+        const operationSelect = container.querySelector('#extrudeOperation');
+        operationSelect.addEventListener('change', () => {
+            this.currentOperation = operationSelect.value;
+            this.updateOperationHint();
+            this.updateExtrudeUI();
+        });
+    }
+
+    getFigureInfoText(figures) {
+        const figureCount = figures.length;
+        let holeCount = 0;
+        let externalCount = 0;
+        let internalCount = 0;
+        
+        figures.forEach(fig => {
+            if (fig.isHole) {
+                internalCount++;
+            } else {
+                externalCount++;
+                holeCount += fig.holes.length;
+            }
+        });
+        
+        let text = `✓ Выбрано фигур: ${figureCount}`;
+        if (externalCount > 0) text += ` (внешних: ${externalCount})`;
+        if (internalCount > 0) text += ` (внутренних: ${internalCount})`;
+        if (holeCount > 0 && externalCount > 0) text += ` (отверстий в выбранных: ${holeCount})`;
+        
+        if (this.basePlane) {
+            const planeName = this.basePlane.userData?.name || 'основной плоскости';
+            text += ` на ${planeName}`;
+        }
+        
+        return text;
+    }
+
+    getOperationHint() {
+        const operation = document.getElementById('extrudeOperation')?.value || 'new';
+        const hints = {
+            'new': 'Создаст новый объект на базовой плоскости',
+            'cut': 'Вырежет из пересекающихся объектов на базовой плоскости',
+            'join': 'Объединит с пересекающихся объектов на базовой плоскости'
+        };
+        return hints[operation] || '';
+    }
+
+    getOperationButtonText(height = null) {
+        const operation = document.getElementById('extrudeOperation')?.value || 'new';
+        const selectedFigures = this.getSelectedFigures();
+        const figureCount = selectedFigures.length;
+        const heightStr = height ? `${height.toFixed(1)} мм` : '';
+
+        const texts = {
+            'new': `Создать ${figureCount > 1 ? `(${figureCount} фигур)` : ''} ${heightStr}`,
+            'cut': `Вырезать ${figureCount > 1 ? `(${figureCount} фигур)` : ''} ${heightStr}`,
+            'join': `Объединить ${figureCount > 1 ? `(${figureCount} фигур)` : ''} ${heightStr}`
+        };
+
+        return texts[operation] || 'Выполнить';
+    }
+
+    updateOperationHint() {
+        const hintElement = document.getElementById('operationHint');
+        if (hintElement) {
+            hintElement.textContent = this.getOperationHint();
+        }
+    }
+
+    updateExtrudeUI() {
+        const selectedContourInfo = document.getElementById('selectedContourInfo');
+        const performExtrudeBtn = document.getElementById('performExtrude');
+        const operationHint = document.getElementById('operationHint');
+
+        if (selectedContourInfo) {
+            const selectedFigures = this.getSelectedFigures();
+            const figureCount = selectedFigures.length;
+            if (figureCount > 0) {
+                selectedContourInfo.textContent = this.getFigureInfoText(selectedFigures);
+                selectedContourInfo.style.color = '#4CAF50';
+            } else {
+                selectedContourInfo.textContent = 'Выберите фигуру(ы) (Ctrl+клик для выбора вложенных)';
+                selectedContourInfo.style.color = '#888';
+            }
+        }
+
+        if (operationHint) {
+            operationHint.textContent = this.getOperationHint();
+        }
+
+        if (performExtrudeBtn) {
+            const selectedFigures = this.getSelectedFigures();
+            const figureCount = selectedFigures.length;
+            performExtrudeBtn.disabled = figureCount === 0;
+
+            if (figureCount > 0) {
+                const height = document.getElementById('extrudeHeight')?.value || 10;
+                performExtrudeBtn.innerHTML = `<i class="fas fa-check"></i> ${this.getOperationButtonText(parseFloat(height))}`;
+            }
+        }
+    }
+
+    // === МЕТОДЫ ВЫПОЛНЕНИЯ ВЫТЯГИВАНИЯ ===
 
     performExtrude() {
-        const selectedContours = this.getSelectedContours();
-        if (selectedContours.length === 0) {
-            this.editor.showStatus('Выберите контур(ы) для вытягивания', 'error');
+        const selectedFigures = this.getSelectedFigures();
+        if (selectedFigures.length === 0) {
+            this.editor.showStatus('Выберите фигуру(ы) для вытягивания', 'error');
             return;
         }
 
@@ -876,94 +1646,105 @@ class ExtrudeManager {
         const direction = document.getElementById('extrudeDirection')?.value || 'positive';
         const operation = document.getElementById('extrudeOperation')?.value || 'new';
 
-        if (isNaN(height) /*|| height <= 0*/) {
-            this.editor.showStatus('Введите корректную высоту (больше 0)', 'error');
+        if (isNaN(height)) {
+            this.editor.showStatus('Введите корректную высоту', 'error');
             return;
         }
 
-        const geometry = this.createExtrusionGeometry(selectedContours, height, direction);
+        if (!this.basePlane) {
+            this.editor.showStatus('Не определена базовая плоскость', 'error');
+            return;
+        }
+
+        const geometry = this.createExtrusionGeometryFromFigures(selectedFigures, height, direction);
         if (!geometry) {
             this.editor.showStatus('Не удалось создать геометрию выдавливания', 'error');
             return;
         }
 
-        const mesh = this.createExtrusionMesh(geometry, height, direction, selectedContours);
+        const mesh = this.createExtrusionMesh(geometry, height, direction, selectedFigures);
         if (!mesh) {
             this.editor.showStatus('Не удалось создать объект выдавливания', 'error');
             return;
         }
 
-        // СОХРАНЯЕМ ИСХОДНЫЕ КОНТУРЫ ДЛЯ ИСТОРИИ
-        const sourceContourData = selectedContours.map(contour => {
-            return this.editor.projectManager.serializeObject(contour);
+        const planeWorldPos = new THREE.Vector3();
+        this.basePlane.getWorldPosition(planeWorldPos);
+        
+        mesh.position.copy(planeWorldPos);
+        mesh.quaternion.copy(this.basePlane.quaternion);
+
+        const sourceFigureData = selectedFigures.map(figure => {
+            const elements = [];
+            if (figure.outer.element) elements.push(figure.outer.element);
+            if (figure.outer.elements) elements.push(...figure.outer.elements);
+            return elements.map(element => this.editor.projectManager.serializeObject(element));
         });
 
-        // Получаем родительскую плоскость для сохранения ее данных
-        const sketchPlane = this.findSketchPlaneForElement(selectedContours[0]);
-        let planeData = null;
-        if (sketchPlane) {
-            planeData = this.editor.projectManager.serializeObject(sketchPlane);
-        }
+        const historyData = {
+            sourceFigures: sourceFigureData,
+            sketchPlane: this.editor.projectManager.serializeObject(this.basePlane),
+            height: height,
+            direction: direction,
+            operation: operation
+        };
 
         switch (operation) {
             case 'new':
-                this.handleNewOperation(mesh, {
-                    sourceContours: sourceContourData,
-                    sketchPlane: planeData,
-                    height: height,
-                    direction: direction,
-                    operation: operation
-                });
+                this.handleNewOperation(mesh, historyData);
                 break;
             case 'cut':
-                this.handleCutOperation(mesh, {
-                    sourceContours: sourceContourData,
-                    sketchPlane: planeData,
-                    height: height,
-                    direction: direction,
-                    operation: operation
-                });
+                this.handleCutOperation(mesh, historyData);
                 break;
             case 'join':
-                this.handleJoinOperation(mesh, {
-                    sourceContours: sourceContourData,
-                    sketchPlane: planeData,
-                    height: height,
-                    direction: direction,
-                    operation: operation
-                });
+                this.handleJoinOperation(mesh, historyData);
                 break;
         }
 
-        this.exitExtrudeMode();
+        this.cancelExtrudeMode();
         this.editor.showStatus(`Выполнено выдавливание (${height} мм)`, 'success');
     }
 
+    createExtrusionMesh(geometry, height, direction, sourceFigures) {
+        if (!geometry) return null;
+
+        const material = new THREE.MeshPhongMaterial({
+            color: 0x4CAF50,
+            transparent: true,
+            opacity: 0.9,
+            side: THREE.DoubleSide
+        });
+
+        const mesh = new THREE.Mesh(geometry, material);
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+
+        mesh.userData = {
+            type: 'extrusion',
+            sourceFigureIds: sourceFigures.map(f => f.id),
+            height: height,
+            direction: direction,
+            operation: this.currentOperation,
+            name: `Вытягивание (${height} мм)`,
+            figureCount: sourceFigures.length,
+            holeCount: sourceFigures.reduce((sum, fig) => sum + (fig.holes ? fig.holes.length : 0), 0),
+            basePlaneId: this.basePlane?.uuid,
+            createdAt: new Date().toISOString()
+        };
+
+        return mesh;
+    }
+
     handleNewOperation(mesh, historyData) {
-        // Сохраняем финальную позицию и масштаб
         const finalPosition = mesh.position.clone();
         const finalScale = mesh.scale.clone();
 
         this.editor.objectsGroup.add(mesh);
         this.editor.objects.push(mesh);
 
-        // Запускаем анимацию
-//        mesh.scale.set(0.1, 0.1, 0.1);
-//        new TWEEN.Tween(mesh.scale)
-//            .to({ x: finalScale.x, y: finalScale.y, z: finalScale.z }, 300)
-//            .easing(TWEEN.Easing.Elastic.Out)
-//            .start()
-//            .onComplete(() => {
-//                // Обновляем userData после анимации
-//                mesh.userData.finalPosition = finalPosition.toArray();
-//                mesh.userData.finalScale = finalScale.toArray();
-//            });
-
         this.editor.selectObject(mesh);
 
-        // ДОБАВЛЯЕМ В ИСТОРИЮ с информацией о финальном состоянии
         const serializedMesh = this.editor.projectManager.serializeObjectForHistory(mesh);
-        // Добавляем информацию о финальном состоянии
         serializedMesh.userData.finalPosition = finalPosition.toArray();
         serializedMesh.userData.finalScale = finalScale.toArray();
 
@@ -980,7 +1761,6 @@ class ExtrudeManager {
         });
     }
 
-
     handleCutOperation(mesh, historyData) {
         const intersectingObjects = this.findIntersectingObjects(mesh);
 
@@ -996,7 +1776,6 @@ class ExtrudeManager {
             return;
         }
 
-        // СОХРАНЯЕМ ДАННЫЕ ИСХОДНЫХ ОБЪЕКТОВ ДЛЯ ИСТОРИИ
         const targetObjectsData = intersectingObjects.map(obj => {
             return this.editor.projectManager.serializeObjectForHistory(obj);
         });
@@ -1041,7 +1820,6 @@ class ExtrudeManager {
             return;
         }
 
-        // СОХРАНЯЕМ ДАННЫЕ ДЛЯ ИСТОРИИ
         const objectsData = intersectingObjects.map(obj => {
             return this.editor.projectManager.serializeObjectForHistory(obj);
         });
@@ -1089,7 +1867,6 @@ class ExtrudeManager {
     }
 
     replaceObjectWithResult(originalObject, result, operationType, historyContext) {
-        // СОХРАНЯЕМ ПРЕЖНИЙ РАЗМЕР И ПОЗИЦИЮ
         const originalBox = new THREE.Box3().setFromObject(originalObject);
         const originalSize = new THREE.Vector3();
         originalBox.getSize(originalSize);
@@ -1116,15 +1893,8 @@ class ExtrudeManager {
         this.editor.objectsGroup.add(result);
         this.editor.objects.push(result);
 
-//        result.scale.set(0.1, 0.1, 0.1);
-//        new TWEEN.Tween(result.scale)
-//            .to({ x: 1, y: 1, z: 1 }, 300)
-//            .easing(TWEEN.Easing.Elastic.Out)
-//            .start();
-
         this.editor.selectObject(result);
 
-        // ДОБАВЛЯЕМ В ИСТОРИЮ
         this.editor.history.addAction({
             type: 'boolean',
             operation: 'subtract',
@@ -1137,12 +1907,9 @@ class ExtrudeManager {
             resultData: this.editor.projectManager.serializeObjectForHistory(result),
             context: historyContext?.sourceExtrude
         });
-
     }
 
-
     replaceObjectsWithResult(originalObjects, result, operationType, historyContext) {
-        // СОХРАНЯЕМ ДАННЫЕ ОРИГИНАЛЬНЫХ ОБЪЕКТОВ
         const originalData = originalObjects.map(obj => {
             const box = new THREE.Box3().setFromObject(obj);
             const size = new THREE.Vector3();
@@ -1180,15 +1947,8 @@ class ExtrudeManager {
         this.editor.objectsGroup.add(result);
         this.editor.objects.push(result);
 
-//        result.scale.set(0.1, 0.1, 0.1);
-//        new TWEEN.Tween(result.scale)
-//            .to({ x: 1, y: 1, z: 1 }, 300)
-//            .easing(TWEEN.Easing.Elastic.Out)
-//            .start();
-
         this.editor.selectObject(result);
 
-        // ДОБАВЛЯЕМ В ИСТОРИЮ
         this.editor.history.addAction({
             type: 'boolean',
             operation: 'union',
@@ -1200,362 +1960,104 @@ class ExtrudeManager {
         });
     }
 
-    createExtrusionMesh(geometry, height, direction, sourceContours) {
-        if (!geometry) return null;
+    // === ЗАВЕРШЕНИЕ РЕЖИМА ВЫТЯГИВАНИЯ ===
 
-        const material = new THREE.MeshPhongMaterial({
-            color: 0x4CAF50,
-            transparent: true,
-            opacity: 0.9,
-            side: THREE.DoubleSide
-        });
-
-        const mesh = new THREE.Mesh(geometry, material);
-        mesh.castShadow = true;
-        mesh.receiveShadow = true;
-
-        if (sourceContours.length === 0) return mesh;
-
-        const firstContour = sourceContours[0];
-        const sketchPlane = this.findSketchPlaneForElement(firstContour);
-
-        if (sketchPlane) {
-            // Позиционируем меш на плоскости
-            const planeWorldPos = new THREE.Vector3();
-            sketchPlane.getWorldPosition(planeWorldPos);
-
-            mesh.position.copy(planeWorldPos);
-            mesh.quaternion.copy(sketchPlane.quaternion);
-
-            // Применяем небольшое смещение для корректного отображения
-            const planeNormal = new THREE.Vector3(0, 0, 1);
-            planeNormal.applyQuaternion(sketchPlane.quaternion);
-            planeNormal.normalize();
-
-            if (direction === 'negative') {
-                // Для отрицательного направления немного поднимаем
-                mesh.position.add(planeNormal.clone().multiplyScalar(0.1));
-            } else if (direction === 'both') {
-                // Для обоих направлений оставляем как есть
-            } else {
-                // Для положительного направления немного опускаем
-                mesh.position.add(planeNormal.clone().multiplyScalar(0.1));
-            }
-        }
-
-        mesh.userData = {
-            type: 'extrusion',
-            sourceContourIds: sourceContours.map(c => c.uuid),
-            elementTypes: sourceContours.map(c => c.userData.elementType),
-            height: height,
-            direction: direction,
-            operation: this.currentOperation,
-            name: `Вытягивание (${height} мм)`,
-            sourceCount: sourceContours.length,
-            createdAt: new Date().toISOString()
-        };
-
-        return mesh;
-    }
-
-
-    showExtrudeUI() {
-        const oldUI = document.getElementById('extrudeUI');
-        if (oldUI) oldUI.remove();
-
-        const selectedCount = this.getSelectedContours().length;
-
-        const container = document.createElement('div');
-        container.id = 'extrudeUI';
-        container.className = 'extrude-ui';
-        container.innerHTML = `
-            <div class="extrude-header">
-                <h3><i class="fas fa-arrows-alt-v"></i> Вытягивание скетча</h3>
-                <button id="cancelExtrude" class="btn-secondary">
-                    <i class="fas fa-times"></i> Отмена
-                </button>
-            </div>
-            <div class="extrude-controls">
-                <div class="control-group">
-                    <label>Высота (мм):</label>
-                    <input type="number" id="extrudeHeight" value="10" step="0.1" style="width: 100px;">
-
-                </div>
-                <div class="control-group">
-                    <label>Направление:</label>
-                    <select id="extrudeDirection">
-                        <option value="positive">Наружу (по нормали)</option>
-                        <option value="negative">Внутрь (против нормали)</option>
-                        <option value="both">В обе стороны</option>
-                    </select>
-                </div>
-                <div class="control-group">
-                    <label>Операция:</label>
-                    <select id="extrudeOperation">
-                        <option value="new">Новый объект</option>
-                        <option value="cut">Вырезать из существующих</option>
-                        <option value="join">Объединить с существующими</option>
-                    </select>
-                </div>
-                <div class="extrude-info">
-                    <div id="selectedContourInfo" style="font-size: 12px; margin: 10px 0;">
-                        ${selectedCount > 0 ? `✓ Выбрано контуров: ${selectedCount}` : 'Выберите контур(ы) (Ctrl+клик для множественного выбора)'}
-                    </div>
-                    <div id="operationHint" style="font-size: 11px; color: #888; margin: 5px 0;">
-                        ${selectedCount > 0 ? this.getOperationHint() : ''}
-                    </div>
-                </div>
-                <button id="performExtrude" class="btn-primary" ${selectedCount > 0 ? '' : 'disabled'}>
-                    <i class="fas fa-check"></i> ${this.getOperationButtonText()}
-                </button>
-            </div>
-            <div class="extrude-hint">
-                <i class="fas fa-info-circle"></i>
-                <div>• Перетаскивайте зеленую стрелку для изменения высоты</div>
-                <div>• Или используйте кнопку <i class="fas fa-arrows-alt-v"></i> для ручного ввода</div>
-            </div>
-        `;
-
-        document.querySelector('.viewport-container').appendChild(container);
-
-        container.querySelector('#cancelExtrude').addEventListener('click', () => {
-            this.exitExtrudeMode();
-        });
-
-        container.querySelector('#performExtrude').addEventListener('click', () => {
-            this.performExtrude();
-        });
-
-//        container.querySelector('#dragHeightBtn').addEventListener('click', () => {
-//            const heightInput = document.getElementById('extrudeHeight');
-//            const newHeight = prompt('Введите высоту (мм):', heightInput.value);
-//            if (newHeight && !isNaN(parseFloat(newHeight))) {
-//                heightInput.value = parseFloat(newHeight).toFixed(1);
-//                this.updateExtrudePreview();
-//            }
-//        });
-
-        const heightInput = container.querySelector('#extrudeHeight');
-        heightInput.addEventListener('input', (e) => {
-            this.updateExtrudePreview();
-
-            const btn = document.querySelector('#performExtrude');
-            if (btn && !btn.disabled) {
-                const height = parseFloat(e.target.value) || 10;
-                btn.innerHTML = `<i class="fas fa-check"></i> ${this.getOperationButtonText(height)}`;
-            }
-        });
-
-        const directionSelect = container.querySelector('#extrudeDirection');
-        directionSelect.addEventListener('change', () => {
-            this.updateExtrudePreview();
-            this.updateArrowPosition();
-        });
-
-        const operationSelect = container.querySelector('#extrudeOperation');
-        operationSelect.addEventListener('change', () => {
-            this.currentOperation = operationSelect.value;
-            this.updateOperationHint();
-            this.updateExtrudeUI();
-        });
-    }
-
-    getOperationHint() {
-        const operation = document.getElementById('extrudeOperation')?.value || 'new';
-        const hints = {
-            'new': 'Создаст новый отдельный объект',
-            'cut': 'Вырежет из пересекающихся объектов',
-            'join': 'Объединит с пересекающимися объектами'
-        };
-        return hints[operation] || '';
-    }
-
-    getOperationButtonText(height = null) {
-        const operation = document.getElementById('extrudeOperation')?.value || 'new';
-        const selectedCount = this.getSelectedContours().length;
-        const heightStr = height ? `${height.toFixed(1)} мм` : '';
-
-        const texts = {
-            'new': `Создать ${selectedCount > 1 ? `(${selectedCount} шт.)` : ''} ${heightStr}`,
-            'cut': `Вырезать ${selectedCount > 1 ? `(${selectedCount} шт.)` : ''} ${heightStr}`,
-            'join': `Объединить ${selectedCount > 1 ? `(${selectedCount} шт.)` : ''} ${heightStr}`
-        };
-
-        return texts[operation] || 'Выполнить';
-    }
-
-    updateOperationHint() {
-        const hintElement = document.getElementById('operationHint');
-        if (hintElement) {
-            hintElement.textContent = this.getOperationHint();
-        }
-    }
-
-    updateExtrudeUI() {
-        const selectedContourInfo = document.getElementById('selectedContourInfo');
-        const performExtrudeBtn = document.getElementById('performExtrude');
-        const operationHint = document.getElementById('operationHint');
-
-        if (selectedContourInfo) {
-            const selectedCount = this.getSelectedContours().length;
-            selectedContourInfo.textContent = selectedCount > 0 ?
-                `✓ Выбрано контуров: ${selectedCount}` :
-                'Выберите контур(ы) (Ctrl+клик для множественного выбора)';
-            selectedContourInfo.style.color = selectedCount > 0 ? '#4CAF50' : '#888';
-        }
-
-        if (operationHint) {
-            operationHint.textContent = this.getOperationHint();
-        }
-
-        if (performExtrudeBtn) {
-            const selectedCount = this.getSelectedContours().length;
-            performExtrudeBtn.disabled = selectedCount === 0;
-
-            if (selectedCount > 0) {
-                const height = document.getElementById('extrudeHeight')?.value || 10;
-                performExtrudeBtn.innerHTML = `<i class="fas fa-check"></i> ${this.getOperationButtonText(parseFloat(height))}`;
-            }
-        }
-    }
-
-   highlightContoursOnHover(event) {
-        if (this.dragging) return;
-
-        this.editor.updateMousePosition(event);
-        this.editor.raycaster.setFromCamera(this.editor.mouse, this.editor.camera);
-
-        // Сначала проверяем, не навели ли мы на кончик стрелки
-        if (this.editor.extrudeArrow) {
-            const draggableParts = [];
-
-            this.editor.extrudeArrow.traverse((child) => {
-                if (child.userData && child.userData.isDraggable) {
-                    draggableParts.push(child);
-                }
-            });
-
-            if (draggableParts.length > 0) {
-                const intersects = this.editor.raycaster.intersectObjects(draggableParts, true);
-
-                if (intersects.length > 0) {
-                    console.log('Наведение на кончик стрелки обнаружено');
-                    document.body.style.cursor = 'move';
-                    return;
-                }
-            }
-        }
-
-        // Получаем все скетч-элементы
-        const allSketchElements = this.editor.objectsManager.getAllSketchElements();
-        const closedElements = allSketchElements.filter(element =>
-            this.isSketchElementClosed(element)
-        );
-
-        const selectedContours = this.getSelectedContours();
-
-        // Убираем подсветку с элементов
-        allSketchElements.forEach(element => {
-            if (!selectedContours.includes(element) && element.userData.hoverHighlighted) {
-                if (element.userData.originalColor) {
-                    const tempMaterial = element.material.clone();
-                    tempMaterial.color.copy(element.userData.originalColor);
-                    element.material = tempMaterial;
-                    element.material.needsUpdate = true;
-                }
-                element.userData.hoverHighlighted = false;
-            }
-        });
-
-        // Проверяем пересечение с ЗАМКНУТЫМИ элементами
-        const intersects = this.editor.raycaster.intersectObjects(closedElements, false);
-
-        if (intersects.length > 0) {
-            const element = intersects[0].object;
-
-            // Проверяем, не является ли этот элемент вложенным
-            const isNested = this.isContourNested(element, closedElements);
-
-            // Для вложенных элементов показываем специальный курсор
-            if (isNested) {
-                document.body.style.cursor = 'crosshair';
-
-                if (!selectedContours.includes(element) && !element.userData.hoverHighlighted) {
-                    element.userData.hoverHighlighted = true;
-
-                    if (!element.userData.originalColor) {
-                        element.userData.originalColor = element.material.color.clone();
-                    }
-
-                    const tempMaterial = element.material.clone();
-                    tempMaterial.color.setHex(0xFFA500); // Оранжевый для вложенных контуров
-                    element.material = tempMaterial;
-                    element.material.needsUpdate = true;
-                }
-            } else {
-                document.body.style.cursor = 'pointer';
-
-                if (!selectedContours.includes(element) && !element.userData.hoverHighlighted) {
-                    element.userData.hoverHighlighted = true;
-
-                    if (!element.userData.originalColor) {
-                        element.userData.originalColor = element.material.color.clone();
-                    }
-
-                    const tempMaterial = element.material.clone();
-                    tempMaterial.color.setHex(0xFFFF00);
-                    element.material = tempMaterial;
-                    element.material.needsUpdate = true;
-                }
-            }
-        } else {
-            document.body.style.cursor = 'default';
-        }
-    }
-
-    exitExtrudeMode()
-    {
+    exitExtrudeMode() {
         this.editor.setCurrentTool('select');
     }
 
-
     cancelExtrudeMode() {
-        this.editor.extrudeMode = false;
+        this.clearFigureSelection();
 
-        this.clearContourSelection();
-
-        if (this.editor.extrudeArrow) {
-            if (this.editor.extrudeArrow.parent) {
-                this.editor.extrudeArrow.parent.remove(this.editor.extrudeArrow);
+        // Удаляем стрелку
+        if (this.extrudeArrow) {
+            if (this.extrudeArrow.parent) {
+                this.extrudeArrow.parent.remove(this.extrudeArrow);
             }
-            this.editor.extrudeArrow = null;
+            this.extrudeArrow = null;
             this.arrowHandle = null;
         }
 
-        if (this.extrudePreviewGroup) {
-            this.editor.objectsGroup.remove(this.extrudePreviewGroup);
-            this.extrudePreviewGroup.traverse(child => {
-                if (child.geometry) child.geometry.dispose();
-                if (child.material) child.material.dispose();
-            });
-            this.extrudePreviewGroup = null;
-        }
+        // Удаляем превью
+        this.removeExtrudePreview();
 
-        // Удаляем глобальные обработчики
-        this.unbindGlobalDragHandlers();
-
+        // Удаляем UI
         const ui = document.getElementById('extrudeUI');
         if (ui) ui.remove();
 
+        // Восстанавливаем цвета всех элементов скетча
         const allSketchElements = this.editor.objectsManager.getAllSketchElements();
         allSketchElements.forEach(element => {
             this.editor.objectsManager.safeRestoreElementColor(element);
         });
 
-      //  this.editor.setCurrentTool('select');
-        document.body.style.cursor = 'default';
         this.dragging = false;
+        this.isDraggingArrow = false;
+        this.basePlane = null;
 
         this.editor.showStatus('Режим выдавливания завершен', 'info');
+    }
+
+    // === ДЛЯ СОВМЕСТИМОСТИ СО СТАРЫМ КОДОМ ===
+
+    highlightExtrudableContours() {
+        this.highlightExtrudableFigures();
+    }
+
+    highlightExtrudableFigures() {
+        const allElements = this.editor.objectsManager.getAllSketchElements();
+        
+        allElements.forEach(element => {
+            this.editor.objectsManager.safeRestoreElementColor(element);
+        });
+        
+        const figures = this.collectAllFigures();
+        
+        figures.forEach(figure => {
+            if (figure.outer.element) {
+                this.editor.objectsManager.safeSetElementColor(figure.outer.element, 0x2196F3);
+            } else if (figure.outer.elements) {
+                figure.outer.elements.forEach(element => {
+                    this.editor.objectsManager.safeSetElementColor(element, 0x2196F3);
+                });
+            }
+            
+            figure.holes.forEach(hole => {
+                if (hole.element) {
+                    this.editor.objectsManager.safeSetElementColor(hole.element, 0xFF9800);
+                } else if (hole.elements) {
+                    hole.elements.forEach(element => {
+                        this.editor.objectsManager.safeSetElementColor(element, 0xFF9800);
+                    });
+                }
+            });
+        });
+        
+        if (figures.length === 0) {
+            this.editor.showStatus('Нет замкнутых фигур для вытягивания', 'warning');
+        }
+    }
+
+    selectContourForExtrude(event) {
+        return this.selectFigureForExtrude(event);
+    }
+
+    getSelectedContours() {
+        const elements = [];
+        this.selectedFigures.forEach(figure => {
+            if (figure.outer.element) {
+                elements.push(figure.outer.element);
+            } else if (figure.outer.elements) {
+                elements.push(...figure.outer.elements);
+            }
+            figure.holes.forEach(hole => {
+                if (hole.element) {
+                    elements.push(hole.element);
+                } else if (hole.elements) {
+                    elements.push(...hole.elements);
+                }
+            });
+        });
+        return elements;
     }
 }
