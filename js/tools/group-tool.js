@@ -135,28 +135,22 @@ class GroupTool extends Tool {
     }
 
     addToHistory(originalObjects, group) {
-        // Сохраняем данные исходных объектов для истории
         const originalData = originalObjects.map(obj => {
-            // Создаем клон объекта с текущими мировыми трансформациями
+            // Получаем мировые трансформации
+            obj.updateMatrixWorld(true);
+            const worldMatrix = obj.matrixWorld.clone();
+
+            // Создаем клон с мировыми трансформациями
             const clone = obj.clone();
 
-            // Сохраняем мировые трансформации
             const worldPos = new THREE.Vector3();
             const worldQuat = new THREE.Quaternion();
             const worldScale = new THREE.Vector3();
-
-            // Создаем мировую матрицу
-            const worldMatrix = new THREE.Matrix4();
-            obj.updateMatrixWorld(true);
-            worldMatrix.copy(obj.matrixWorld);
             worldMatrix.decompose(worldPos, worldQuat, worldScale);
 
-            // Применяем мировые трансформации к клону
             clone.position.copy(worldPos);
             clone.quaternion.copy(worldQuat);
             clone.scale.copy(worldScale);
-
-            // Сохраняем пользовательские данные
             clone.userData = { ...obj.userData };
 
             return {
@@ -166,10 +160,8 @@ class GroupTool extends Tool {
             };
         });
 
-        // Сохраняем данные группы
         const groupData = this.editor.projectManager.serializeObjectForHistory(group);
 
-        // Создаем действие группировки
         const action = {
             type: 'group',
             groupUuid: group.uuid,

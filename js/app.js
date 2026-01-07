@@ -611,8 +611,8 @@ class CADEditor {
                 return;
             }
 
-            // Стандартная обработка мыши (выделение)
-            this.handleStandardMouseDown(e);
+            // Если инструмент не обработал событие, ничего не делаем
+            // (перетаскивание теперь обрабатывается в SelectTool)
         }
 
         if (isRightClick) document.body.style.cursor = 'grab';
@@ -626,7 +626,6 @@ class CADEditor {
         // Делегируем обработку менеджеру инструментов
         this.toolManager.handleMouseMove(e);
     }
-
     handleMouseUp(e) {
         const isRightClick = e.button === 2;
         const isMiddleClick = e.button === 1;
@@ -686,30 +685,7 @@ class CADEditor {
         this.mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
     }
 
-    // СТАНДАРТНАЯ ОБРАБОТКА МЫШИ (выделение)
-    handleStandardMouseDown(e) {
-        this.raycaster.setFromCamera(this.mouse, this.camera);
 
-        const intersects = this.raycaster.intersectObjects(this.objectsGroup.children, true);
-
-        if (intersects.length > 0) {
-            const object = this.objectsManager.findTopParent(intersects[0].object);
-
-            if (e.ctrlKey || e.metaKey) {
-                // При Ctrl+клике добавляем/удаляем объект из выделения
-                this.toggleObjectSelection(object);
-            } else {
-                // Обычный клик - выделяем один объект
-                this.selectSingleObject(object);
-            }
-
-            this.updatePropertiesPanel();
-            this.updateStatus();
-        } else {
-            // Кликнули вне объекта - сбрасываем выделение
-            this.clearSelection();
-        }
-    }
 
     // ВЫБОР ОБЪЕКТОВ
     toggleObjectSelection(object) {
@@ -1026,8 +1002,8 @@ class CADEditor {
                     this.controls.mouseButtons.LEFT = THREE.MOUSE.PAN;
                 }
                 break;
-            case 'п':
-            case 'g':
+            case 'р':
+            case 'h':
                 if (e.ctrlKey || e.metaKey) {
                     e.preventDefault();
                     if (this.dragManager) {
@@ -1039,6 +1015,7 @@ class CADEditor {
                         }
                 }
                 break;
+
         }
     }
 
@@ -1448,8 +1425,14 @@ class CADEditor {
         };
 
         const modeText = modeNames[this.currentTool] || this.currentTool;
-        document.getElementById('modeIndicator').innerHTML =
-            `<i class="fas fa-mouse-pointer"></i> Режим: ${modeText}`;
+
+        // Добавляем информацию о перетаскивании
+        let statusText = `<i class="fas fa-mouse-pointer"></i> Режим: ${modeText}`;
+        if (this.currentTool === 'select' && this.dragManager && this.dragManager.isDragging) {
+            statusText += ' (перетаскивание)';
+        }
+
+        document.getElementById('modeIndicator').innerHTML = statusText;
         document.getElementById('selectedInfo').textContent =
             `Выбрано: ${this.selectedObjects.length}`;
 

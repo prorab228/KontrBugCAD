@@ -1,7 +1,11 @@
-// select-tool.js
+// select-tool.js - обновленная версия с поддержкой перетаскивания
 class SelectTool extends Tool {
     constructor(editor) {
         super('select', 'fa-mouse-pointer', editor);
+        this.isDragging = false;
+        this.dragManager = editor.dragManager;
+        this.clickThreshold = 5;
+        this.clickStartPos = null;
     }
 
     onActivate() {
@@ -14,6 +18,19 @@ class SelectTool extends Tool {
         }
         if (this.editor.workPlaneMode) {
             this.editor.planesManager.exitWorkPlaneMode();
+        }
+
+        // Скрываем TransformControls если они активны
+        if (this.editor.transformControls) {
+            this.editor.transformControls.detach();
+            this.editor.transformControls.hide();
+        }
+    }
+
+    onDeactivate() {
+        // Очищаем состояние перетаскивания при деактивации
+        if (this.isDragging) {
+            this.endDrag();
         }
     }
 
@@ -28,29 +45,141 @@ class SelectTool extends Tool {
             true
         );
 
+        // Сохраняем начальную позицию для определения клика/перетаскивания
+        this.clickStartPos = {
+            x: e.clientX,
+            y: e.clientY
+        };
+
         if (intersects.length > 0) {
             const object = this.editor.objectsManager.findTopParent(intersects[0].object);
 
-            if (e.ctrlKey || e.metaKey) {
-                this.editor.toggleObjectSelection(object);
+            // Проверяем, можно ли перетаскивать этот объект
+            if (this.canDragObject(object)) {
+                // Подготавливаем перетаскивание (но еще не начинаем)
+                this.prepareDrag(object, intersects[0].point);
+                return true;
             } else {
-                this.editor.selectSingleObject(object);
+                // Если нельзя перетаскивать, просто выделяем
+                this.handleSelection(e, object);
+                return true;
             }
-
-            this.editor.updatePropertiesPanel();
-            this.editor.updateStatus();
-            return true;
         } else {
+            // Клик в пустоту - сбрасываем выделение
             this.editor.clearSelection();
             return false;
         }
     }
 
     onMouseMove(e) {
-        // Подсветка объектов при наведении
+        // Проверяем, началось ли перетаскивание
+        if (this.clickStartPos && !this.isDragging) {
+            const deltaX = Math.abs(e.clientX - this.clickStartPos.x);
+            const deltaY = Math.abs(e.clientY - this.clickStartPos.y);
+            const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+
+            // Если перемещение превысило порог, начинаем перетаскивание
+            if (distance > this.clickThreshold && this.dragManager) {
+                this.startDrag(e);
+            }
+        }
+
+        // Если уже перетаскиваем
+        if (this.isDragging && this.dragManager) {
+            this.dragManager.onMouseMove(e);
+        }
+    }
+
+    onMouseUp(e) {
+        // Завершаем перетаскивание если оно активно
+        if (this.isDragging) {
+            this.endDrag();
+        } else if (this.clickStartPos) {
+            // Если был клик (без перетаскивания), обрабатываем выделение
+            this.handleClick(e);
+        }
+
+        // Сбрасываем состояние
+        this.isDragging = false;
+        this.clickStartPos = null;
+    }
+
+    prepareDrag(object, intersectionPoint) {
+        // Используем функционал DragManager для подготовки перетаскивания
+        if (this.dragManager) {
+            this.dragManager.prepareDrag(object, intersectionPoint);
+        }
+    }
+
+    startDrag(e) {
+        this.isDragging = true;
+
+        if (this.dragManager) {
+            this.dragManager.startDrag(e);
+        }
+
+        this.editor.showStatus('Перетаскивание объекта', 'info');
+    }
+
+    endDrag() {
+        if (this.dragManager) {
+            this.dragManager.finishDrag();
+        }
+
+        this.isDragging = false;
+        this.clickStartPos = null;
+    }
+
+    handleSelection(e, object) {
+        if (e.ctrlKey || e.metaKey) {
+            this.editor.toggleObjectSelection(object);
+        } else {
+            this.editor.selectSingleObject(object);
+        }
+
+        this.editor.updatePropertiesPanel();
+        this.editor.updateStatus();
+    }
+
+    handleClick(e) {
+        // Просто обновляем позицию мыши и проверяем выделение
         this.editor.updateMousePosition(e);
         this.editor.raycaster.setFromCamera(this.editor.mouse, this.editor.camera);
 
-        // Можно добавить подсветку при наведении
+        const intersects = this.editor.raycaster.intersectObjects(
+            this.editor.objectsGroup.children,
+            true
+        );
+
+        if (intersects.length > 0) {
+            const object = this.editor.objectsManager.findTopParent(intersects[0].object);
+            this.handleSelection(e, object);
+        }
+    }
+
+    canDragObject(object) {
+        if (!object) return false;
+
+        // Нельзя перетаскивать рабочие плоскости и плоскости скетча
+        if (object.userData.type === 'work_plane' ||
+            object.userData.type === 'sketch_plane' ||
+            object.userData.type === 'base_plane') {
+            return false;
+        }
+
+        return true;
+    }
+
+    onKeyDown(e) {
+        // Обработка Escape для отмены перетаскивания
+        if (e.key === 'Escape' && this.isDragging) {
+            if (this.dragManager) {
+                this.dragManager.cancelDrag();
+            }
+            this.isDragging = false;
+            this.clickStartPos = null;
+            return true;
+        }
+        return false;
     }
 }
