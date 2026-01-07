@@ -75,12 +75,12 @@ class MoveTool extends Tool {
     canTransformObject(object) {
         if (!object) return false;
 
-        // Нельзя трансформировать рабочие плоскости и плоскости скетча
-        if (object.userData.type === 'work_plane' ||
-            object.userData.type === 'sketch_plane' ||
-            object.userData.type === 'base_plane') {
-            return false;
-        }
+//        // Нельзя трансформировать рабочие плоскости и плоскости скетча
+//        if (object.userData.type === 'work_plane' ||
+//            object.userData.type === 'sketch_plane' ||
+//            object.userData.type === 'base_plane') {
+//            return false;
+//        }
 
         return true;
     }

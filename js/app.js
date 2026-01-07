@@ -1015,7 +1015,6 @@ class CADEditor {
                         }
                 }
                 break;
-
         }
     }
 
@@ -1425,14 +1424,8 @@ class CADEditor {
         };
 
         const modeText = modeNames[this.currentTool] || this.currentTool;
-
-        // Добавляем информацию о перетаскивании
-        let statusText = `<i class="fas fa-mouse-pointer"></i> Режим: ${modeText}`;
-        if (this.currentTool === 'select' && this.dragManager && this.dragManager.isDragging) {
-            statusText += ' (перетаскивание)';
-        }
-
-        document.getElementById('modeIndicator').innerHTML = statusText;
+        document.getElementById('modeIndicator').innerHTML =
+            `<i class="fas fa-mouse-pointer"></i> Режим: ${modeText}`;
         document.getElementById('selectedInfo').textContent =
             `Выбрано: ${this.selectedObjects.length}`;
 
