@@ -30,12 +30,16 @@ class ObjectsManager {
         } else if (obj.userData.type === 'extrude') {
             icon = 'fa-arrows-alt-v';
             typeText = 'Вытягивание';
+        } else if (obj.userData.type === 'group') {
+            icon = 'fa-object-group';
+            typeText = `Группа (${obj.userData.childCount || obj.children.length} объектов)`;
         } else if (obj.userData.type) {
             typeText = obj.userData.type;
         }
 
         return { icon, typeText };
     }
+
 
     updateSceneStats() {
         let vertices = 0;

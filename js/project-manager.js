@@ -174,7 +174,12 @@ class ProjectManager {
     serializeObject(object) {
         if (!object || !object.userData) return null;
 
-        console.log('Serializing object:', object.userData.type, object.uuid);
+        console.log('Serializing object:', object.userData.type, object.uuid, object.type);
+
+        // Для групп используем особый подход
+        if (object.userData.type === 'group' || object.isGroup) {
+            return this.serializeGroup(object);
+        }
 
         // ИСПРАВЛЕНИЕ: Всегда используем оригинальный материал для сериализации
         let materialToSerialize = object.userData.originalMaterial || object.material;
@@ -215,6 +220,38 @@ class ProjectManager {
 
         return objData;
     }
+
+    // метод сериализации группы:
+    serializeGroup(group) {
+        const groupData = {
+            uuid: group.uuid,
+            type: 'Group',
+            userData: this.cleanUserData(group.userData),
+            position: group.position.toArray(),
+            rotation: [group.rotation.x, group.rotation.y, group.rotation.z],
+            scale: group.scale.toArray(),
+            visible: group.visible,
+            children: []
+        };
+
+        // Сериализуем дочерние объекты
+        group.children.forEach(child => {
+            if (child !== group) { // Избегаем бесконечной рекурсии
+                const childData = this.serializeObject(child);
+                if (childData) {
+                    groupData.children.push(childData);
+                }
+            }
+        });
+
+        // Убедимся, что userData содержит правильный тип
+        if (!groupData.userData.type) {
+            groupData.userData.type = 'group';
+        }
+
+        return groupData;
+    }
+
 
     cleanUserData(userData) {
         if (!userData) return {};
@@ -289,17 +326,36 @@ class ProjectManager {
             const matData = {
                 type: material.type,
                 uuid: material.uuid || THREE.MathUtils.generateUUID(),
-                color: material.color ? material.color.getHex() : 0x808080,
+                color: 0x808080, // Значение по умолчанию
                 opacity: material.opacity !== undefined ? material.opacity : 1.0,
                 transparent: material.transparent || false,
                 side: material.side || THREE.FrontSide,
-                wireframe: material.wireframe || false,
-                shininess: material.shininess !== undefined ? material.shininess : 30,
-                specular: material.specular ? material.specular.getHex() : 0x111111
+                wireframe: material.wireframe || false
             };
 
-            // Дополнительные свойства
-            if (material.emissive) matData.emissive = material.emissive.getHex();
+            // Безопасно получаем цвет материала
+            if (material.color) {
+                try {
+                    if (material.color.getHex && typeof material.color.getHex === 'function') {
+                        matData.color = material.color.getHex();
+                    } else if (typeof material.color === 'number') {
+                        matData.color = material.color;
+                    }
+                } catch (error) {
+                    console.warn('Не удалось сериализовать цвет материала:', error);
+                }
+            }
+
+            // Добавляем свойства только если они существуют
+            if (material.shininess !== undefined) matData.shininess = material.shininess;
+            if (material.specular && material.specular.getHex) {
+                matData.specular = material.specular.getHex();
+            }
+
+            if (material.emissive && material.emissive.getHex) {
+                matData.emissive = material.emissive.getHex();
+            }
+
             if (material.metalness !== undefined) matData.metalness = material.metalness;
             if (material.roughness !== undefined) matData.roughness = material.roughness;
 
@@ -562,6 +618,11 @@ class ProjectManager {
 
         console.log('Deserializing object:', data.userData.type, data.uuid);
 
+         // Проверяем, является ли объект группой
+        if (data.userData.type === 'group' || data.type === 'Group') {
+            return this.deserializeGroup(data);
+        }
+
         let geometry = null;
         let material = null;
         let originalMaterial = null;
@@ -665,6 +726,48 @@ class ProjectManager {
 
         console.log('Object deserialized with userData:', mesh.userData);
         return mesh;
+    }
+
+    // метод десериализации группы:
+    deserializeGroup(groupData) {
+        const group = new THREE.Group();
+        group.uuid = groupData.uuid || THREE.MathUtils.generateUUID();
+
+        // Восстанавливаем трансформации
+        if (groupData.position) {
+            group.position.fromArray(groupData.position);
+        }
+
+        if (groupData.scale) {
+            group.scale.fromArray(groupData.scale);
+        }
+
+        if (groupData.rotation && groupData.rotation.length === 3) {
+            group.rotation.set(groupData.rotation[0], groupData.rotation[1], groupData.rotation[2]);
+        }
+
+        // Восстанавливаем свойства
+        if (groupData.visible !== undefined) group.visible = groupData.visible;
+
+        // Восстанавливаем userData
+        group.userData = { ...groupData.userData };
+
+        // Убедимся, что тип группы установлен правильно
+        if (!group.userData.type) {
+            group.userData.type = 'group';
+        }
+
+        // Десериализуем дочерние объекты
+        if (groupData.children && Array.isArray(groupData.children)) {
+            groupData.children.forEach(childData => {
+                const child = this.deserializeObject(childData);
+                if (child) {
+                    group.add(child);
+                }
+            });
+        }
+
+        return group;
     }
 
     deserializeGeometry(geomData) {
@@ -924,16 +1027,42 @@ class ProjectManager {
             if (matData.transparent !== undefined) material.transparent = matData.transparent;
             if (matData.side !== undefined) material.side = matData.side;
             if (matData.wireframe !== undefined) material.wireframe = matData.wireframe;
-            if (matData.shininess !== undefined) material.shininess = matData.shininess;
-            if (matData.specular !== undefined) material.specular.setHex(matData.specular);
-            if (matData.emissive !== undefined) material.emissive.setHex(matData.emissive);
-            if (matData.metalness !== undefined) material.metalness = matData.metalness;
-            if (matData.roughness !== undefined) material.roughness = matData.roughness;
+
+            // Только для MeshPhongMaterial устанавливаем shininess и specular
+            if (material instanceof THREE.MeshPhongMaterial) {
+                if (matData.shininess !== undefined) material.shininess = matData.shininess;
+
+                // Важно: проверяем, существует ли specular
+                if (matData.specular !== undefined) {
+                    if (material.specular && material.specular.setHex) {
+                        material.specular.setHex(matData.specular);
+                    } else {
+                        // Если specular не поддерживается, создаем его
+                        material.specular = new THREE.Color(matData.specular);
+                    }
+                }
+            }
+
+            // Для MeshStandardMaterial устанавливаем metalness и roughness
+            if (material instanceof THREE.MeshStandardMaterial) {
+                if (matData.metalness !== undefined) material.metalness = matData.metalness;
+                if (matData.roughness !== undefined) material.roughness = matData.roughness;
+            }
+
+            // Для материалов, поддерживающих emissive
+            if (matData.emissive !== undefined && material.emissive && material.emissive.setHex) {
+                material.emissive.setHex(matData.emissive);
+            }
 
             return material;
         } catch (error) {
             console.error('Error deserializing material:', error);
-            return new THREE.MeshPhongMaterial({ color: 0x808080 });
+            // Возвращаем простой материал по умолчанию
+            return new THREE.MeshPhongMaterial({
+                color: 0x808080,
+                shininess: 30,
+                specular: new THREE.Color(0x111111)
+            });
         }
     }
 

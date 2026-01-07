@@ -62,6 +62,10 @@ class HistoryManager {
                 return this.enhanceMultipleModifyAction(action);
             case 'import':
                 return this.enhanceImportAction(action);
+            case 'group':
+                return this.enhanceGroupAction(action);
+            case 'ungroup':
+                return this.enhanceUngroupAction(action);
             default:
                 return action;
         }
@@ -93,6 +97,10 @@ class HistoryManager {
             objects: enhancedObjects
         };
     }
+
+
+
+
 
 
     enhanceCreateAction(action) {
@@ -188,6 +196,43 @@ class HistoryManager {
         return action;
     }
 
+    //ГРУППИРОВКА
+
+    enhanceGroupAction(action) {
+        // Улучшаем данные группы
+        const group = this.editor.findObjectByUuid(action.groupUuid);
+        if (group && this.editor.projectManager) {
+            return {
+                ...action,
+                groupData: this.editor.projectManager.serializeObjectForHistory(group)
+            };
+        }
+        return action;
+    }
+
+    enhanceUngroupAction(action) {
+        // Улучшаем данные разгруппированных объектов
+        if (action.ungroupedObjects && Array.isArray(action.ungroupedObjects)) {
+            const enhancedObjects = action.ungroupedObjects.map(objData => {
+                const obj = this.editor.findObjectByUuid(objData.uuid);
+                if (obj && this.editor.projectManager) {
+                    return {
+                        ...objData,
+                        data: this.editor.projectManager.serializeObjectForHistory(obj)
+                    };
+                }
+                return objData;
+            });
+
+            return {
+                ...action,
+                ungroupedObjects: enhancedObjects
+            };
+        }
+        return action;
+    }
+
+
     // ОТМЕНА И ПОВТОР
     undo() {
         if (this.currentIndex < 0) return false;
@@ -251,6 +296,10 @@ class HistoryManager {
                 return this.applyModifyPositionMultiple(action, isUndo);
             case 'import':
                 return isUndo ? this.undoImport(action) : this.redoImport(action);
+            case 'group':
+                return isUndo ? this.undoGroup(action) : this.redoGroup(action);
+            case 'ungroup':
+                return isUndo ? this.undoUngroup(action) : this.redoUngroup(action);
             default:
                 console.warn('Unknown action type:', action.type);
                 return false;
@@ -385,6 +434,7 @@ class HistoryManager {
         return false;
     }
 
+
     // ИЗМЕНЕНИЯ СВОЙСТВ
     applyModifyPosition(action, isUndo) {
         const obj = this.editor.findObjectByUuid(action.object);
@@ -499,6 +549,197 @@ class HistoryManager {
         return true;
     }
 
+    //ГРУППИРОВКА
+
+    // В HistoryManager добавьте/обновите методы:
+
+    undoGroup(action) {
+        // Удаляем группу
+        const group = this.editor.findObjectByUuid(action.groupUuid);
+        if (group) {
+            this.removeGroupFromScene(group);
+        }
+
+        // Восстанавливаем исходные объекты
+        let restoredCount = 0;
+        if (action.originalObjects && Array.isArray(action.originalObjects)) {
+            action.originalObjects.forEach(objData => {
+                if (objData.data && this.editor.projectManager) {
+                    const obj = this.editor.projectManager.deserializeObject(objData.data);
+                    if (obj) {
+                        // Восстанавливаем родителя если нужно
+                        if (objData.parentUuid) {
+                            const parent = this.editor.findObjectByUuid(objData.parentUuid);
+                            if (parent) {
+                                parent.add(obj);
+                            } else {
+                                this.editor.objectsGroup.add(obj);
+                            }
+                        } else {
+                            this.editor.objectsGroup.add(obj);
+                        }
+
+                        // Добавляем в массив объектов
+                        this.editor.objects.push(obj);
+                        restoredCount++;
+                    }
+                }
+            });
+        }
+
+        // Обновляем UI
+        this.editor.objectsManager.updateSceneStats();
+        this.editor.objectsManager.updateSceneList();
+        this.editor.updatePropertiesPanel();
+
+        return restoredCount > 0;
+    }
+
+    redoGroup(action) {
+        // Удаляем исходные объекты
+        if (action.originalObjects && Array.isArray(action.originalObjects)) {
+            action.originalObjects.forEach(objData => {
+                const obj = this.editor.findObjectByUuid(objData.uuid);
+                if (obj) {
+                    this.removeObjectFromScene(obj);
+                }
+            });
+        }
+
+        // Восстанавливаем группу
+        if (action.groupData && this.editor.projectManager) {
+            const group = this.editor.projectManager.deserializeObject(action.groupData);
+            if (group) {
+                this.addGroupToScene(group);
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    undoUngroup(action) {
+        // Удаляем разгруппированные объекты
+        if (action.ungroupedObjects && Array.isArray(action.ungroupedObjects)) {
+            action.ungroupedObjects.forEach(objData => {
+                const obj = this.editor.findObjectByUuid(objData.uuid);
+                if (obj) {
+                    this.removeObjectFromScene(obj);
+                }
+            });
+        }
+
+        // Восстанавливаем группу
+        let restored = false;
+        if (action.groupData && this.editor.projectManager) {
+            const group = this.editor.projectManager.deserializeObject(action.groupData);
+            if (group) {
+                this.addGroupToScene(group);
+
+                // Восстанавливаем дочерние объекты в группе
+                group.traverse((child) => {
+                    if (child !== group && child instanceof THREE.Object3D) {
+                        // Объекты уже в группе после десериализации
+                        // Обновляем их мировые матрицы
+                        child.updateMatrixWorld(true);
+                    }
+                });
+
+                restored = true;
+            }
+        }
+
+        // Обновляем UI
+        this.editor.objectsManager.updateSceneStats();
+        this.editor.objectsManager.updateSceneList();
+        this.editor.updatePropertiesPanel();
+
+        return restored;
+    }
+
+    redoUngroup(action) {
+        // Удаляем группу
+        const group = this.editor.findObjectByUuid(action.groupUuid);
+        if (group) {
+            this.removeGroupFromScene(group);
+        }
+
+        // Восстанавливаем разгруппированные объекты
+        let restoredCount = 0;
+        if (action.ungroupedObjects && Array.isArray(action.ungroupedObjects)) {
+            action.ungroupedObjects.forEach(objData => {
+                if (objData.data && this.editor.projectManager) {
+                    const obj = this.editor.projectManager.deserializeObject(objData.data);
+                    if (obj) {
+                        this.addObjectToScene(obj, false);
+                        restoredCount++;
+                    }
+                }
+            });
+        }
+
+        // Обновляем UI
+        this.editor.objectsManager.updateSceneStats();
+        this.editor.objectsManager.updateSceneList();
+        this.editor.updatePropertiesPanel();
+
+        return restoredCount > 0;
+    }
+
+    addGroupToScene(group) {
+        this.editor.objectsGroup.add(group);
+        this.editor.objects.push(group);
+
+        // Добавляем в массив групп
+        if (!this.editor.groups) {
+            this.editor.groups = [];
+        }
+        this.editor.groups.push(group);
+
+        // Обновляем UI
+        this.editor.objectsManager.updateSceneStats();
+        this.editor.objectsManager.updateSceneList();
+        this.editor.updatePropertiesPanel();
+    }
+
+    removeGroupFromScene(group) {
+        // Удаляем группу из сцены
+        if (group.parent) {
+            group.parent.remove(group);
+        }
+
+        // Удаляем из массива объектов
+        const objIndex = this.editor.objects.indexOf(group);
+        if (objIndex > -1) {
+            this.editor.objects.splice(objIndex, 1);
+        }
+
+        // Удаляем из массива групп
+        if (this.editor.groups) {
+            const groupIndex = this.editor.groups.indexOf(group);
+            if (groupIndex > -1) {
+                this.editor.groups.splice(groupIndex, 1);
+            }
+        }
+
+        // Удаляем из выделения
+        const selectedIndex = this.editor.selectedObjects.indexOf(group);
+        if (selectedIndex > -1) {
+            this.editor.selectedObjects.splice(selectedIndex, 1);
+        }
+
+        // Очищаем трансформации
+        if (this.editor.transformControls &&
+            this.editor.transformControls.attachedObject === group) {
+            this.editor.transformControls.detach();
+        }
+
+        // Обновляем UI
+        this.editor.objectsManager.updateSceneStats();
+        this.editor.objectsManager.updateSceneList();
+        this.editor.updatePropertiesPanel();
+    }
+
     // ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ
     addObjectToScene(obj, selectObject = false) {
         this.editor.objectsGroup.add(obj);
@@ -509,6 +750,12 @@ class HistoryManager {
             this.editor.sketchPlanes.push(obj);
         } else if (obj.userData.type === 'work_plane') {
             this.editor.workPlanes.push(obj);
+        } else if (obj.userData.type === 'group') {
+            // Добавляем в массив групп
+            if (!this.editor.groups) {
+                this.editor.groups = [];
+            }
+            this.editor.groups.push(obj);
         }
 
         // Выделяем объект если нужно
@@ -521,6 +768,7 @@ class HistoryManager {
         this.editor.objectsManager.updateSceneList();
         this.editor.updatePropertiesPanel();
     }
+
 
     removeObjectFromScene(obj) {
         // Удаляем из сцены
@@ -551,6 +799,26 @@ class HistoryManager {
             if (planeIndex > -1) {
                 this.editor.workPlanes.splice(planeIndex, 1);
             }
+        } else if (obj.userData.type === 'group') {
+            // Удаляем из массива групп
+            if (this.editor.groups) {
+                const groupIndex = this.editor.groups.indexOf(obj);
+                if (groupIndex > -1) {
+                    this.editor.groups.splice(groupIndex, 1);
+                }
+            }
+        }
+
+        // Для групп рекурсивно освобождаем ресурсы дочерних объектов
+        if (obj.userData.type === 'group' || obj.isGroup) {
+            obj.traverse(child => {
+                if (child !== obj && child.isMesh) {
+                    this.safeDisposeObject(child);
+                }
+            });
+        } else {
+            // Освобождаем ресурсы
+            this.safeDisposeObject(obj);
         }
 
         // Очищаем трансформации если нужно
@@ -558,9 +826,6 @@ class HistoryManager {
             this.editor.transformControls.attachedObject === obj) {
             this.editor.transformControls.detach();
         }
-
-        // Освобождаем ресурсы
-        this.safeDisposeObject(obj);
 
         // Обновляем UI
         this.editor.objectsManager.updateSceneStats();

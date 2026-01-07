@@ -123,6 +123,15 @@
                 <button class="tool-btn" id="exitSketchBtn" title="Выйти из режима скетча">
                     <i class="fas fa-times"></i>
                 </button>
+
+<!--                <button class="sketch-tool-btn" data-sketch-tool="import" title="Импорт">-->
+<!--                    <i class="fa fa-upload"></i>-->
+<!--                </button>-->
+<!--                <button class="sketch-tool-btn" data-sketch-tool="export" title="Экспорт">-->
+<!--                    <i class="fa fa-download"></i>-->
+<!--                </button>-->
+
+
             </div>
             <div class="divider"></div>
         </div>
@@ -137,15 +146,37 @@
                     <button class="tool-btn" data-tool="select" title="Выделение">
                         <i class="fas fa-mouse-pointer"></i>
                     </button>
-                    <button class="tool-btn" data-tool="move" title="Перемещение">
-                        <i class="fas fa-arrows-alt"></i>
+                    <button class="tool-btn" id="extrudeSketch" title="Вытянуть скетч">
+                            <i class="fas fa-arrows-alt-v"></i>
                     </button>
-                    <button class="tool-btn" data-tool="rotate" title="Вращение">
-                        <i class="fas fa-sync-alt"></i>
-                    </button>
-                    <button class="tool-btn" data-tool="scale" title="Масштаб">
-                        <i class="fas fa-expand-alt"></i>
-                    </button>
+                    <div class="dropdown">
+                        <button class="tool-btn dropdown-toggle" title="Трансформация">
+                            <i class="fas fa-arrows-alt"></i>
+                            <i class="fas fa-caret-down"></i>
+                        </button>
+                        <div class="dropdown-menu">
+                            <a href="#"  data-tool="move" title="Перемещение">
+                                <i class="fas fa-arrows-alt"></i>Перемещение
+                            </a>
+                            <a href="#"  data-tool="rotate" title="Вращение">
+                                <i class="fas fa-sync-alt"></i>Вращение
+                            </a>
+                            <a href="#"  data-tool="scale" title="Масштаб">
+                                <i class="fas fa-expand-alt"></i>Масштаб
+                            </a>
+                        </div>
+                    </div>
+
+
+<!--                    <button class="tool-btn" data-tool="move" title="Перемещение">-->
+<!--                        <i class="fas fa-arrows-alt"></i>-->
+<!--                    </button>-->
+<!--                    <button class="tool-btn" data-tool="rotate" title="Вращение">-->
+<!--                        <i class="fas fa-sync-alt"></i>-->
+<!--                    </button>-->
+<!--                    <button class="tool-btn" data-tool="scale" title="Масштаб">-->
+<!--                        <i class="fas fa-expand-alt"></i>-->
+<!--                    </button>-->
                     <div class="dropdown">
                         <button class="tool-btn dropdown-toggle" title="Булевы операции">
                             <i class="fas fa-object-group"></i>
@@ -157,45 +188,60 @@
                             <a href="#" id="booleanIntersect"><i class="fas fa-times-circle"></i> Пересечение</a>
                         </div>
                     </div>
-                    <button class="tool-btn" id="extrudeSketch" title="Вытянуть скетч">
-                            <i class="fas fa-arrows-alt-v"></i>
+
+
+                    <button class="tool-btn" data-tool="split" title="Разрезать по плоскости (Ctrl+Shift+S)">
+                        <i class="fas fa-cut"></i>
                     </button>
-                    <button class="tool-btn" data-tool="rulerTool" id="rulerTool" title="Линейка (Ctrl+M)">
-                        <i class="fas fa-ruler"></i>
+                    <button class="tool-btn" data-tool="mirror" title="Отражение (Ctrl+Shift+M)">
+                        <i class="fas fa-expand-arrows-alt"></i>
+                    </button>
+                    <button class="tool-btn" data-tool="group" title="Группировать (Ctrl+G)">
+                        <i class="fas fa-object-group"></i>
+                    </button>
+                    <button class="tool-btn" data-tool="ungroup" title="Разгруппировать (Ctrl+Shift+G)">
+                        <i class="fas fa-object-ungroup"></i>
                     </button>
 
-                    <button class="tool-btn" data-tool="gearGenerator" id="gearGenerator" title="Шестерня (Ctrl+G)">
-                        <i class="fas fa-cog"></i>
-                    </button>
-
-                    <button class="tool-btn" data-tool="threadGenerator" id="threadGenerator" title="Резьба (Ctrl+T)">
-                        <i class="fas fa-screwdriver"></i>
-                    </button>
                 </div>
             </div>
+
+
 
             <div class="divider"></div>
 
             <!-- Чертеж и булевы операции -->
             <div class="tool-section">
                 <div class="tool-group">
-                    <div class="tool-group">
-                        <button class="tool-btn" id="openSketch" title="Чертеж (Скетч)">
-                            <i class="fas fa-drafting-compass"></i>
+
+                    <button class="tool-btn" id="createSketchPlane" title="Создать рабочую плоскость">
+                        <i class="fas fa-square"></i>
+                    </button>
+                    <button class="tool-btn" id="openSketch" title="Чертеж (Скетч)">
+                        <i class="fas fa-drafting-compass"></i>
+                    </button>
+                    <button class="tool-btn" data-tool="rulerTool" id="rulerTool" title="Линейка (Ctrl+M)">
+                        <i class="fas fa-ruler"></i>
+                    </button>
+
+
+                </div>
+            </div>
+            <div class="divider"></div>
+
+            <!-- Чертеж и булевы операции -->
+            <div class="tool-section">
+                <div class="tool-group">
+                    <div class="dropdown">
+                        <button class="tool-btn dropdown-toggle" title="Генераторы">
+                            <i class="fas fa-cog"></i>
+                            <i class="fas fa-caret-down"></i>
                         </button>
-
-
-
-                        <button class="tool-btn" id="createSketchPlane" title="Создать плоскость для скетча">
-                            <i class="fas fa-square"></i>
-                        </button>
-
-
-
+                        <div class="dropdown-menu">
+                            <a href="#" data-tool="gearGenerator" id="gearGenerator" title="Шестерня"><i class="fas fa-cog"></i> Генератор шестерней</a>
+                            <a href="#" data-tool="threadGenerator" id="threadGenerator" title="Резьба"><i class="fas fa-screwdriver"></i> Генератор резьбы</a>
+                        </div>
                     </div>
-
-
-
                 </div>
             </div>
 
@@ -699,7 +745,10 @@
     <script src="js/tools/thread-tool.js"></script>
     <script src="js/tools/ruler-tool.js"></script>
     <script src="js/tools/boolean-tool.js"></script>
-
+    <script src="js/tools/split-tool.js"></script>
+    <script src="js/tools/mirror-tool.js"></script>
+    <script src="js/tools/ungroup-tool.js"></script>
+    <script src="js/tools/group-tool.js"></script>
 
 <!--    скетч-->
 
@@ -718,6 +767,8 @@
     <script src="js/tools/sketch/sketch-tools/oval-tool.js"></script>
     <script src="js/tools/sketch/sketch-tools/stadium-tool.js"></script>
     <script src="js/tools/sketch/sketch-tools/arc-tool.js"></script>
+    <script src="js/tools/sketch/sketch-tools/import-tool.js"></script>
+    <script src="js/tools/sketch/sketch-tools/export-tool.js"></script>
 
     <script src="js/tools/sketch/sketch-manager.js"></script>
     <script src="js/tools/sketch/sketch-tool.js"></script>

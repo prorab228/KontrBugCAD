@@ -1,4 +1,4 @@
-// ExtrudeManager.js - полностью доработанная версия
+// ExtrudeManager.js - доработанная версия с новой логикой выделения
 class ExtrudeManager {
     constructor(cadEditor) {
         this.editor = cadEditor;
@@ -20,13 +20,16 @@ class ExtrudeManager {
         this.lineGraphs = new Map();
         this.selectionMode = 'figure';
         this.autoDetectFigures = true;
-        
+
         // Для стрелки вытягивания
         this.extrudeArrow = null;
         this.isDraggingArrow = false;
         this.arrowStartPosition = null;
         this.arrowStartHeight = 0;
 
+        // Новая структура для отслеживания исключенных отверстий
+        // Ключ: id внешней фигуры, значение: Set id исключенных отверстий
+        this.excludedHoles = new Map();
     }
 
     // === МЕТОДЫ ДЛЯ СТРЕЛКИ ВЫТЯГИВАНИЯ ===
@@ -40,9 +43,10 @@ class ExtrudeManager {
             this.extrudeArrow = null;
         }
 
-        if (!figures || figures.length === 0 || !this.basePlane) return;
+        const selectedFigures = this.getSelectedFiguresWithExclusions();
+        if (!selectedFigures || selectedFigures.length === 0 || !this.basePlane) return;
 
-        const figure = figures[0];
+        const figure = selectedFigures[0];
         const planeNormal = new THREE.Vector3(0, 0, 1);
         planeNormal.applyQuaternion(this.basePlane.quaternion);
         planeNormal.normalize();
@@ -128,7 +132,7 @@ class ExtrudeManager {
         const height = parseFloat(document.getElementById('extrudeHeight')?.value) || 10;
         const direction = document.getElementById('extrudeDirection')?.value || 'positive';
 
-        const selectedFigures = this.getSelectedFigures();
+        const selectedFigures = this.getSelectedFiguresWithExclusions();
         if (selectedFigures.length === 0) return;
 
         // Получаем нормаль плоскости
@@ -178,7 +182,7 @@ class ExtrudeManager {
     getFiguresCenter(figures) {
         const center = new THREE.Vector3(0, 0, 0);
         let totalWeight = 0;
-        
+
         figures.forEach(figure => {
             const figCenter = figure.outer.center;
             const weight = figure.outer.area || 1;
@@ -186,138 +190,19 @@ class ExtrudeManager {
             center.y += figCenter.y * weight;
             totalWeight += weight;
         });
-        
+
         if (totalWeight > 0) {
             center.x /= totalWeight;
             center.y /= totalWeight;
         }
-        
+
         return center;
     }
 
     handleArrowDrag(event) {
         if (!this.isDraggingArrow || !this.extrudeArrow || !this.basePlane) return;
 
-        // Рассчитываем изменение высоты на основе движения мыши по Y
-        const deltaY = this.startMouseY - event.clientY; // Инвертируем для интуитивного управления
-        const sensitivity = 0.5; // Чувствительность
-
-        let newHeight = this.arrowStartHeight + deltaY * sensitivity;
-        newHeight = Math.max(0.1, Math.min(newHeight, 1000)); // Ограничиваем 1000 мм
-        newHeight = Math.round(newHeight * 10) / 10;
-
-        // Обновляем поле ввода высоты
-        const heightInput = document.getElementById('extrudeHeight');
-        if (heightInput) {
-            heightInput.value = newHeight;
-
-            // НЕ триггерим событие input во время перетаскивания - обновляем напрямую
-            // Это предотвратит многократные обновления превью
-            if (this.extrudePreviewGroup) {
-                // Обновляем превью напрямую
-                this.updateExtrudePreviewDirect(newHeight);
-            }
-
-            // Обновляем позицию стрелки
-            this.updateArrowPositionDirect(newHeight);
-        }
-
-        event.preventDefault();
-    }
-
-    // Прямое обновление позиции стрелки
-    updateArrowPositionDirect(height) {
-        if (!this.extrudeArrow || !this.basePlane) return;
-
-        const direction = document.getElementById('extrudeDirection')?.value || 'positive';
-        const selectedFigures = this.getSelectedFigures();
-        if (selectedFigures.length === 0) return;
-
-        // Получаем нормаль плоскости
-        const planeNormal = new THREE.Vector3(0, 0, 1);
-        planeNormal.applyQuaternion(this.basePlane.quaternion);
-        planeNormal.normalize();
-
-        // Получаем СРЕДНЮЮ ТОЧКУ ВСЕХ ВЫБРАННЫХ ФИГУР
-        const figuresCenter = this.getFiguresCenter(selectedFigures);
-        const worldCenter = this.basePlane.localToWorld(figuresCenter.clone());
-
-        // Получаем позицию плоскости в мировых координатах
-        const planePos = new THREE.Vector3();
-        this.basePlane.getWorldPosition(planePos);
-
-        // Вектор от плоскости до центра фигур
-        const offsetVector = new THREE.Vector3().subVectors(worldCenter, planePos);
-
-        // Базовое положение стрелки (на плоскости в центре фигур)
-        const basePos = planePos.clone().add(offsetVector);
-
-        // Рассчитываем смещение стрелки в зависимости от направления
-        let previewCenterOffset = 0;
-
-        if (direction === 'positive') {
-            previewCenterOffset = height / 2;
-        } else if (direction === 'negative') {
-            previewCenterOffset = -height / 2;
-        } else if (direction === 'both') {
-            previewCenterOffset = 0;
-        }
-
-        // Позиция стрелки = базовое положение + смещение по нормали
-        const arrowPos = basePos.clone().add(
-            planeNormal.clone().multiplyScalar(previewCenterOffset + 2)
-        );
-
-        // Обновляем позицию стрелки
-        this.extrudeArrow.position.copy(arrowPos);
-        this.extrudeArrow.updateMatrixWorld(true);
-    }
-
-    // Прямое обновление превью без полной перестройки
-    updateExtrudePreviewDirect(height) {
-        if (!this.extrudePreviewGroup || !this.basePlane) return;
-
-        const direction = document.getElementById('extrudeDirection')?.value || 'positive';
-        const selectedFigures = this.getSelectedFigures();
-
-        // Получаем нормаль плоскости
-        const planeNormal = new THREE.Vector3(0, 0, 1);
-        planeNormal.applyQuaternion(this.basePlane.quaternion);
-        planeNormal.normalize();
-
-        // Получаем позицию плоскости
-        const planePos = new THREE.Vector3();
-        this.basePlane.getWorldPosition(planePos);
-
-        // Обновляем только масштаб по Z у превью меша
-        const previewMesh = this.extrudePreviewGroup.children[0];
-        if (previewMesh && previewMesh.geometry) {
-            // Масштабируем по Z
-            const scaleZ = height / 10; // 10 - базовая высота
-            previewMesh.scale.z = scaleZ;
-
-            // Обновляем позицию в зависимости от направления
-            let positionOffset = 0;
-            if (direction === 'positive') {
-                positionOffset = height / 2 + 0.1;
-            } else if (direction === 'negative') {
-                positionOffset = -height / 2 + 0.1;
-            } else {
-                positionOffset = 0.1;
-            }
-
-            // Позиция меша
-            previewMesh.position.copy(planePos);
-            previewMesh.position.add(planeNormal.clone().multiplyScalar(positionOffset));
-        }
-    }
-
-
-
-    handleArrowDrag(event) {
-        if (!this.isDraggingArrow || !this.extrudeArrow || !this.basePlane) return;
-
-        const selectedFigures = this.getSelectedFigures();
+        const selectedFigures = this.getSelectedFiguresWithExclusions();
         if (selectedFigures.length === 0) return;
 
         // Рассчитываем изменение высоты на основе движения мыши по Y
@@ -403,7 +288,6 @@ class ExtrudeManager {
         return false;
     }
 
-    // Добавьте методы для глобального захвата событий
     bindGlobalDragHandlers() {
         this.globalMouseMoveHandler = (e) => {
             if (this.isDraggingArrow) {
@@ -433,9 +317,6 @@ class ExtrudeManager {
         }
     }
 
-
-
-    // При завершении перетаскивания обновляем превью полностью
     handleArrowDragEnd() {
         this.isDraggingArrow = false;
         this.unbindGlobalDragHandlers();
@@ -460,8 +341,8 @@ class ExtrudeManager {
         }
 
         const type = element.userData.elementType;
-        if (type === 'rectangle' || type === 'circle' || 
-            type === 'polygon' || type === 'oval' || 
+        if (type === 'rectangle' || type === 'circle' ||
+            type === 'polygon' || type === 'oval' ||
             type === 'stadium' || type === 'arc') {
             return true;
         }
@@ -520,19 +401,19 @@ class ExtrudeManager {
         }
 
         const allElements = this.editor.objectsManager.getAllSketchElements();
-        
+
         // 1. Собираем простые замкнутые элементы
         const simpleContours = this.collectSimpleContours(allElements);
-        
+
         // 2. Собираем контуры из линий
         let lineContours = [];
         if (this.autoDetectFigures) {
             lineContours = this.collectLineContours(allElements);
         }
-        
+
         // 3. Объединяем все контуры в фигуры с учетом вложенности
         const figures = this.groupContoursIntoFigures([...simpleContours, ...lineContours]);
-        
+
         this.figureCache = figures;
         this.figureCacheTimestamp = now;
         return figures;
@@ -540,13 +421,13 @@ class ExtrudeManager {
 
     collectSimpleContours(allElements) {
         const contours = [];
-        
+
         allElements.forEach(element => {
             if (this.isSketchElementClosed(element)) {
                 const points = this.getElementPoints(element);
                 const area = this.calculatePolygonArea(points);
                 const center = this.calculateContourCenter(points);
-                
+
                 if (points.length >= 3 && Math.abs(area) > 0.001) {
                     contours.push({
                         element: element,
@@ -561,40 +442,40 @@ class ExtrudeManager {
                 }
             }
         });
-        
+
         return contours;
     }
 
     collectLineContours(allElements) {
-        const lines = allElements.filter(element => 
-            element.userData.elementType === 'line' || 
+        const lines = allElements.filter(element =>
+            element.userData.elementType === 'line' ||
             element.userData.elementType === 'polyline'
         );
-        
+
         if (lines.length === 0) return [];
-        
+
         const graphData = this.buildLineGraphs();
         const rawContours = this.findClosedContoursInGraph(graphData);
-        
+
         const contours = [];
         const processedLines = new Set();
-        
+
         rawContours.forEach((rawContour, index) => {
             const contourElements = [];
             const edgeSet = new Set();
-            
+
             for (let i = 0; i < rawContour.vertices.length; i++) {
                 const v1 = rawContour.vertices[i];
                 const v2 = rawContour.vertices[(i + 1) % rawContour.vertices.length];
-                
+
                 const edgeKey = `${Math.min(v1, v2)}-${Math.max(v1, v2)}`;
                 if (!edgeSet.has(edgeKey)) {
                     edgeSet.add(edgeKey);
-                    
-                    const matchingEdge = graphData.edges.find(([ev1, ev2]) => 
+
+                    const matchingEdge = graphData.edges.find(([ev1, ev2]) =>
                         (ev1 === v1 && ev2 === v2) || (ev1 === v2 && ev2 === v1)
                     );
-                    
+
                     if (matchingEdge) {
                         const element = matchingEdge[2];
                         if (!processedLines.has(element)) {
@@ -604,11 +485,11 @@ class ExtrudeManager {
                     }
                 }
             }
-            
+
             if (contourElements.length > 0) {
                 const center = this.calculateContourCenter(rawContour.points);
                 const area = this.calculatePolygonArea(rawContour.points);
-                
+
                 contours.push({
                     elements: contourElements,
                     points: rawContour.points,
@@ -623,36 +504,36 @@ class ExtrudeManager {
                 });
             }
         });
-        
+
         return contours;
     }
 
     buildLineGraphs() {
         this.lineGraphs.clear();
-        
+
         const allElements = this.editor.objectsManager.getAllSketchElements();
-        const lines = allElements.filter(element => 
-            element.userData.elementType === 'line' || 
+        const lines = allElements.filter(element =>
+            element.userData.elementType === 'line' ||
             element.userData.elementType === 'polyline'
         );
-        
+
         const vertices = new Map();
         const edges = [];
-        
+
         lines.forEach(element => {
             const points = this.getElementPoints(element);
             if (points.length < 2) return;
-            
+
             for (let i = 0; i < points.length - 1; i++) {
                 const p1 = points[i];
                 const p2 = points[i + 1];
-                
+
                 const key1 = `${p1.x.toFixed(4)},${p1.y.toFixed(4)}`;
                 const key2 = `${p2.x.toFixed(4)},${p2.y.toFixed(4)}`;
-                
+
                 if (!vertices.has(key1)) vertices.set(key1, vertices.size);
                 if (!vertices.has(key2)) vertices.set(key2, vertices.size);
-                
+
                 edges.push([
                     vertices.get(key1),
                     vertices.get(key2),
@@ -660,16 +541,16 @@ class ExtrudeManager {
                 ]);
             }
         });
-        
+
         const graph = new Map();
         edges.forEach(([v1, v2, element]) => {
             if (!graph.has(v1)) graph.set(v1, []);
             if (!graph.has(v2)) graph.set(v2, []);
-            
+
             graph.get(v1).push({ vertex: v2, element });
             graph.get(v2).push({ vertex: v1, element });
         });
-        
+
         const graphData = {
             vertices: Array.from(vertices.keys()).map(key => {
                 const [x, y] = key.split(',').map(Number);
@@ -678,7 +559,7 @@ class ExtrudeManager {
             graph: graph,
             edges: edges
         };
-        
+
         this.lineGraphs.set('all', graphData);
         return graphData;
     }
@@ -688,7 +569,7 @@ class ExtrudeManager {
         const visitedEdges = new Set();
         const vertexCoords = graphData.vertices;
         const graph = graphData.graph;
-        
+
         const findCycles = (startVertex, currentVertex, path, visitedVertices) => {
             if (path.length > 1 && currentVertex === startVertex) {
                 if (path.length >= 3) {
@@ -705,11 +586,11 @@ class ExtrudeManager {
                 }
                 return;
             }
-            
+
             if (visitedVertices.has(currentVertex)) return;
-            
+
             visitedVertices.add(currentVertex);
-            
+
             const neighbors = graph.get(currentVertex) || [];
             for (const neighbor of neighbors) {
                 const edgeKey = `${Math.min(currentVertex, neighbor.vertex)}-${Math.max(currentVertex, neighbor.vertex)}`;
@@ -722,14 +603,14 @@ class ExtrudeManager {
                 }
             }
         };
-        
+
         for (let startVertex = 0; startVertex < vertexCoords.length; startVertex++) {
             findCycles(startVertex, startVertex, [startVertex], new Set());
         }
-        
+
         const uniqueContours = [];
         const contourHashes = new Set();
-        
+
         contours.forEach(contour => {
             const minIndex = Math.min(...contour.vertices);
             const startIdx = contour.vertices.indexOf(minIndex);
@@ -737,38 +618,38 @@ class ExtrudeManager {
                 ...contour.vertices.slice(startIdx),
                 ...contour.vertices.slice(0, startIdx)
             ];
-            
+
             const hash = normalizedVertices.join('-');
             if (!contourHashes.has(hash)) {
                 contourHashes.add(hash);
                 uniqueContours.push(contour);
             }
         });
-        
+
         return uniqueContours;
     }
 
     groupContoursIntoFigures(contours) {
         const figures = [];
-        
+
         // Сортируем по площади (от больших к меньшим)
         contours.sort((a, b) => b.area - a.area);
-        
+
         // Массив для отслеживания использованных контуров
         const usedContours = new Set();
-        
+
         for (let i = 0; i < contours.length; i++) {
             if (usedContours.has(i)) continue;
-            
+
             const outerContour = contours[i];
             const holes = [];
-            
+
             // Ищем контуры, которые находятся внутри этого контура
             for (let j = i + 1; j < contours.length; j++) {
                 if (usedContours.has(j)) continue;
-                
+
                 const innerContour = contours[j];
-                
+
                 // Проверяем вложенность
                 if (this.isContourInsideContour(innerContour, outerContour)) {
                     // Проверяем, что этот контур не пересекается с уже добавленными отверстиями
@@ -779,7 +660,7 @@ class ExtrudeManager {
                             break;
                         }
                     }
-                    
+
                     if (isValidHole) {
                         innerContour.isHole = true;
                         holes.push(innerContour);
@@ -787,7 +668,7 @@ class ExtrudeManager {
                     }
                 }
             }
-            
+
             figures.push({
                 outer: outerContour,
                 holes: holes,
@@ -795,12 +676,13 @@ class ExtrudeManager {
                 id: `figure_${Date.now()}_${i}`,
                 selected: false,
                 isStandalone: holes.length === 0,
-                canBeSelected: true
+                canBeSelected: true,
+                isHole: false
             });
-            
+
             usedContours.add(i);
         }
-        
+
         return figures;
     }
 
@@ -820,10 +702,10 @@ class ExtrudeManager {
         for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
             const xi = polygon[i].x, yi = polygon[i].y;
             const xj = polygon[j].x, yj = polygon[j].y;
-            
+
             const intersect = ((yi > point.y) !== (yj > point.y)) &&
                 (point.x < (xj - xi) * (point.y - yi) / (yj - yi) + xi);
-            
+
             if (intersect) inside = !inside;
         }
         return inside;
@@ -832,10 +714,10 @@ class ExtrudeManager {
     doContoursIntersect(contourA, contourB) {
         const bboxA = contourA.boundingBox || this.calculateBoundingBox(contourA.points);
         const bboxB = contourB.boundingBox || this.calculateBoundingBox(contourB.points);
-        
-        return !(bboxA.max.x < bboxB.min.x || 
-                bboxA.min.x > bboxB.max.x || 
-                bboxA.max.y < bboxB.min.y || 
+
+        return !(bboxA.max.x < bboxB.min.x ||
+                bboxA.min.x > bboxB.max.x ||
+                bboxA.max.y < bboxB.min.y ||
                 bboxA.min.y > bboxB.max.y);
     }
 
@@ -843,11 +725,11 @@ class ExtrudeManager {
 
     getElementPoints(element) {
         if (!element.userData) return [];
-        
+
         if (element.userData.localPoints) {
             return element.userData.localPoints.map(p => new THREE.Vector2(p.x, p.y));
         }
-        
+
         if (element.geometry && element.geometry.attributes.position) {
             const positions = element.geometry.attributes.position.array;
             const points = [];
@@ -856,7 +738,7 @@ class ExtrudeManager {
             }
             return points;
         }
-        
+
         return [];
     }
 
@@ -888,23 +770,24 @@ class ExtrudeManager {
         if (points.length === 0) {
             return { min: new THREE.Vector2(0, 0), max: new THREE.Vector2(0, 0) };
         }
-        
+
         const min = new THREE.Vector2(Infinity, Infinity);
         const max = new THREE.Vector2(-Infinity, -Infinity);
-        
+
         points.forEach(p => {
             min.x = Math.min(min.x, p.x);
             min.y = Math.min(min.y, p.y);
             max.x = Math.max(max.x, p.x);
             max.y = Math.max(max.y, p.y);
         });
-        
+
         return { min, max };
     }
 
     // === МЕТОДЫ ВЫБОРА ФИГУР ===
 
     selectFigureForExtrude(event) {
+        this.editor.updateMousePosition(event);
         this.editor.raycaster.setFromCamera(this.editor.mouse, this.editor.camera);
         this.editor.raycaster.params.Line = { threshold: 5 };
 
@@ -919,20 +802,19 @@ class ExtrudeManager {
 
             if (clickedFigures.length === 0) return false;
 
-            // Определяем, является ли элемент частью внешнего контура или отверстия
             const isHole = this.isElementInHole(clickedElement, clickedFigures);
 
             if (event.ctrlKey || event.metaKey) {
-                // Ctrl+клик: добавляем/удаляем из выделения
-                this.handleMultiSelection(clickedFigures, isHole, clickedElement);
+                // Ctrl+клик: обработка множественного выбора
+                this.handleCtrlClickSelection(clickedFigures, isHole, clickedElement);
             } else {
-                // Обычный клик: выделяем фигуру
-                this.handleSingleSelection(clickedFigures, isHole, clickedElement);
+                // Обычный клик: одиночный выбор
+                this.handleSingleClickSelection(clickedFigures, isHole, clickedElement);
             }
 
             this.updateExtrudePreview();
             this.updateExtrudeUI();
-            this.createExtrudeDirectionIndicator(this.selectedFigures);
+            this.createExtrudeDirectionIndicator(this.getSelectedFiguresWithExclusions());
             return true;
         }
 
@@ -952,54 +834,353 @@ class ExtrudeManager {
         return false;
     }
 
-    handleSingleSelection(figures, isHole, clickedElement) {
+    handleSingleClickSelection(figures, isHole, clickedElement) {
         this.clearFigureSelection();
+        this.excludedHoles.clear();
 
         if (isHole) {
-            // Клик по отверстию - создаем отдельную фигуру из отверстия
+            // Клик по отверстию - выделяем только это отверстие
             const holeFigure = this.createHoleFigure(clickedElement, figures);
             if (holeFigure) {
                 this.selectFigure(holeFigure);
             }
         } else {
-            // Клик по внешней фигуре - выбираем всю фигуру со всеми отверстиями
-            // Находим фигуру, которой принадлежит внешний контур
-            for (const figure of figures) {
-                if ((figure.outer.element && figure.outer.element === clickedElement) ||
-                    (figure.outer.elements && figure.outer.elements.includes(clickedElement))) {
-                    this.selectFigure(figure);
-                    break;
+            // Клик по внешней фигуре - выделяем её целиком (со всеми отверстиями)
+            const externalFigure = figures.find(figure =>
+                !figure.isHole && (
+                    (figure.outer.element && figure.outer.element === clickedElement) ||
+                    (figure.outer.elements && figure.outer.elements.includes(clickedElement))
+                )
+            );
+
+            if (externalFigure) {
+                this.selectFigure(externalFigure);
+            }
+        }
+    }
+
+    handleCtrlClickSelection(figures, isHole, clickedElement) {
+        if (isHole) {
+            // Ctrl+клик по отверстию
+            const holeFigure = this.createHoleFigure(clickedElement, figures);
+            if (!holeFigure) return;
+
+            // Проверяем, выделена ли родительская фигура
+            const parentFigure = this.findParentFigureForHole(holeFigure);
+            const isParentSelected = parentFigure && this.isFigureSelected(parentFigure);
+
+            if (isParentSelected) {
+                // Если родитель выделен, добавляем/удаляем отверстие из исключений
+                this.toggleHoleExclusion(parentFigure, holeFigure);
+            } else {
+                // Иначе выделяем/снимаем выделение с отверстия
+                this.toggleFigureSelection(holeFigure);
+            }
+        } else {
+            // Ctrl+клик по внешней фигуре
+            const externalFigure = figures.find(figure =>
+                !figure.isHole && (
+                    (figure.outer.element && figure.outer.element === clickedElement) ||
+                    (figure.outer.elements && figure.outer.elements.includes(clickedElement))
+                )
+            );
+
+            if (externalFigure) {
+                const wasSelected = this.isFigureSelected(externalFigure);
+                this.toggleFigureSelection(externalFigure);
+
+                // Если фигура была выделена и мы сняли выделение,
+                // очищаем её исключенные отверстия
+                if (wasSelected) {
+                    this.excludedHoles.delete(externalFigure.id);
                 }
             }
         }
     }
 
-    handleMultiSelection(figures, isHole, clickedElement) {
-        if (isHole) {
-            // Ctrl+клик по отверстию
-            const holeFigure = this.createHoleFigure(clickedElement, figures);
-            if (holeFigure) {
-                // Проверяем, не является ли это отверстие частью уже выбранной внешней фигуры
-                const parentFigure = this.findParentFigure(holeFigure);
-                if (parentFigure && this.isFigureSelected(parentFigure)) {
-                    // Если родительская фигура выбрана, удаляем это отверстие из неё
-                    this.removeHoleFromFigure(parentFigure, holeFigure);
-                    // И добавляем отверстие как отдельную фигуру
-                    this.toggleFigureSelection(holeFigure);
-                } else {
-                    this.toggleFigureSelection(holeFigure);
+    // Добавление/удаление отверстия из исключений
+    toggleHoleExclusion(parentFigure, holeFigure) {
+        if (!this.excludedHoles.has(parentFigure.id)) {
+            this.excludedHoles.set(parentFigure.id, new Set());
+        }
+
+        const excludedSet = this.excludedHoles.get(parentFigure.id);
+        const holeId = this.getHoleId(holeFigure.outer);
+
+        if (excludedSet.has(holeId)) {
+            excludedSet.delete(holeId);
+            // Визуально показываем, что отверстие снова включено
+            this.highlightFigure(holeFigure, 0xFF9800); // оранжевый для отверстий
+        } else {
+            excludedSet.add(holeId);
+            // Визуально показываем, что отверстие исключено
+            this.highlightFigure(holeFigure, 0x888888); // серый для исключенных
+        }
+
+        // Обновляем превью
+        this.updateExtrudePreview();
+    }
+
+    // Проверка, выбрана ли фигура
+    isFigureSelected(figure) {
+        return this.selectedFigures.some(f => f.id === figure.id);
+    }
+
+    // Получение уникального ID для отверстия
+    getHoleId(hole) {
+        if (hole.element) {
+            return `hole_${hole.element.uuid}`;
+        } else if (hole.elements && hole.elements.length > 0) {
+            return `hole_${hole.elements[0].uuid}`;
+        }
+        return `hole_${Math.random()}`;
+    }
+
+    // Поиск родительской фигуры для отверстия
+    findParentFigureForHole(holeFigure) {
+        const allFigures = this.collectAllFigures();
+        return allFigures.find(figure =>
+            !figure.isHole &&
+            figure.holes.some(hole =>
+                (hole.element && hole.element === holeFigure.outer.element) ||
+                (hole.elements && hole.elements === holeFigure.outer.elements)
+            )
+        );
+    }
+
+    // Получение выбранных фигур с учетом исключений
+    getSelectedFiguresWithExclusions() {
+        const result = [];
+        const externalFigures = [];
+        const holeFigures = [];
+
+        // Разделяем фигуры на внешние и отверстия
+        this.selectedFigures.forEach(figure => {
+            if (figure.isHole) {
+                holeFigures.push(figure);
+            } else {
+                externalFigures.push(figure);
+            }
+        });
+
+        // Обрабатываем внешние фигуры
+        externalFigures.forEach(externalFigure => {
+            const excludedHoleIds = this.excludedHoles.get(externalFigure.id) || new Set();
+
+            // Создаем копию внешней фигуры с фильтрованными отверстиями
+            const figureCopy = {
+                ...externalFigure,
+                holes: externalFigure.holes.filter(hole => {
+                    // Проверяем, исключено ли это отверстие
+                    const holeId = this.getHoleId(hole);
+                    return !excludedHoleIds.has(holeId);
+                })
+            };
+
+            result.push(figureCopy);
+        });
+
+        // Добавляем отдельно выделенные отверстия (если их родитель не выделен)
+        holeFigures.forEach(holeFigure => {
+            // Проверяем, выделен ли родитель этой дырки
+            const parentFigure = this.findParentFigureForHole(holeFigure);
+            const isParentSelected = parentFigure &&
+                this.selectedFigures.some(f => f.id === parentFigure.id);
+
+            // Если родитель не выделен, добавляем отверстие как отдельную фигуру
+            if (!isParentSelected) {
+                result.push(holeFigure);
+            }
+        });
+
+        return result;
+    }
+
+    findFiguresContainingElement(figures, element) {
+        const containingFigures = [];
+
+        figures.forEach(figure => {
+            if (figure.outer.element === element ||
+                (figure.outer.elements && figure.outer.elements.includes(element))) {
+                containingFigures.push(figure);
+                return;
+            }
+
+            if (figure.holes.some(hole =>
+                hole.element === element ||
+                (hole.elements && hole.elements.includes(element)))) {
+                containingFigures.push(figure);
+                return;
+            }
+        });
+
+        return containingFigures;
+    }
+
+    selectFigure(figure) {
+        if (!figure.selected) {
+            const figurePlane = this.getFigurePlane(figure);
+
+            // ИСПРАВЛЕНИЕ: Разрешаем выделять фигуры с разных плоскостей
+            if (this.selectedFigures.length === 0) {
+                this.basePlane = figurePlane;
+            } else {
+                // Проверяем, что плоскости совместимы
+                if (!this.arePlanesCompatible(figurePlane, this.basePlane)) {
+                    this.editor.showStatus('Фигура находится на другой плоскости', 'warning');
+                    return;
                 }
             }
-        } else {
-            // Ctrl+клик по внешней фигуре
-            for (const figure of figures) {
-                if ((figure.outer.element && figure.outer.element === clickedElement) ||
-                    (figure.outer.elements && figure.outer.elements.includes(clickedElement))) {
-                    this.toggleFigureSelection(figure);
-                    break;
-                }
+
+            figure.selected = true;
+            this.selectedFigures.push(figure);
+
+            // Для внешних фигур подсвечиваем их отверстия
+            if (!figure.isHole) {
+                this.highlightFigure(figure, 0x0066FF); // синий для внешней фигуры
+            } else {
+                this.highlightFigure(figure, 0x4CAF50); // зеленый для отдельного отверстия
             }
         }
+    }
+
+    toggleFigureSelection(figure) {
+        if (figure.selected) {
+            this.deselectFigure(figure);
+        } else {
+            this.selectFigure(figure);
+        }
+    }
+
+    highlightFigure(figure, color) {
+        if (figure.isHole) {
+            // Для отверстий
+            if (figure.outer.element) {
+                this.editor.objectsManager.safeSetElementColor(figure.outer.element, color);
+            } else if (figure.outer.elements) {
+                figure.outer.elements.forEach(element => {
+                    this.editor.objectsManager.safeSetElementColor(element, color);
+                });
+            }
+        } else {
+            // Для внешних фигур
+            if (figure.outer.element) {
+                this.editor.objectsManager.safeSetElementColor(figure.outer.element, color);
+            } else if (figure.outer.elements) {
+                figure.outer.elements.forEach(element => {
+                    this.editor.objectsManager.safeSetElementColor(element, color);
+                });
+            }
+
+            // Подсвечиваем отверстия (если они не исключены)
+            const excludedHoleIds = this.excludedHoles.get(figure.id) || new Set();
+            figure.holes.forEach(hole => {
+                const holeId = this.getHoleId(hole);
+                const holeColor = excludedHoleIds.has(holeId) ? 0x888888 : 0xFF9800;
+
+                if (hole.element) {
+                    this.editor.objectsManager.safeSetElementColor(hole.element, holeColor);
+                } else if (hole.elements) {
+                    hole.elements.forEach(element => {
+                        this.editor.objectsManager.safeSetElementColor(element, holeColor);
+                    });
+                }
+            });
+        }
+    }
+
+    getFigurePlane(figure) {
+        let element = null;
+
+        if (figure.outer.element) {
+            element = figure.outer.element;
+        } else if (figure.outer.elements && figure.outer.elements.length > 0) {
+            element = figure.outer.elements[0];
+        }
+
+        if (element) {
+            return this.findSketchPlaneForElement(element);
+        }
+
+        return null;
+    }
+
+    arePlanesCompatible(plane1, plane2) {
+        if (!plane1 || !plane2) return false;
+
+        const pos1 = plane1.position;
+        const pos2 = plane2.position;
+        const quat1 = plane1.quaternion;
+        const quat2 = plane2.quaternion;
+
+        const distance = pos1.distanceTo(pos2);
+        const angle = quat1.angleTo(quat2);
+
+        return distance < 0.001 && angle < 0.001;
+    }
+
+    deselectFigure(figure) {
+        const index = this.selectedFigures.indexOf(figure);
+        if (index > -1) {
+            this.selectedFigures.splice(index, 1);
+            figure.selected = false;
+            this.unhighlightFigure(figure);
+
+            // Удаляем исключенные отверстия этой фигуры
+            this.excludedHoles.delete(figure.id);
+
+            // ИСПРАВЛЕНИЕ: Обновляем базовую плоскость только если не осталось выделенных фигур
+            if (this.selectedFigures.length === 0) {
+                this.basePlane = null;
+            } else {
+                // Если остались выделенные фигуры, обновляем базовую плоскость на первую из них
+                const firstFigure = this.selectedFigures[0];
+                this.basePlane = this.getFigurePlane(firstFigure);
+            }
+        }
+    }
+
+    unhighlightFigure(figure) {
+        if (figure.isHole) {
+            if (figure.outer.element) {
+                this.editor.objectsManager.safeRestoreElementColor(figure.outer.element);
+            } else if (figure.outer.elements) {
+                figure.outer.elements.forEach(element => {
+                    this.editor.objectsManager.safeRestoreElementColor(element);
+                });
+            }
+        } else {
+            if (figure.outer.element) {
+                this.editor.objectsManager.safeRestoreElementColor(figure.outer.element);
+            } else if (figure.outer.elements) {
+                figure.outer.elements.forEach(element => {
+                    this.editor.objectsManager.safeRestoreElementColor(element);
+                });
+            }
+
+            figure.holes.forEach(hole => {
+                if (hole.element) {
+                    this.editor.objectsManager.safeRestoreElementColor(hole.element);
+                } else if (hole.elements) {
+                    hole.elements.forEach(element => {
+                        this.editor.objectsManager.safeRestoreElementColor(element);
+                    });
+                }
+            });
+        }
+    }
+
+    clearFigureSelection() {
+        this.selectedFigures.forEach(figure => {
+            this.deselectFigure(figure);
+        });
+        this.selectedFigures = [];
+        this.excludedHoles.clear();
+        this.basePlane = null;
+    }
+
+    getSelectedFigures() {
+        return this.selectedFigures;
     }
 
     createHoleFigure(clickedElement, figures) {
@@ -1027,165 +1208,6 @@ class ExtrudeManager {
         return null;
     }
 
-    findParentFigure(holeFigure) {
-        const allFigures = this.collectAllFigures();
-        return allFigures.find(fig => fig.id === holeFigure.parentFigureId);
-    }
-
-    isFigureSelected(figure) {
-        return this.selectedFigures.some(f => f.id === figure.id);
-    }
-
-    removeHoleFromFigure(figure, holeFigure) {
-        // Находим и удаляем отверстие из списка отверстий фигуры
-        const holeIndex = figure.holes.findIndex(hole => {
-            if (holeFigure.outer.element) {
-                return hole.element === holeFigure.outer.element;
-            } else if (holeFigure.outer.elements) {
-                return hole.elements && 
-                       hole.elements.length === holeFigure.outer.elements.length &&
-                       hole.elements.every((el, idx) => el === holeFigure.outer.elements[idx]);
-            }
-            return false;
-        });
-        
-        if (holeIndex > -1) {
-            figure.holes.splice(holeIndex, 1);
-            // Обновляем подсветку
-            this.highlightFigure(figure, 0x0066FF);
-        }
-    }
-
-    findFiguresContainingElement(figures, element) {
-        const containingFigures = [];
-        
-        figures.forEach(figure => {
-            if (figure.outer.element === element || 
-                (figure.outer.elements && figure.outer.elements.includes(element))) {
-                containingFigures.push(figure);
-                return;
-            }
-            
-            if (figure.holes.some(hole => 
-                hole.element === element || 
-                (hole.elements && hole.elements.includes(element)))) {
-                containingFigures.push(figure);
-                return;
-            }
-        });
-        
-        return containingFigures;
-    }
-
-    selectFigure(figure) {
-        if (!figure.selected) {
-            const figurePlane = this.getFigurePlane(figure);
-
-            if (this.selectedFigures.length === 0) {
-                this.basePlane = figurePlane;
-                figure.selected = true;
-                this.selectedFigures.push(figure);
-                this.highlightFigure(figure, 0x0066FF);
-            } else {
-                if (this.arePlanesCompatible(figurePlane, this.basePlane)) {
-                    figure.selected = true;
-                    this.selectedFigures.push(figure);
-                    this.highlightFigure(figure, 0x0066FF);
-                } else {
-                    this.editor.showStatus('Фигура находится на другой плоскости', 'warning');
-                    return;
-                }
-            }
-        }
-    }
-
-    toggleFigureSelection(figure) {
-        if (figure.selected) {
-            this.deselectFigure(figure);
-        } else {
-            this.selectFigure(figure);
-        }
-    }
-
-    highlightFigure(figure, color) {
-        if (figure.outer.element) {
-            this.editor.objectsManager.safeSetElementColor(figure.outer.element, color);
-        } else if (figure.outer.elements) {
-            figure.outer.elements.forEach(element => {
-                this.editor.objectsManager.safeSetElementColor(element, color);
-            });
-        }
-        
-        figure.holes.forEach(hole => {
-            if (hole.element) {
-                this.editor.objectsManager.safeSetElementColor(hole.element, color);
-            } else if (hole.elements) {
-                hole.elements.forEach(element => {
-                    this.editor.objectsManager.safeSetElementColor(element, color);
-                });
-            }
-        });
-    }
-
-    getFigurePlane(figure) {
-        let element = null;
-        
-        if (figure.outer.element) {
-            element = figure.outer.element;
-        } else if (figure.outer.elements && figure.outer.elements.length > 0) {
-            element = figure.outer.elements[0];
-        }
-        
-        if (element) {
-            return this.findSketchPlaneForElement(element);
-        }
-        
-        return null;
-    }
-
-    arePlanesCompatible(plane1, plane2) {
-        if (!plane1 || !plane2) return false;
-        
-        const pos1 = plane1.position;
-        const pos2 = plane2.position;
-        const quat1 = plane1.quaternion;
-        const quat2 = plane2.quaternion;
-        
-        const distance = pos1.distanceTo(pos2);
-        const angle = quat1.angleTo(quat2);
-        
-        return distance < 0.001 && angle < 0.001;
-    }
-
-    deselectFigure(figure) {
-        const index = this.selectedFigures.indexOf(figure);
-        if (index > -1) {
-            this.selectedFigures.splice(index, 1);
-            figure.selected = false;
-            this.unhighlightFigure(figure);
-
-            if (this.selectedFigures.length === 0) {
-                this.basePlane = null;
-            }
-        }
-    }
-
-    unhighlightFigure(figure) {
-        this.highlightFigure(figure, null);
-    }
-
-    clearFigureSelection() {
-        this.selectedFigures.forEach(figure => {
-            this.deselectFigure(figure);
-        });
-        this.selectedFigures = [];
-        this.basePlane = null;
-    }
-
-    getSelectedFigures() {
-        return this.selectedFigures;
-    }
-
     // === МЕТОДЫ СОЗДАНИЯ ГЕОМЕТРИИ ===
 
     createExtrusionGeometryFromFigures(figures, height, direction) {
@@ -1194,8 +1216,8 @@ class ExtrudeManager {
         const shapes = [];
 
         figures.forEach(figure => {
-            // Если это отверстие, создаем фигуру из него
             if (figure.isHole) {
+                // Отдельные отверстия
                 const points = this.getFigurePointsForBasePlane(figure);
                 if (points.length >= 3) {
                     const shapePoints = points.map(p => new THREE.Vector2(p.x, p.y));
@@ -1203,27 +1225,19 @@ class ExtrudeManager {
                     shapes.push(shape);
                 }
             } else {
-                // Если это внешняя фигура
+                // Внешние фигуры с фильтрованными отверстиями
                 const points = this.getFigurePointsForBasePlane(figure);
-
                 if (points.length < 3) return;
 
                 const shapePoints = points.map(p => new THREE.Vector2(p.x, p.y));
                 const shape = new THREE.Shape(shapePoints);
 
-                // Добавляем отверстия, которые не выбраны отдельно
+                // Добавляем отверстия (которые не исключены)
                 figure.holes.forEach(hole => {
-                    // Проверяем, не выбрано ли это отверстие отдельно
-                    const isHoleSelected = this.selectedFigures.some(f =>
-                        f.isHole && f.outer === hole
-                    );
-
-                    if (!isHoleSelected) {
-                        const holePoints = this.getContourPointsForBasePlane(hole);
-                        if (holePoints.length >= 3) {
-                            const holePath = new THREE.Path(holePoints.map(p => new THREE.Vector2(p.x, p.y)));
-                            shape.holes.push(holePath);
-                        }
+                    const holePoints = this.getContourPointsForBasePlane(hole);
+                    if (holePoints.length >= 3) {
+                        const holePath = new THREE.Path(holePoints.map(p => new THREE.Vector2(p.x, p.y)));
+                        shape.holes.push(holePath);
                     }
                 });
 
@@ -1239,7 +1253,7 @@ class ExtrudeManager {
             bevelEnabled: false,
             steps: 1
         };
-        
+
         try {
             const geometry = new THREE.ExtrudeGeometry(shapes, extrudeSettings);
 
@@ -1259,11 +1273,11 @@ class ExtrudeManager {
     getFigurePointsForBasePlane(figure) {
         const figurePlane = this.getFigurePlane(figure);
         if (!figurePlane) return figure.outer.points || [];
-        
+
         if (this.arePlanesCompatible(figurePlane, this.basePlane)) {
             return figure.outer.points || [];
         }
-        
+
         return (figure.outer.points || []).map(point => {
             const localPoint3D = new THREE.Vector3(point.x, point.y, 0);
             const worldPoint = figurePlane.localToWorld(localPoint3D.clone());
@@ -1275,11 +1289,11 @@ class ExtrudeManager {
     getContourPointsForBasePlane(contour) {
         const figurePlane = this.getFigurePlane({ outer: contour });
         if (!figurePlane) return contour.points || [];
-        
+
         if (this.arePlanesCompatible(figurePlane, this.basePlane)) {
             return contour.points || [];
         }
-        
+
         return (contour.points || []).map(point => {
             const localPoint3D = new THREE.Vector3(point.x, point.y, 0);
             const worldPoint = figurePlane.localToWorld(localPoint3D.clone());
@@ -1290,9 +1304,8 @@ class ExtrudeManager {
 
     // === МЕТОДЫ ПРЕДПРОСМОТРА ===
 
-    // Оптимизированный метод обновления превью
     updateExtrudePreview() {
-        const selectedFigures = this.getSelectedFigures();
+        const selectedFigures = this.getSelectedFiguresWithExclusions();
         if (selectedFigures.length === 0) {
             this.removeExtrudePreview();
             return;
@@ -1320,7 +1333,6 @@ class ExtrudeManager {
         }
     }
 
-    // Создание нового превью (используется только при первом выборе)
     createNewExtrudePreview(selectedFigures, height, direction) {
         this.removeExtrudePreview();
 
@@ -1346,7 +1358,6 @@ class ExtrudeManager {
         this.editor.objectsGroup.add(this.extrudePreviewGroup);
     }
 
-    // Обновление позиции превью
     updatePreviewPosition(mesh, height, direction) {
         if (!mesh || !this.basePlane) return;
 
@@ -1369,7 +1380,6 @@ class ExtrudeManager {
 
         mesh.position.add(planeNormal.clone().multiplyScalar(offset));
     }
-
 
     removeExtrudePreview() {
         if (this.extrudePreviewGroup) {
@@ -1397,20 +1407,9 @@ class ExtrudeManager {
             element.userData.elementType === 'polyline'
         );
 
-        const selectedFigures = this.getSelectedFigures();
-        const selectedElements = new Set();
-        
-        selectedFigures.forEach(figure => {
-            if (figure.outer.element) selectedElements.add(figure.outer.element);
-            if (figure.outer.elements) figure.outer.elements.forEach(el => selectedElements.add(el));
-            figure.holes.forEach(hole => {
-                if (hole.element) selectedElements.add(hole.element);
-                if (hole.elements) hole.elements.forEach(el => selectedElements.add(el));
-            });
-        });
-
+        // Восстанавливаем цвета всем элементам
         selectableElements.forEach(element => {
-            if (!selectedElements.has(element) && element.userData.hoverHighlighted) {
+            if (element.userData.hoverHighlighted) {
                 this.editor.objectsManager.safeRestoreElementColor(element);
                 element.userData.hoverHighlighted = false;
             }
@@ -1420,22 +1419,22 @@ class ExtrudeManager {
 
         if (intersects.length > 0) {
             const element = intersects[0].object;
-            
-            if (!selectedElements.has(element)) {
-                const allFigures = this.collectAllFigures();
-                const containingFigures = this.findFiguresContainingElement(allFigures, element);
-                
-                if (containingFigures.length > 0) {
-                    document.body.style.cursor = 'pointer';
-                    
-                    containingFigures.forEach(figure => {
-                        this.highlightFigure(figure, 0xFFFF00);
-                    });
-                    
-                    element.userData.hoverHighlighted = true;
-                } else {
-                    document.body.style.cursor = 'default';
-                }
+            const allFigures = this.collectAllFigures();
+            const containingFigures = this.findFiguresContainingElement(allFigures, element);
+
+            if (containingFigures.length > 0) {
+                document.body.style.cursor = 'pointer';
+
+                // Подсвечиваем все фигуры, содержащие этот элемент
+                containingFigures.forEach(figure => {
+                    if (figure.isHole) {
+                        this.highlightFigure(figure, 0xFFFF00); // желтый для наведения
+                    } else {
+                        this.highlightFigure(figure, 0xFFFF00); // желтый для наведения
+                    }
+                });
+
+                element.userData.hoverHighlighted = true;
             } else {
                 document.body.style.cursor = 'default';
             }
@@ -1448,7 +1447,7 @@ class ExtrudeManager {
         const oldUI = document.getElementById('extrudeUI');
         if (oldUI) oldUI.remove();
 
-        const selectedFigures = this.getSelectedFigures();
+        const selectedFigures = this.getSelectedFiguresWithExclusions();
         const selectedCount = selectedFigures.length;
 
         const container = document.createElement('div');
@@ -1518,7 +1517,7 @@ class ExtrudeManager {
         heightInput.addEventListener('input', (e) => {
             this.updateExtrudePreview();
             this.updateArrowPosition();
-            
+
             const btn = document.querySelector('#performExtrude');
             if (btn && !btn.disabled) {
                 const height = parseFloat(e.target.value) || 10;
@@ -1541,30 +1540,27 @@ class ExtrudeManager {
     }
 
     getFigureInfoText(figures) {
-        const figureCount = figures.length;
-        let holeCount = 0;
-        let externalCount = 0;
-        let internalCount = 0;
-        
-        figures.forEach(fig => {
-            if (fig.isHole) {
-                internalCount++;
-            } else {
-                externalCount++;
-                holeCount += fig.holes.length;
-            }
+        const externalFigures = this.selectedFigures.filter(f => !f.isHole);
+        const holeFigures = this.selectedFigures.filter(f => f.isHole);
+        const externalCount = externalFigures.length;
+        const holeCount = holeFigures.length;
+
+        let excludedHoleCount = 0;
+        externalFigures.forEach(figure => {
+            const excludedHoles = this.excludedHoles.get(figure.id) || new Set();
+            excludedHoleCount += excludedHoles.size;
         });
-        
-        let text = `✓ Выбрано фигур: ${figureCount}`;
+
+        let text = `✓ Выбрано фигур: ${figures.length}`;
         if (externalCount > 0) text += ` (внешних: ${externalCount})`;
-        if (internalCount > 0) text += ` (внутренних: ${internalCount})`;
-        if (holeCount > 0 && externalCount > 0) text += ` (отверстий в выбранных: ${holeCount})`;
-        
+        if (holeCount > 0) text += ` (отверстий: ${holeCount})`;
+        if (excludedHoleCount > 0) text += ` (исключено отверстий: ${excludedHoleCount})`;
+
         if (this.basePlane) {
             const planeName = this.basePlane.userData?.name || 'основной плоскости';
             text += ` на ${planeName}`;
         }
-        
+
         return text;
     }
 
@@ -1580,7 +1576,7 @@ class ExtrudeManager {
 
     getOperationButtonText(height = null) {
         const operation = document.getElementById('extrudeOperation')?.value || 'new';
-        const selectedFigures = this.getSelectedFigures();
+        const selectedFigures = this.getSelectedFiguresWithExclusions();
         const figureCount = selectedFigures.length;
         const heightStr = height ? `${height.toFixed(1)} мм` : '';
 
@@ -1606,7 +1602,7 @@ class ExtrudeManager {
         const operationHint = document.getElementById('operationHint');
 
         if (selectedContourInfo) {
-            const selectedFigures = this.getSelectedFigures();
+            const selectedFigures = this.getSelectedFiguresWithExclusions();
             const figureCount = selectedFigures.length;
             if (figureCount > 0) {
                 selectedContourInfo.textContent = this.getFigureInfoText(selectedFigures);
@@ -1622,7 +1618,7 @@ class ExtrudeManager {
         }
 
         if (performExtrudeBtn) {
-            const selectedFigures = this.getSelectedFigures();
+            const selectedFigures = this.getSelectedFiguresWithExclusions();
             const figureCount = selectedFigures.length;
             performExtrudeBtn.disabled = figureCount === 0;
 
@@ -1636,7 +1632,7 @@ class ExtrudeManager {
     // === МЕТОДЫ ВЫПОЛНЕНИЯ ВЫТЯГИВАНИЯ ===
 
     performExtrude() {
-        const selectedFigures = this.getSelectedFigures();
+        const selectedFigures = this.getSelectedFiguresWithExclusions();
         if (selectedFigures.length === 0) {
             this.editor.showStatus('Выберите фигуру(ы) для вытягивания', 'error');
             return;
@@ -1670,7 +1666,7 @@ class ExtrudeManager {
 
         const planeWorldPos = new THREE.Vector3();
         this.basePlane.getWorldPosition(planeWorldPos);
-        
+
         mesh.position.copy(planeWorldPos);
         mesh.quaternion.copy(this.basePlane.quaternion);
 
@@ -1968,6 +1964,7 @@ class ExtrudeManager {
 
     cancelExtrudeMode() {
         this.clearFigureSelection();
+        this.excludedHoles.clear();
 
         // Удаляем стрелку
         if (this.extrudeArrow) {
@@ -2006,13 +2003,13 @@ class ExtrudeManager {
 
     highlightExtrudableFigures() {
         const allElements = this.editor.objectsManager.getAllSketchElements();
-        
+
         allElements.forEach(element => {
             this.editor.objectsManager.safeRestoreElementColor(element);
         });
-        
+
         const figures = this.collectAllFigures();
-        
+
         figures.forEach(figure => {
             if (figure.outer.element) {
                 this.editor.objectsManager.safeSetElementColor(figure.outer.element, 0x2196F3);
@@ -2021,7 +2018,7 @@ class ExtrudeManager {
                     this.editor.objectsManager.safeSetElementColor(element, 0x2196F3);
                 });
             }
-            
+
             figure.holes.forEach(hole => {
                 if (hole.element) {
                     this.editor.objectsManager.safeSetElementColor(hole.element, 0xFF9800);
@@ -2032,7 +2029,7 @@ class ExtrudeManager {
                 }
             });
         });
-        
+
         if (figures.length === 0) {
             this.editor.showStatus('Нет замкнутых фигур для вытягивания', 'warning');
         }
@@ -2059,5 +2056,42 @@ class ExtrudeManager {
             });
         });
         return elements;
+    }
+
+    // === МЕТОДЫ ДЛЯ ОТЛАДКИ ===
+
+    getSelectionInfo() {
+        const result = {
+            externalFigures: [],
+            holes: [],
+            excludedHoles: []
+        };
+
+        this.selectedFigures.forEach(figure => {
+            if (figure.isHole) {
+                result.holes.push(figure);
+            } else {
+                result.externalFigures.push(figure);
+                const excluded = this.excludedHoles.get(figure.id);
+                if (excluded) {
+                    result.excludedHoles.push(...Array.from(excluded));
+                }
+            }
+        });
+
+        return result;
+    }
+
+    debugSelection() {
+        console.log('=== Debug Selection ===');
+        console.log('Selected figures:', this.selectedFigures.length);
+        console.log('External figures:', this.selectedFigures.filter(f => !f.isHole).length);
+        console.log('Holes:', this.selectedFigures.filter(f => f.isHole).length);
+        console.log('Excluded holes:');
+        this.excludedHoles.forEach((holes, figureId) => {
+            console.log(`  Figure ${figureId}:`, Array.from(holes));
+        });
+        console.log('Base plane:', this.basePlane?.uuid);
+        console.log('======================');
     }
 }

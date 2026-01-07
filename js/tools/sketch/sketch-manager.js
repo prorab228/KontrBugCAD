@@ -82,6 +82,10 @@ class SketchManager {
         this.registerTool('stadium', new StadiumSketchTool(this));
         this.registerTool('arc', new ArcSketchTool(this));
 
+         // Новые инструменты импорта/экспорта
+        this.registerTool('export', new ExportSketchTool(this));
+        this.registerTool('import', new ImportSketchTool(this));
+
         // Устанавливаем текущий инструмент
         this.setCurrentTool('line');
     }

@@ -14,6 +14,7 @@ class CADEditor {
         this.objects = [];
         this.selectedObjects = [];
        // this.currentTool = 'select';
+         this.groups = [];
 
         // Плоскости
         this.workPlanes = [];
@@ -193,6 +194,11 @@ class CADEditor {
         this.toolManager.registerTool('rulerTool', new RulerTool(this));
         this.toolManager.registerTool('gearGenerator', new GearTool(this));
         this.toolManager.registerTool('threadGenerator', new ThreadTool(this));
+        this.toolManager.registerTool('split', new SplitTool(this));
+        this.toolManager.registerTool('mirror', new MirrorTool(this));
+
+        this.toolManager.registerTool('group', new GroupTool(this));
+        this.toolManager.registerTool('ungroup', new UngroupTool(this));
 
         // Булевы операции
         this.toolManager.registerTool('boolean-union', new BooleanUnionTool(this));
@@ -801,6 +807,12 @@ class CADEditor {
             if (planeIndex > -1) {
                 this.workPlanes.splice(planeIndex, 1);
             }
+        }  else if (object.userData.type === 'group') {
+            // ДОБАВИТЬ: удаление из массива групп
+            const groupIndex = this.groups.indexOf(object);
+            if (groupIndex > -1) {
+                this.groups.splice(groupIndex, 1);
+            }
         }
 
         const selectedIndex = this.selectedObjects.indexOf(object);
@@ -849,7 +861,14 @@ class CADEditor {
                 if (planeIndex > -1) {
                     this.workPlanes.splice(planeIndex, 1);
                 }
+            } else if (obj.userData?.type === 'group') {
+                // ДОБАВИТЬ: удаление из массива групп
+                const groupIndex = this.groups.indexOf(obj);
+                if (groupIndex > -1) {
+                    this.groups.splice(groupIndex, 1);
+                }
             }
+
 
             if (obj.geometry) obj.geometry.dispose();
             if (obj.material) obj.material.dispose();

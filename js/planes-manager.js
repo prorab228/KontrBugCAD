@@ -51,12 +51,12 @@ class PlanesManager {
     }
 
     createWorkPlaneObject(name = 'Рабочая плоскость', planeType = 'custom') {
-        const size = 100;
+        const size = 50;
         const geometry = new THREE.PlaneGeometry(size, size);
         const material = new THREE.MeshBasicMaterial({
-            color: 0x2196F3,
+            color: 0x969610,
             transparent: true,
-            opacity: 0.05,
+            opacity: 0.1,
             side: THREE.DoubleSide,
             depthWrite: false
         });

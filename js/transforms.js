@@ -667,6 +667,8 @@ class TransformControls {
     }
 
     updateObjectSizeDirect(object, newDimensions) {
+
+
         if (!object.userData.originalSize) {
             const currentDimensions = this.getObjectDimensions(object);
             object.userData.originalSize = {

@@ -132,6 +132,35 @@ class ToolManager {
                     return true;
                 }
                 break;
+            case 's': // Split
+            case 'ы': // Русская раскладка
+                if (e.ctrlKey && e.shiftKey) { // Ctrl+Shift+S для разрезания
+                    this.setCurrentTool('split');
+                    e.preventDefault();
+                    return true;
+                }
+                break;
+
+            case 'm': // Mirror
+            case 'ь': // Русская раскладка
+                if (e.ctrlKey && e.shiftKey) { // Ctrl+Shift+M для отражения
+                    this.setCurrentTool('mirror');
+                    e.preventDefault();
+                    return true;
+                }
+                break;
+            case 'g': // Group
+            case 'п': // Русская раскладка
+                if (e.ctrlKey && !e.shiftKey) {
+                    this.setCurrentTool('group');
+                    e.preventDefault();
+                    return true;
+                } else if (e.ctrlKey && e.shiftKey) {
+                    this.setCurrentTool('ungroup');
+                    e.preventDefault();
+                    return true;
+                }
+                break;
 //            case 'g': // Шестерня
 //            case 'п': // Русская раскладка
 //                if (e.ctrlKey || e.metaKey) {
