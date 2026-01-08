@@ -20,6 +20,6 @@ https://prorab228.github.io/KontrBugCAD/
 
 ## За актуальной информацией следите в Telegramm канале
 
-Tg:t.me/KontrBugTech
-ВК:КонтрБагТех
-Оф. сайт: КонтрБагТех.рф 
+- Tg:t.me/KontrBugTech
+- ВК: https://vk.com/kontrbugtech
+- Оф. сайт: [КонтрБагТех.рф ](https://www.xn--80abhivsgrre8a.xn--p1ai/)
