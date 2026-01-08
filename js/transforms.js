@@ -668,38 +668,53 @@ class TransformControls {
 
     updateObjectSizeDirect(object, newDimensions) {
 
+        if (object.userData?.type === 'group') {
+            // Для групп масштабируем всю группу
+            const currentBbox = new THREE.Box3().setFromObject(object);
+            const currentSize = new THREE.Vector3();
+            currentBbox.getSize(currentSize);
 
-        if (!object.userData.originalSize) {
-            const currentDimensions = this.getObjectDimensions(object);
-            object.userData.originalSize = {
-                x: currentDimensions.x,
-                y: currentDimensions.y,
-                z: currentDimensions.z
-            };
-            object.userData.originalScale = {
-                x: object.scale.x,
-                y: object.scale.y,
-                z: object.scale.z
-            };
+            const scaleX = newDimensions.x / currentSize.x;
+            const scaleY = newDimensions.y / currentSize.y;
+            const scaleZ = newDimensions.z / currentSize.z;
+
+            object.scale.set(scaleX, scaleY, scaleZ);
+            object.userData.currentSize = newDimensions;
+        } else {
+
+
+            if (!object.userData.originalSize) {
+                const currentDimensions = this.getObjectDimensions(object);
+                object.userData.originalSize = {
+                    x: currentDimensions.x,
+                    y: currentDimensions.y,
+                    z: currentDimensions.z
+                };
+                object.userData.originalScale = {
+                    x: object.scale.x,
+                    y: object.scale.y,
+                    z: object.scale.z
+                };
+            }
+
+            const scaleX = newDimensions.x / object.userData.originalSize.x;
+            const scaleY = newDimensions.y / object.userData.originalSize.y;
+            const scaleZ = newDimensions.z / object.userData.originalSize.z;
+
+            const box = new THREE.Box3().setFromObject(object);
+            const center = new THREE.Vector3();
+            box.getCenter(center);
+
+            object.scale.set(scaleX, scaleY, scaleZ);
+            object.userData.currentSize = newDimensions;
+
+            const newBox = new THREE.Box3().setFromObject(object);
+            const newCenter = new THREE.Vector3();
+            newBox.getCenter(newCenter);
+
+            const offset = new THREE.Vector3().subVectors(center, newCenter);
+            object.position.add(offset);
         }
-
-        const scaleX = newDimensions.x / object.userData.originalSize.x;
-        const scaleY = newDimensions.y / object.userData.originalSize.y;
-        const scaleZ = newDimensions.z / object.userData.originalSize.z;
-
-        const box = new THREE.Box3().setFromObject(object);
-        const center = new THREE.Vector3();
-        box.getCenter(center);
-
-        object.scale.set(scaleX, scaleY, scaleZ);
-        object.userData.currentSize = newDimensions;
-
-        const newBox = new THREE.Box3().setFromObject(object);
-        const newCenter = new THREE.Vector3();
-        newBox.getCenter(newCenter);
-
-        const offset = new THREE.Vector3().subVectors(center, newCenter);
-        object.position.add(offset);
     }
 
     saveStartProjection(mouse) {

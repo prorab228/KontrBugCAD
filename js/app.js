@@ -42,7 +42,7 @@ class CADEditor {
         this.history = null;
         this.storage = null;
         this.toolManager = null;
-        this.transformControls = null;
+     //   this.transformControls = null;
         this.booleanOps = null;
         this.libraryManager = null;
         this.dragManager = null;
@@ -145,7 +145,7 @@ class CADEditor {
     initManagers() {
         this.history = new HistoryManager(this);
         this.storage = new StorageManager();
-        this.transformControls = new TransformControls(this);
+       // this.transformControls = new TransformControls(this);
 
         // Менеджеры объектов и операций
         this.objectsManager = new ObjectsManager(this);
@@ -188,6 +188,7 @@ class CADEditor {
         this.toolManager.registerTool('move', new MoveTool(this));
         this.toolManager.registerTool('rotate', new RotateTool(this));
         this.toolManager.registerTool('scale', new ScaleTool(this));
+
         this.toolManager.registerTool('sketch', new SketchTool(this));
         this.toolManager.registerTool('extrude', new ExtrudeTool(this));
         this.toolManager.registerTool('workplane', new WorkPlaneTool(this));
@@ -355,9 +356,9 @@ class CADEditor {
                 if (this.sketchManager) {
                     this.sketchManager.setCurrentTool(tool);
                     // При смене инструмента сбрасываем выделение фигур
-                    if (this.extrudeManager) {
-                        this.extrudeManager.clearFigureSelection();
-                    }
+//                    if (this.extrudeManager) {
+//                        this.extrudeManager.clearFigureSelection();
+//                    }
                 }
             });
         });
@@ -460,9 +461,6 @@ class CADEditor {
             centerAll: 'all'
         };
 
-        document.getElementById('applySize').addEventListener('click', () => {
-            this.applySizeFromInputs();
-        });
 
         document.getElementById('objectColor').addEventListener('input', (e) => {
             this.onObjectColorChange(e);
@@ -704,6 +702,12 @@ class CADEditor {
         this.selectedObjects = [object];
         this.objectsManager.highlightObject(object);
 
+        // Если активен инструмент трансформации, прикрепляем к объекту
+        const currentTool = this.toolManager.getCurrentTool();
+        if (currentTool && currentTool.isTransformTool && currentTool.attachToObject) {
+            currentTool.attachToObject(object);
+        }
+
         this.updatePropertiesPanel();
         this.objectsManager.updateSceneList();
         this.updateStatus();
@@ -717,41 +721,18 @@ class CADEditor {
         this.updateStatus();
     }
 
-      clearSelection() {
+    clearSelection() {
         this.selectedObjects.forEach(obj => this.objectsManager.unhighlightObject(obj));
         this.selectedObjects = [];
 
-        if (this.transformControls) {
-            this.transformControls.detach();
-            this.transformControls.hide();
+        // Деактивируем трансформации через текущий инструмент
+        const currentTool = this.toolManager.getCurrentTool();
+        if (currentTool && currentTool.isTransformTool && currentTool.detach) {
+            currentTool.detach();
         }
 
-      //  this.setCurrentTool('select');
         this.updatePropertiesPanel();
         this.updateStatus();
-    }
-
-    activateTransformForSelected(object) {
-        if (!object || !this.transformControls) return;
-
-        const mode = this.toolManager.currentTool === 'move' ? 'translate' :
-                    this.toolManager.currentTool === 'scale' ? 'scale' : 'rotate';
-
-        // Сохраняем текущее состояние для истории
-        if (!object.userData.lastPosition) {
-            object.userData.lastPosition = object.position.toArray();
-        }
-        if (!object.userData.lastRotation) {
-            object.userData.lastRotation = [object.rotation.x, object.rotation.y, object.rotation.z];
-        }
-        if (!object.userData.lastScale) {
-            object.userData.lastScale = object.scale.toArray();
-        }
-
-        // Прикрепляем gizmo
-        this.transformControls.attach(object);
-        this.transformControls.updateMode(mode);
-        this.transformControls.show();
     }
 
     // ИНСТРУМЕНТЫ
@@ -955,7 +936,6 @@ class CADEditor {
 
         switch (key) {
             case 'delete':
-            case 'backspace':
                 this.deleteSelected();
                 break;
             case 'z':
@@ -1250,8 +1230,10 @@ class CADEditor {
         TWEEN.update();
         this.controls.update();
 
-        if (this.transformControls) {
-            this.transformControls.update();
+        // Обновляем активный инструмент трансформации
+        const currentTool = this.toolManager.getCurrentTool();
+        if (currentTool && currentTool.update) {
+            currentTool.update();
         }
 
         this.renderer.render(this.scene, this.camera);
@@ -1305,112 +1287,85 @@ class CADEditor {
         const propertiesContent = document.getElementById('propertiesContent');
         if (!propertiesContent) return;
 
-        const centerGroup = document.querySelector('.property-group[data-type="center"]');
+        console.log('Обновление панели свойств');
 
-        if (this.selectedObjects.length > 0 && centerGroup) {
-            centerGroup.style.display = 'block';
-        } else if (centerGroup) {
-            centerGroup.style.display = 'none';
+        // Скрываем все группы свойств по умолчанию
+//        const allGroups = propertiesContent.querySelectorAll('.property-group');
+//        allGroups.forEach(group => {
+//            group.style.display = 'none';
+//        });
+
+        // Показываем только центрирование и внешний вид
+        const centerGroup = document.querySelector('.property-group[data-type="center"]');
+        const appearanceGroup = document.querySelector('.property-group[data-type="appearance"]');
+
+        // Управление видимостью групп
+        if (centerGroup) {
+            centerGroup.style.display = this.selectedObjects.length > 0 ? 'block' : 'none';
         }
 
-        if (this.selectedObjects.length === 1) {
+        if (appearanceGroup) {
+            appearanceGroup.style.display = this.selectedObjects.length === 1 ? 'block' : 'none';
+        }
+
+        // Обновляем значения для центрирования
+        if (centerGroup && this.selectedObjects.length > 0) {
+            const title = centerGroup.querySelector('h4');
+            if (title) {
+                title.innerHTML = `<i class="fas fa-bullseye"></i> Центрирование (${this.selectedObjects.length} объектов)`;
+            }
+        }
+
+        // Обновляем значения для внешнего вида
+        if (appearanceGroup && this.selectedObjects.length === 1) {
             const obj = this.selectedObjects[0];
 
-            document.getElementById('posX').value = obj.position.x.toFixed(1);
-            document.getElementById('posY').value = obj.position.y.toFixed(1);
-            document.getElementById('posZ').value = obj.position.z.toFixed(1);
-
-            const euler = new THREE.Euler().setFromQuaternion(obj.quaternion, 'XYZ');
-            document.getElementById('rotX').value = THREE.MathUtils.radToDeg(euler.x).toFixed(1);
-            document.getElementById('rotY').value = THREE.MathUtils.radToDeg(euler.y).toFixed(1);
-            document.getElementById('rotZ').value = THREE.MathUtils.radToDeg(euler.z).toFixed(1);
-
-            const dimensions = this.objectsManager.getObjectDimensions(obj);
-            document.getElementById('sizeXInput').value = dimensions.x.toFixed(1);
-            document.getElementById('sizeYInput').value = dimensions.y.toFixed(1);
-            document.getElementById('sizeZInput').value = dimensions.z.toFixed(1);
-
-            if (obj.material) {
+            // Цвет
+            const colorInput = document.getElementById('objectColor');
+            if (colorInput && obj.material) {
                 const color = new THREE.Color(obj.material.color);
-                document.getElementById('objectColor').value = color.getStyle();
-                document.getElementById('objectOpacity').value = obj.material.opacity;
-                document.getElementById('objectColor').disabled = false;
-                document.getElementById('objectOpacity').disabled = false;
-            } else {
-                document.getElementById('objectColor').value = '#ffffff';
-                document.getElementById('objectOpacity').value = 1.0;
-                document.getElementById('objectColor').disabled = true;
-                document.getElementById('objectOpacity').disabled = true;
+                colorInput.value = color.getStyle();
+                colorInput.disabled = false;
+            } else if (colorInput) {
+                colorInput.disabled = true;
             }
 
-            document.querySelectorAll('.property-group').forEach(group => {
-                if (group.dataset.type !== 'center') {
-                    group.style.display = 'block';
-                }
-            });
-
-            this.enablePropertyFields(true);
-        } else {
-            document.querySelectorAll('.property-group').forEach(group => {
-                if (group.dataset.type !== 'center') {
-                    group.style.display = 'none';
-                }
-            });
-
-            if (this.selectedObjects.length > 1) {
-                document.querySelectorAll('.property-group').forEach(group => {
-                    if (group.dataset.type === 'center') {
-                        const title = group.querySelector('h4');
-                        if (title) {
-                            title.innerHTML = `<i class="fas fa-bullseye"></i> Центрирование (${this.selectedObjects.length} объектов)`;
-                        }
-                    }
-                });
+            // Прозрачность
+            const opacityInput = document.getElementById('objectOpacity');
+            if (opacityInput && obj.material) {
+                opacityInput.value = obj.material.opacity !== undefined ? obj.material.opacity : 1.0;
+                opacityInput.disabled = false;
+            } else if (opacityInput) {
+                opacityInput.disabled = true;
             }
-
-            this.enablePropertyFields(false);
-        }
-    }
-
-    enablePropertyFields(enabled) {
-        const fields = [
-            'posX', 'posY', 'posZ',
-            'rotX', 'rotY', 'rotZ',
-            'sizeXInput', 'sizeYInput', 'sizeZInput',
-            'objectColor', 'objectOpacity'
-        ];
-
-        fields.forEach(id => {
-            const field = document.getElementById(id);
-            if (field) {
-                field.disabled = !enabled || this.selectedObjects.length !== 1;
-
-                if (id === 'objectColor' || id === 'objectOpacity') {
-                    if (this.selectedObjects.length === 1 && this.selectedObjects[0].material) {
-                        field.disabled = false;
-                    } else {
-                        field.disabled = true;
-                    }
-                }
-            }
-        });
-
-        const applyButton = document.getElementById('applySize');
-        if (applyButton) {
-            applyButton.disabled = !enabled || this.selectedObjects.length !== 1;
         }
 
-        const centerButtons = ['centerX', 'centerY', 'centerZ', 'centerAll'];
-        centerButtons.forEach(id => {
-            const button = document.getElementById(id);
-            if (button) {
-                button.disabled = this.selectedObjects.length === 0;
-            }
-        });
+        // Получаем текущий инструмент
+        const currentTool = this.toolManager.getCurrentTool();
+
+        // Если активен инструмент трансформации, позволяем ему управлять своими свойствами
+        if (currentTool && currentTool instanceof TransformToolBase) {
+            console.log(`Активный инструмент: ${currentTool.name}, он управляет своими свойствами`);
+            // Инструмент уже сам создал и управляет своими свойствами через createPropertiesSection
+        }
+
+        // Обновляем состояние кнопок центрирования
+//        this.enablePropertyFields();
     }
+
+//    enablePropertyFields() {
+//        const centerButtons = ['centerX', 'centerY', 'centerZ', 'centerAll'];
+//        centerButtons.forEach(id => {
+//            const button = document.getElementById(id);
+//            if (button) {
+//                button.disabled = this.selectedObjects.length === 0;
+//            }
+//        });
+//    }
+
 
     updateStatus() {
-        const modeNames = {
+        const toolNames = {
             select: 'Выделение',
             move: 'Перемещение',
             rotate: 'Вращение',
@@ -1420,10 +1375,20 @@ class CADEditor {
             rulerTool: 'Линейка',
             gearGenerator: 'Шестерня',
             threadGenerator: 'Резьба',
-            workplane: 'Рабочая плоскость'
+            workplane: 'Рабочая плоскость',
+            split: 'Разрезание',
+            mirror: 'Отражение',
+            group: 'Группировка',
+            ungroup: 'Разгруппировка',
+            'boolean-union': 'Объединение',
+            'boolean-subtract': 'Вычитание',
+            'boolean-intersect': 'Пересечение'
         };
 
-        const modeText = modeNames[this.currentTool] || this.currentTool;
+        const currentTool = this.toolManager.getCurrentTool();
+        const toolName = currentTool ? currentTool.name : 'select';
+        const modeText = toolNames[toolName] || toolName;
+
         document.getElementById('modeIndicator').innerHTML =
             `<i class="fas fa-mouse-pointer"></i> Режим: ${modeText}`;
         document.getElementById('selectedInfo').textContent =
@@ -1433,58 +1398,19 @@ class CADEditor {
     }
 
     updateToolButtons() {
+        const currentTool = this.toolManager.getCurrentTool();
+        const currentToolName = currentTool ? currentTool.name : 'select';
+
         document.querySelectorAll('[data-tool]').forEach(btn => {
             btn.classList.remove('active');
-            if (btn.dataset.tool === this.currentTool) {
+            if (btn.dataset.tool === currentToolName) {
                 btn.classList.add('active');
             }
         });
     }
 
-    applySizeFromInputs() {
-        if (this.selectedObjects.length !== 1) return;
 
-        const obj = this.selectedObjects[0];
-        const sizeX = parseFloat(document.getElementById('sizeXInput').value);
-        const sizeY = parseFloat(document.getElementById('sizeYInput').value);
-        const sizeZ = parseFloat(document.getElementById('sizeZInput').value);
 
-        if (isNaN(sizeX) || isNaN(sizeY) || isNaN(sizeZ) ||
-            sizeX < 1 || sizeY < 1 || sizeZ < 1) {
-            this.showStatus('Некорректные значения размеров', 'error');
-            return;
-        }
-
-        const newDimensions = {
-            x: Math.round(sizeX),
-            y: Math.round(sizeY),
-            z: Math.round(sizeZ)
-        };
-
-        document.getElementById('sizeXInput').value = newDimensions.x;
-        document.getElementById('sizeYInput').value = newDimensions.y;
-        document.getElementById('sizeZInput').value = newDimensions.z;
-
-        if (this.transformControls) {
-            if (this.transformControls.attachedObject === obj) {
-                this.transformControls.updateObjectSize(obj, newDimensions);
-            } else {
-                this.transformControls.updateObjectSizeDirect(obj, newDimensions);
-            }
-        }
-
-        this.history.addAction({
-            type: 'modify_size',
-            object: obj.uuid,
-            data: {
-                dimensions: newDimensions,
-                originalDimensions: this.objectsManager.getObjectDimensions(obj)
-            }
-        });
-
-        this.showStatus(`Размеры установлены: ${newDimensions.x}x${newDimensions.y}x${newDimensions.z} мм`, 'success');
-        this.objectsManager.updateSceneStats();
-    }
 
     updateCoordinates(event) {
         this.raycaster.setFromCamera(this.mouse, this.camera);
@@ -1641,10 +1567,6 @@ class CADEditor {
         return this.objects.find(obj => obj.uuid === uuid) || null;
     }
 
-    // GETTERS
-//    get gizmoGroup() {
-//        return this.transformControls ? this.transformControls.gizmoGroup : null;
-//    }
 }
 
 // Инициализация редактора

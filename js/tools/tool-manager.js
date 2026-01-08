@@ -11,23 +11,34 @@ class ToolManager {
         this.tools.set(name, toolInstance);
 
         // Находим кнопку в UI и связываем ее с инструментом
+        // Ищем кнопки с data-tool атрибутом
         const button = document.querySelector(`[data-tool="${name}"]`);
+        // Также ищем кнопки в dropdown меню
+        const dropdownButton = document.querySelector(`[data-tool="${name}"]`);
+
         if (button) {
             toolInstance.uiButton = button;
-            button.addEventListener('click', () => this.setCurrentTool(name));
+            button.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.setCurrentTool(name);
+            });
         }
 
         return toolInstance;
     }
 
     setCurrentTool(toolName) {
+        console.log(`Setting current tool to: ${toolName}`);
+
         // Если пытаемся активировать уже активный инструмент
         if (this.currentTool && this.currentTool.name === toolName) {
+            console.log(`Tool ${toolName} is already active`);
             return;
         }
 
         // Деактивируем текущий инструмент
         if (this.currentTool) {
+            console.log(`Deactivating current tool: ${this.currentTool.name}`);
             this.currentTool.deactivate();
             this.previousTool = this.currentTool;
         }
@@ -35,6 +46,7 @@ class ToolManager {
         // Активируем новый инструмент
         const tool = this.tools.get(toolName);
         if (tool) {
+            console.log(`Activating tool: ${toolName}`);
             this.currentTool = tool;
 
             // Проверяем, можно ли активировать инструмент
@@ -57,6 +69,34 @@ class ToolManager {
 
             // Обновляем UI
             this.updateToolUI(toolName);
+
+            // Обновляем панель свойств
+            this.editor.updatePropertiesPanel();
+
+            // Показываем статус
+            const toolNames = {
+                'select': 'Выделение',
+                'move': 'Перемещение',
+                'rotate': 'Вращение',
+                'scale': 'Масштабирование',
+                'sketch': 'Скетч',
+                'extrude': 'Вытягивание',
+                'workplane': 'Рабочая плоскость',
+                'rulerTool': 'Линейка',
+                'gearGenerator': 'Генератор шестерен',
+                'threadGenerator': 'Генератор резьбы',
+                'split': 'Разрезание',
+                'mirror': 'Отражение',
+                'group': 'Группировка',
+                'ungroup': 'Разгруппировка',
+                'boolean-union': 'Объединение',
+                'boolean-subtract': 'Вычитание',
+                'boolean-intersect': 'Пересечение'
+            };
+
+            this.editor.showStatus(`Активирован инструмент: ${toolNames[toolName] || toolName}`, 'info');
+        } else {
+            console.error(`Tool not found: ${toolName}`);
         }
     }
 
@@ -69,13 +109,35 @@ class ToolManager {
     }
 
     updateToolUI(toolName) {
-        document.querySelectorAll('[data-tool]').forEach(btn => {
-            btn.classList.remove('active', 'pending');
+        // Сначала снимаем активные классы со всех кнопок инструментов
+        document.querySelectorAll('.tool-btn').forEach(btn => {
+            btn.classList.remove('active');
         });
 
-        const activeBtn = document.querySelector(`[data-tool="${toolName}"]`);
-        if (activeBtn) {
-            activeBtn.classList.add('active');
+        // Активируем кнопки с data-tool
+        const toolButtons = document.querySelectorAll(`[data-tool]`);
+        toolButtons.forEach(btn => {
+            btn.classList.remove('active');
+            if (btn.dataset.tool === toolName) {
+                btn.classList.add('active');
+            }
+        });
+
+        // Также активируем кнопки в выпадающих меню
+        const dropdownLinks = document.querySelectorAll('.dropdown-menu a[data-tool]');
+        dropdownLinks.forEach(link => {
+            link.classList.remove('active');
+            if (link.dataset.tool === toolName) {
+                link.classList.add('active');
+            }
+        });
+
+        // Для инструментов трансформации активируем родительскую кнопку
+        if (['move', 'rotate', 'scale'].includes(toolName)) {
+            const transformDropdown = document.querySelector('.dropdown-toggle[title="Трансформация"]');
+            if (transformDropdown) {
+                transformDropdown.classList.add('active');
+            }
         }
     }
 
@@ -90,7 +152,9 @@ class ToolManager {
     // Делегирование событий активному инструменту
     handleMouseDown(e) {
         if (this.currentTool && this.currentTool.isActive) {
-            return this.currentTool.onMouseDown(e);
+            const handled = this.currentTool.onMouseDown(e);
+            console.log(`Tool ${this.currentTool.name} handled mouse down: ${handled}`);
+            return handled;
         }
         return false;
     }
@@ -161,22 +225,32 @@ class ToolManager {
                     return true;
                 }
                 break;
-//            case 'g': // Шестерня
-//            case 'п': // Русская раскладка
-//                if (e.ctrlKey || e.metaKey) {
-//                    this.setCurrentTool('gearGenerator');
-//                    e.preventDefault();
-//                    return true;
-//                }
-//                break;
-//            case 't': // Резьба
-//            case 'е': // Русская раскладка
-//                if (e.ctrlKey || e.metaKey) {
-//                    this.setCurrentTool('threadGenerator');
-//                    e.preventDefault();
-//                    return true;
-//                }
-//                break;
+            // Горячие клавиши для трансформаций
+            case 'w': // Move
+            case 'ц': // Русская раскладка
+                if (!e.ctrlKey && !e.shiftKey && !e.altKey) {
+                    this.setCurrentTool('move');
+                    e.preventDefault();
+                    return true;
+                }
+                break;
+            case 'e': // Rotate
+            case 'у': // Русская раскладка
+                if (!e.ctrlKey && !e.shiftKey && !e.altKey) {
+                    this.setCurrentTool('rotate');
+                    e.preventDefault();
+                    return true;
+                }
+                break;
+            case 'r': // Scale
+            case 'к': // Русская раскладка
+                if (!e.ctrlKey && !e.shiftKey && !e.altKey) {
+                    this.setCurrentTool('scale');
+                    e.preventDefault();
+                    return true;
+                }
+                break;
+
         }
         return false;
     }

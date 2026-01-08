@@ -1,4 +1,4 @@
-// drag-manager.js - обновленная версия
+// drag-manager.js - исправленная версия
 class DragManager {
     constructor(cadEditor) {
         this.editor = cadEditor;
@@ -11,32 +11,40 @@ class DragManager {
         this.dragPlane = null;
         this.dragIntersection = null;
         this.dragOffsets = [];
+        this.mainObjectIndex = 0; // Индекс главного объекта (того, за который начали тащить)
 
         // Параметры
         this.snapToGrid = true;
-        this.gridSize = 5; // мм
-
-        // Привязка событий (теперь события будут обрабатываться через инструмент)
-        // this.bindEvents(); // Убираем авто-привязку событий
+        this.gridSize = 1; // мм
     }
 
     // Подготовка к перетаскиванию
     prepareDrag(object, intersectionPoint) {
-        // Сохраняем объекты для потенциального перетаскивания
-        if (this.editor.selectedObjects.includes(object)) {
-            // Если объект уже выделен, перетаскиваем все выделенные объекты
-            this.draggedObjects = [...this.editor.selectedObjects];
-        } else {
-            // Если объект не выделен, выделяем его и готовим к перетаскиванию
-            this.draggedObjects = [object];
+        // Просто используем текущее выделение редактора
+        this.draggedObjects = [...this.editor.selectedObjects];
+
+        // Находим индекс главного объекта (того, за который начали тащить)
+        this.mainObjectIndex = this.draggedObjects.indexOf(object);
+
+        // Если объект не найден в выделенных (такое не должно происходить), добавляем его
+        if (this.mainObjectIndex === -1) {
+            this.draggedObjects.unshift(object);
+            this.mainObjectIndex = 0;
+        }
+
+        // Перемещаем главный объект в начало массива для удобства
+        if (this.mainObjectIndex > 0) {
+            this.draggedObjects.splice(this.mainObjectIndex, 1);
+            this.draggedObjects.unshift(object);
+            this.mainObjectIndex = 0;
         }
 
         // Сохраняем начальные позиции
         this.dragStartPositions = this.draggedObjects.map(obj => obj.position.clone());
 
-        // Вычисляем смещения для множественного перетаскивания
+        // Вычисляем смещения для всех объектов ОТНОСИТЕЛЬНО ГЛАВНОГО ОБЪЕКТА
         if (this.draggedObjects.length > 1) {
-            const mainObject = object;
+            const mainObject = this.draggedObjects[0];
             this.dragOffsets = this.draggedObjects.map(obj =>
                 new THREE.Vector3(
                     obj.position.x - mainObject.position.x,
@@ -44,6 +52,8 @@ class DragManager {
                     obj.position.z - mainObject.position.z
                 )
             );
+        } else {
+            this.dragOffsets = [new THREE.Vector3(0, 0, 0)];
         }
 
         // Создаем ГОРИЗОНТАЛЬНУЮ плоскость для перетаскивания (XZ плоскость)
@@ -59,13 +69,11 @@ class DragManager {
         this.isDragging = true;
         this.dragStartMouse = new THREE.Vector2(e.clientX, e.clientY);
 
-        // Скрываем TransformControls если они активны
-        if (this.editor.transformControls && this.draggedObjects.length > 0) {
-            this.editor.transformControls.visible = false;
-        }
 
-        // Подсвечиваем перетаскиваемые объекты
-    //    this.draggedObjects.forEach(obj => this.editor.objectsManager.highlightObject(obj));
+        this.editor.showStatus(
+            `Перетаскивание: ${this.draggedObjects.length} объект(ов) (только по XZ)`,
+            'info'
+        );
 
         // Продолжаем обработку движения для немедленного отклика
         this.onMouseMove(e);
@@ -90,7 +98,7 @@ class DragManager {
                 finalPosition.z = Math.round(newPosition.z / this.gridSize) * this.gridSize;
             }
 
-            // Перемещаем объект(ы) - ТОЛЬКО В ПЛОСКОСТИ XZ
+            // ВАЖНО: перемещаем все объекты с сохранением ОТНОСИТЕЛЬНЫХ позиций
             if (this.draggedObjects.length === 1) {
                 // Одиночный объект - сохраняем исходную высоту (Y)
                 const obj = this.draggedObjects[0];
@@ -98,7 +106,7 @@ class DragManager {
                 obj.position.z = finalPosition.z;
                 obj.position.y = this.dragStartPositions[0].y; // Фиксируем высоту
             } else {
-                // Множественные объекты
+                // Множественные объекты - главный объект всегда первый в массиве
                 const mainObject = this.draggedObjects[0];
 
                 // Перемещаем главный объект (сохраняя его высоту)
@@ -106,17 +114,20 @@ class DragManager {
                 mainObject.position.z = finalPosition.z;
                 mainObject.position.y = this.dragStartPositions[0].y;
 
-                // Обновляем позиции остальных объектов
+                // Обновляем позиции остальных объектов с сохранением их относительных позиций
                 for (let i = 1; i < this.draggedObjects.length; i++) {
                     const obj = this.draggedObjects[i];
                     obj.position.x = finalPosition.x + this.dragOffsets[i].x;
                     obj.position.z = finalPosition.z + this.dragOffsets[i].z;
-                    obj.position.y = this.dragStartPositions[i].y;
+                    obj.position.y = this.dragStartPositions[i].y; // Фиксируем высоту каждого объекта
                 }
             }
 
             // Обновляем свойства в панели
             this.updatePropertiesPanel();
+
+            // Обновляем координаты в статус-баре
+            this.updateCoordinates(finalPosition);
 
             // Меняем курсор
             document.body.style.cursor = 'grabbing';
@@ -151,6 +162,13 @@ class DragManager {
             document.getElementById('posY').value = obj.position.y.toFixed(1);
             document.getElementById('posZ').value = obj.position.z.toFixed(1);
         }
+    }
+
+    updateCoordinates(position) {
+        // Показываем текущие координаты (Y остается неизменным)
+        const mainObj = this.draggedObjects[0];
+        document.getElementById('coords').textContent =
+            `X: ${position.x.toFixed(2)}, Y: ${mainObj.position.y.toFixed(2)}, Z: ${position.z.toFixed(2)}`;
     }
 
     finishDrag() {
@@ -228,24 +246,8 @@ class DragManager {
         this.dragStartMouse = null;
         this.dragPlane = null;
         this.dragIntersection = null;
+        this.mainObjectIndex = 0;
         document.body.style.cursor = 'default';
-    }
-
-    // Метод для перетаскивания по другой плоскости (например, грани объекта)
-    startFaceDrag(object, faceNormal, intersectionPoint) {
-        this.isDragging = true;
-        this.draggedObjects = [object];
-        this.dragStartPositions = [object.position.clone()];
-
-        // Создаем плоскость, параллельную грани объекта
-        const normal = faceNormal.clone();
-        const constant = -intersectionPoint.dot(normal);
-
-        this.dragPlane = new THREE.Plane(normal, constant);
-        this.dragIntersection = intersectionPoint.clone();
-
-        document.body.style.cursor = 'grabbing';
-        this.editor.showStatus(`Перетаскивание по плоскости`, 'info');
     }
 
     toggleSnapToGrid() {

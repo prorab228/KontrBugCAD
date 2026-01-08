@@ -1,0 +1,220 @@
+/* КонтрБагCAD - Иконки инструментов */
+:root {
+    --icon-color: currentColor;
+    --icon-size: 20px;
+}
+
+/* Общий класс для иконок */
+.cad-icon {
+    display: inline-block;
+    width: var(--icon-size);
+    height: var(--icon-size);
+    background-color: var(--icon-color);
+    mask-size: contain;
+    mask-repeat: no-repeat;
+    mask-position: center;
+    -webkit-mask-size: contain;
+    -webkit-mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+}
+
+/* Файловые операции */
+.icon-new {
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z'/%3E%3C/svg%3E");
+}
+
+.icon-open {
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z'/%3E%3C/svg%3E");
+}
+
+.icon-save {
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z'/%3E%3C/svg%3E");
+}
+
+.icon-export {
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z'/%3E%3C/svg%3E");
+}
+
+.icon-import {
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z'/%3E%3C/svg%3E");
+}
+
+/* Редактирование */
+.icon-undo {
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12.5 8c-2.65 0-5.05.99-6.9 2.6L2 7v9h9l-3.62-3.62c1.39-1.16 3.16-1.88 5.12-1.88 3.54 0 6.55 2.31 7.6 5.5l2.37-.78C21.08 11.03 17.15 8 12.5 8z'/%3E%3C/svg%3E");
+}
+
+.icon-redo {
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M18.4 10.6C16.55 8.99 14.15 8 11.5 8c-4.65 0-8.58 3.03-9.96 7.22L3.9 16c1.05-3.19 4.05-5.5 7.6-5.5 1.95 0 3.73.72 5.12 1.88L13 16h9V7l-3.6 3.6z'/%3E%3C/svg%3E");
+}
+
+.icon-delete {
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z'/%3E%3C/svg%3E");
+}
+
+/* Инструменты выделения и трансформации */
+.icon-select {
+    mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%27-96%200%20512%20512%27%3E%3Cpath%20d%3D%27M302.189%20329.126H196.105l55.831%20135.993c3.889%209.428-.555%2019.999-9.444%2023.999l-49.165%2021.427c-9.165%204-19.443-.571-23.332-9.714l-53.053-129.136-86.664%2089.138C18.729%20472.71%200%20463.554%200%20447.977V18.299C0%201.899%2019.921-6.096%2030.277%205.443l284.412%20292.542c11.472%2011.179%203.007%2031.141-12.5%2031.141z%27/%3E%3C/svg%3E");
+    }
+
+.icon-move {
+    mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%2092%2092%27%3E%3Cpath%20d%3D%27M92%2C46.3c0%2C1.1-0.4%2C2.1-1.2%2C2.8l-14.1%2C14c-0.8%2C0.8-1.8%2C1.1-2.8%2C1.1c-1%2C0-2.1-0.4-2.8-1.2c-1.6-1.6-1.5-4.2%2C0-5.7l7.3-7.4H50v28.4l7.3-7.3c1.6-1.6%2C4.1-1.5%2C5.7%2C0c1.6%2C1.6%2C1.5%2C4.1%2C0%2C5.7L48.9%2C90.8C48.1%2C91.6%2C47.1%2C92%2C46%2C92s-2-0.4-2.8-1.2L29.1%2C76.8c-1.6-1.6-1.6-4.1%2C0-5.7c1.6-1.6%2C4.1-1.6%2C5.6%2C0l7.3%2C7.3V50H13.7l7.3%2C7.4c1.6%2C1.6%2C1.6%2C4.2%2C0%2C5.8c-0.8%2C0.8-1.8%2C1.2-2.8%2C1.2c-1%2C0-2-0.4-2.8-1.2L1.2%2C49.1C0.4%2C48.4%2C0%2C47.4%2C0%2C46.3s0.4-2.1%2C1.2-2.8l14.1-14.1c1.6-1.6%2C4.1-1.6%2C5.7%2C0c1.6%2C1.6%2C1.5%2C4%2C0%2C5.6L13.7%2C42H42V13.6l-7.3%2C7.3c-1.6%2C1.6-4.1%2C1.5-5.6%2C0c-1.6-1.6-1.5-4.1%2C0-5.7L43.2%2C1.2c1.6-1.6%2C4.1-1.6%2C5.6%2C0L63%2C15.2c1.6%2C1.6%2C1.6%2C4.1%2C0%2C5.7c-0.8%2C0.8-1.8%2C1.2-2.8%2C1.2c-1%2C0-2.1-0.4-2.8-1.2L50%2C13.6V42h28.3L71%2C34.9c-1.6-1.6-1.6-3.9%2C0-5.5c1.6-1.6%2C4.1-1.6%2C5.7%2C0l14.1%2C14.1C91.6%2C44.2%2C92%2C45.2%2C92%2C46.3z%27/%3E%3C/svg%3E");
+}
+
+.icon-rotate {
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 6v3l4-4-4-4v3c-4.42 0-8 3.58-8 8 0 1.57.46 3.03 1.24 4.26L6.7 14.8c-.45-.83-.7-1.79-.7-2.8 0-3.31 2.69-6 6-6zm6.76 1.74L17.3 9.2c.44.84.7 1.79.7 2.8 0 3.31-2.69 6-6 6v-3l-4 4 4 4v-3c4.42 0 8-3.58 8-8 0-1.57-.46-3.03-1.24-4.26z'/%3E%3C/svg%3E");
+}
+
+.icon-scale {
+    mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%2024%2024%27%3E%3Cpath%20d%3D%27M11%2013.6V21H3.6C3.26863%2021%203%2020.7314%203%2020.4V13H10.4C10.7314%2013%2011%2013.2686%2011%2013.6Z%27%20fill%3D%27none%27%20stroke%3D%27%23000%27%20stroke-width%3D%271.5%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27/%3E%3Cpath%20d%3D%27M11%2021H14%27%20fill%3D%27none%27%20stroke%3D%27%23000%27%20stroke-width%3D%271.5%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27/%3E%3Cpath%20d%3D%27M3%2013V10%27%20fill%3D%27none%27%20stroke%3D%27%23000%27%20stroke-width%3D%271.5%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27/%3E%3Cpath%20d%3D%27M6%203H3.6C3.26863%203%203%203.26863%203%203.6V6%27%20fill%3D%27none%27%20stroke%3D%27%23000%27%20stroke-width%3D%271.5%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27/%3E%3Cpath%20d%3D%27M14%203H10%27%20fill%3D%27none%27%20stroke%3D%27%23000%27%20stroke-width%3D%271.5%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27/%3E%3Cpath%20d%3D%27M21%2010V14%27%20fill%3D%27none%27%20stroke%3D%27%23000%27%20stroke-width%3D%271.5%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27/%3E%3Cpath%20d%3D%27M18%203H20.4C20.7314%203%2021%203.26863%2021%203.6V6%27%20fill%3D%27none%27%20stroke%3D%27%23000%27%20stroke-width%3D%271.5%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27/%3E%3Cpath%20d%3D%27M18%2021H20.4C20.7314%2021%2021%2020.7314%2021%2020.4V18%27%20fill%3D%27none%27%20stroke%3D%27%23000%27%20stroke-width%3D%271.5%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27/%3E%3Cpath%20d%3D%27M11%2010H14V13%27%20fill%3D%27none%27%20stroke%3D%27%23000%27%20stroke-width%3D%271.5%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27/%3E%3C/svg%3E");
+}
+
+.icon-split {
+    mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%2032%2032%27%3E%3Crect%20x%3D%2715%27%20y%3D%2720%27%20width%3D%272%27%20height%3D%274%27/%3E%3Crect%20x%3D%2715%27%20y%3D%2714%27%20width%3D%272%27%20height%3D%274%27/%3E%3Crect%20x%3D%2715%27%20y%3D%278%27%20width%3D%272%27%20height%3D%274%27/%3E%3Cpath%20d%3D%27M28%2C16A12.01%2C12.01%2C0%2C0%2C0%2C17%2C4.0508V2H15V4.0508a11.99%2C11.99%2C0%2C0%2C0%2C0%2C23.8984V30h2V27.9492A12.01%2C12.01%2C0%2C0%2C0%2C28%2C16ZM16%2C26A10%2C10%2C0%2C1%2C1%2C26%2C16%2C10.0114%2C10.0114%2C0%2C0%2C1%2C16%2C26Z%27/%3E%3C/svg%3E");
+    }
+
+
+/* Скетч инструменты */
+.icon-line {
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z'/%3E%3C/svg%3E");
+}
+
+.icon-rectangle {
+    mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%2048%2048%27%3E%3Cpath%20d%3D%27M42%208H6C4.89543%208%204%208.89543%204%2010V38C4%2039.1046%204.89543%2040%206%2040H42C43.1046%2040%2044%2039.1046%2044%2038V10%2C44%208.89543%2043.1046%208%2042%208Z%27%20fill%3D%27none%27%20stroke%3D%27%23000%27%20stroke-width%3D%274%27/%3E%3C/svg%3E");
+    }
+
+.icon-circle {
+    mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%2024%2024%27%3E%3Ccircle%20cx%3D%2712%27%20cy%3D%2712%27%20r%3D%2710%27%20fill%3D%27none%27%20stroke%3D%27%23000%27%20stroke-width%3D%271%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27miter%27/%3E%3C/svg%3E");
+    }
+
+.icon-polygon {
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpolygon points='12,2 19,7 19,17 12,22 5,17 5,7'/%3E%3C/svg%3E");
+}
+
+.icon-text {
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M5 4v3h5.5v12h3V7H19V4z'/%3E%3C/svg%3E");
+}
+
+.icon-polyline {
+    mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%20100%20100%27%3E%3Cpath%20d%3D%27M33.162%2019.463a3.5%203.5%200%200%200-3.111%201.974L9.34%2064.239a3.5%203.5%200%200%200%201.626%204.674a3.5%203.5%200%200%200%204.676-1.625l19.453-40.203l35.412%209.361L84.182%2078.13a3.5%203.5%200%200%200%204.418%202.234a3.5%203.5%200%200%200%202.234-4.416l-14.268-43.49a3.5%203.5%200%200%200-2.431-2.293l-40.04-10.586a3.5%203.5%200%200%200-.933-.115z%27/%3E%3C/svg%3E");
+}
+
+.icon-bezier {
+    mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%20400%20400%27%3E%3Cpath%20d%3D%27M57%20193.48C61.6479%20150.493%2084.5896%20129%20125.825%20129C187.678%20129%20195.16%20272%20269.08%20272C330.771%20272%20343%20201.978%20343%20193.48%27%20fill%3D%27none%27%20stroke%3D%27%23000%27%20stroke-width%3D%2716%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27/%3E%3C/svg%3E");
+}
+
+.icon-arc {
+    mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%2064%2064%27%3E%3Cpath%20d%3D%27M32.076%2C7.963c-13.265%2C0-24.018%2C10.754-24.018%2C24.019c0%2C13.264%2010.753%2C24.018%2024.018%2C24.018l0%2C-4.013c-11.049%2C0-20.006%2C-8.957-20.006%2C-20.005c0%2C-11.049%208.957%2C-20.006%2020.006%2C-20.006l0%2C-4.013Z%27/%3E%3C/svg%3E");
+    }
+
+.icon-oval {
+    mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%2048%2048%27%3E%3Cellipse%20cx%3D%2724%27%20cy%3D%2724%27%20rx%3D%2714%27%20ry%3D%2720%27%20fill%3D%27none%27%20stroke%3D%27%23000%27%20stroke-width%3D%274%27/%3E%3C/svg%3E");
+    }
+
+.icon-stadion {
+     mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%2056%2056%27%3E%3Cpath%20d%3D%27M%200%2029.1449%20C%200%2041.5941%208.6930%2049.9436%2021.9149%2049.9436%20L%2034.0636%2049.9436%20C%2047.2857%2049.9436%2056%2041.5941%2056%2029.1449%20C%2056%2016.6957%2047.2857%208.3461%2034.0636%208.3461%20L%2021.9149%208.3461%20C%208.6930%208.3461%200%2016.6957%200%2029.1449%20Z%20M%203.4557%2029.1449%20C%203.4557%2018.7777%2010.5174%2011.8448%2021.2710%2011.8448%20L%2034.7075%2011.8448%20C%2045.4609%2011.8448%2052.5229%2018.7777%2052.5229%2029.1449%20C%2052.5229%2039.4906%2045.4609%2046.4450%2034.7075%2046.4450%20L%2021.2710%2046.4450%20C%2010.5174%2046.4450%203.4557%2039.4906%203.4557%2029.1449%20Z%27/%3E%3C/svg%3E");
+     }
+
+.icon-mirror {
+     mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%2016%2016%27%3E%3Cpath%20d%3D%27M7%202.5a.5.5%200%200%200-.939-.24l-6%2011A.5.5%200%200%200%20.5%2014h6a.5.5%200%200%200%20.5-.5v-11zm2.376-.484a.5.5%200%200%201%20.563.245l6%2011A.5.5%200%200%201%2015.5%2014h-6a.5.5%200%200%201-.5-.5v-11a.5.5%200%200%201%20.376-.484zM10%204.46V13h4.658L10%204.46z%27/%3E%3C/svg%3E");
+     }
+
+/* 3D операции */
+.icon-extrude {
+    mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%2032%2032%27%3E%3Cpath%20d%3D%27M16%2C4l-8.3%2C8.3C7.1%2C12.9%2C7.5%2C14%2C8.4%2C14H13v13c0%2C0.6%2C0.4%2C1%2C1%2C1h4c0.6%2C0%2C1-0.4%2C1-1V14h4.6c0.9%2C0%2C1.3-1.1%2C0.7-1.7L16%2C4z%27%20fill%3D%27none%27%20stroke%3D%27%23000%27%20stroke-width%3D%272%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%20stroke-miterlimit%3D%2710%27/%3E%3C/svg%3E");
+}
+
+.icon-plane {
+    mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%2032%2032%27%3E%3Cpath%20d%3D%27M28%2024v4h-4v-1h-16v1h-4v-4h1v-16h-1v-4h4v1h16v-1h4v4h-1v16h1zM5%2027h2v-2h-2v2zM7%205h-2v2h2v-2zM24%207h-16v1h-1v16h1v1h16v-1h1v-16h-1v-1zM27%205h-2v2h2v-2zM25%2025v2h2v-2h-2z%27/%3E%3C/svg%3E");
+    }
+
+.icon-sketch {
+    mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%2024%2024%27%3E%3Cpath%20d%3D%27M12%2C14.86l-1.91%2C1.91L8.18%2C14.86V3.41a1.91%2C1.91%2C0%2C0%2C1%2C3.82%2C0Z%27%20fill%3D%27none%27%20stroke%3D%27%23020202%27%20stroke-miterlimit%3D%2710%27%20stroke-width%3D%271.91%27/%3E%3Cpath%20d%3D%27M12%2C7.23h6.68v9.54h1a2.87%2C2.87%2C0%2C0%2C1%2C0%2C5.73H1.5V7.23H8.18%27%20fill%3D%27none%27%20stroke%3D%27%23020202%27%20stroke-miterlimit%3D%2710%27%20stroke-width%3D%271.91%27/%3E%3Cpath%20d%3D%27M22.5%2C4.36V19.64a2.86%2C2.86%2C0%2C0%2C0-2.86-2.87h-1V1.5h1A2.86%2C2.86%2C0%2C0%2C1%2C22.5%2C4.36Z%27%20fill%3D%27none%27%20stroke%3D%27%23020202%27%20stroke-miterlimit%3D%2710%27%20stroke-width%3D%271.91%27/%3E%3Cline%20x1%3D%278.18%27%20y1%3D%275.32%27%20x2%3D%2712%27%20y2%3D%275.32%27%20fill%3D%27none%27%20stroke%3D%27%23020202%27%20stroke-miterlimit%3D%2710%27%20stroke-width%3D%271.91%27/%3E%3C/svg%3E");
+    }
+
+
+.icon-ruler {
+    mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%2024%2024%27%3E%3Cpath%20d%3D%27M5.63604%2014.1238L7.05026%2015.538M8.46447%2011.2953L9.87868%2012.7096M11.2929%208.46691L12.7071%209.88113M14.1213%205.63849L15.5355%207.0527M2.80762%2016.9522L7.05026%2021.1948L21.1924%207.0527L16.9498%202.81006L2.80762%2016.9522Z%27%20fill%3D%27none%27%20stroke%3D%27%23000%27%20stroke-width%3D%272%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27/%3E%3C/svg%3E");
+    }
+
+/* Булевы операции */
+.icon-union {
+    mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%2016%2016%27%3E%3Cpath%20d%3D%27M0%202a2%202%200%200%201%202-2h8a2%202%200%200%201%202%202v2h2a2%202%200%200%201%202%202v8a2%202%200%200%201-2%202H6a2%202%200%200%201-2-2v-2H2a2%202%200%200%201-2-2V2z%27/%3E%3C/svg%3E");
+    }
+
+.icon-subtract {
+    mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%2024%2024%27%3E%3Cpath%20d%3D%27M5%2016h3v3c0%201.103.897%202%202%202h9c1.103%200%202-.897%202-2v-9c0-1.103-.897-2-2-2h-3V5c0-1.103-.897-2-2-2H5c-1.103%200-2%20.897-2%202v9c0%201.103.897%202%202%202zm13.997%203H10v-9h9l-.003%209z%27/%3E%3C/svg%3E");
+    }
+
+.icon-intersect {
+    mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%2024%2024%27%3E%3Cpath%20d%3D%27M5%2016h3v3c0%201.103.897%202%202%202h9c1.103%200%202-.897%202-2v-9c0-1.103-.897-2-2-2h-3V5c0-1.103-.897-2-2-2H5c-1.103%200-2%20.897-2%202v9c0%201.103.897%202%202%202zm9.001-2L14%2010h.001v4zM19%2010l.001%209H10v-3h4c1.103%200%202-.897%202-2v-4h3zM5%205h9v3h-4c-1.103%200-2%20.897-2%202v4H5V5z%27/%3E%3C/svg%3E");
+    }
+
+/* Группировка */
+.icon-group {
+    mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%2016%2016%27%3E%3Cpath%20fill-rule%3D%27evenodd%27%20clip-rule%3D%27evenodd%27%20d%3D%27M1.5%201h2v1H2v12h1.5v1h-2l-.5-.5v-13l.5-.5zm6%206h-2L5%206.5v-2l.5-.5h2l.5.5v2l-.5.5zM6%206h1V5H6v1zm7.5%201h-3l-.5-.5v-3l.5-.5h3l.5.5v3l-.5.5zM11%206h2V4h-2v2zm-3.5%206h-2l-.5-.5v-2l.5-.5h2l.5.5v2l-.5.5zM6%2011h1v-1H6v1zm7.5%202h-3l-.5-.5v-3l.5-.5h3l.5.5v3l-.5.5zM11%2012h2v-2h-2v2zm-1-2H8v1h2v-1zm0-5H8v1h2V5z%27/%3E%3C/svg%3E");
+    }
+
+.icon-ungroup {
+    mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%2016%2016%27%3E%3Cpath%20fill-rule%3D%27evenodd%27%20clip-rule%3D%27evenodd%27%20d%3D%27M2.9%201L5%203.1l-.8.7L3%202.6V7H2V2.5L.8%203.8l-.7-.7L2.2%201h.7zM3%2013.4V9H2v4.4L.8%2012.2l-.7.7L2.2%2015h.7L5%2012.9l-.7-.7L3%2013.4zM8.5%207h-2L6%206.5v-2l.5-.5h2l.5.5v2l-.5.5zM7%206h1V5H7v1zm7.5%201h-3l-.5-.5v-3l.5-.5h3l.5.5v3l-.5.5zM12%206h2V4h-2v2zm-3.5%206h-2l-.5-.5v-2l.5-.5h2l.5.5v2l-.5.5zM7%2011h1v-1H7v1zm7.5%202h-3l-.5-.5v-3l.5-.5h3l.5.5v3l-.5.5zM12%2012h2v-2h-2v2zm-1-2H9v1h2v-1zm0-5H9v1h2V5z%27/%3E%3C/svg%3E");
+    }
+
+/* Генераторы */
+.icon-gear {
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z'/%3E%3C/svg%3E");
+}
+
+.icon-thread {
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M14.54 17.37C16.68 15.67 18 13 18 10c0-3.31-2.69-6-6-6s-6 2.69-6 6c0 3 1.32 5.67 3.46 7.37L6 22h12l-3.46-4.63z'/%3E%3C/svg%3E");
+}
+
+/* Вид и отображение */
+.icon-grid {
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M4 4h4v4H4zm6 0h4v4h-4zm6 0h4v4h-4zM4 10h4v4H4zm6 0h4v4h-4zm6 0h4v4h-4zM4 16h4v4H4zm6 0h4v4h-4zm6 0h4v4h-4z'/%3E%3C/svg%3E");
+}
+
+.icon-axes {
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M21 3H3v18h18V3zM11 19H5v-6h6v6zm0-8H5V5h6v6zm8 8h-6v-6h6v6zm0-8h-6V5h6v6z'/%3E%3C/svg%3E");
+}
+
+.icon-wireframe {
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M3 3h2v2H3zm4 0h2v2H7zm4 0h2v2h-2zm4 0h2v2h-2zm4 0h2v2h-2zM3 7h2v2H3zm4 0h2v2H7zm4 0h2v2h-2zm4 0h2v2h-2zm4 0h2v2h-2zM3 11h2v2H3zm4 0h2v2H7zm4 0h2v2h-2zm4 0h2v2h-2zm4 0h2v2h-2zM3 15h2v2H3zm4 0h2v2H7zm4 0h2v2h-2zm4 0h2v2h-2zm4 0h2v2h-2zM3 19h2v2H3zm4 0h2v2H7zm4 0h2v2h-2zm4 0h2v2h-2zm4 0h2v2h-2z'/%3E%3C/svg%3E");
+}
+
+.icon-clean {
+    mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%201024%201024%27%3E%3Cpath%20d%3D%27M899.1%20869.6l-53-305.6H864c14.4%200%2026-11.6%2026-26V346c0-14.4-11.6-26-26-26H618V138c0-14.4-11.6-26-26-26H432c-14.4%200-26%2011.6-26%2026v182H160c-14.4%200-26%2011.6-26%2026v192c0%2014.4%2011.6%2026%2026%2026h17.9l-53%20305.6c-0.3%201.5-0.4%203-0.4%204.4%200%2014.4%2011.6%2026%2026%2026h723c1.5%200%203-0.1%204.4-0.4%2014.2-2.4%2023.7-15.9%2021.2-30zM204%20390h272V182h72v208h272v104H204V390z%20m468%20440V674c0-4.4-3.6-8-8-8h-48c-4.4%200-8%203.6-8%208v156H416V674c0-4.4-3.6-8-8-8h-48c-4.4%200-8%203.6-8%208v156H202.8l45.1-260H776l45.1%20260H672z%27/%3E%3C/svg%3E");
+    }
+
+
+
+.icon-exit {
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z'/%3E%3C/svg%3E");
+}
+
+/* Информация */
+.icon-info {
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z'/%3E%3C/svg%3E");
+}
+
+.icon-cube {
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M21 7v10l-9 5-9-5V7l9-5 9 5zm-9 2.89L7.04 7 12 4.11 16.96 7 12 9.89zM5 9.11l7 3.89v9.11l-7-3.89V9.11zm14 0v9.11l-7 3.89V13l7-3.89z'/%3E%3C/svg%3E");
+}
+
+
+.icon-history {
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.25 2.52.77-1.28-3.52-2.09V8z'/%3E%3C/svg%3E");
+}
+
+/* Размеры для кнопок тулбара */
+.tool-btn .cad-icon {
+    width: 18px;
+    height: 18px;
+}
+
+/* Адаптивные размеры */
+@media (max-width: 768px) {
+    .tool-btn .cad-icon {
+        width: 16px;
+        height: 16px;
+    }
+}
