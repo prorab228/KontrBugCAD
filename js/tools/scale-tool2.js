@@ -1,4 +1,3 @@
-
 class ScaleTool extends TransformToolBase {
     constructor(editor) {
         super('scale', 'fa-expand-alt', editor);
@@ -7,13 +6,11 @@ class ScaleTool extends TransformToolBase {
         this.uniformScaling = false;
         this.percentageMode = false;
         this.lastMousePosition = new THREE.Vector2();
-
-        this.currentHandle = null;
-        this.startHandleWorldPosition = new THREE.Vector3();
+        this.accumulatedScale = 1.0;
         this.initGizmo();
     }
 
-     initGizmo() {
+    initGizmo() {
         while (this.gizmoGroup.children.length > 0) {
             const child = this.gizmoGroup.children[0];
             if (child.geometry) child.geometry.dispose();
@@ -27,26 +24,33 @@ class ScaleTool extends TransformToolBase {
 
     createScaleGizmo() {
         const handleSize = 1;
-        const lineWidth = 0.1;
-        
-        // Базовый размер для гизмо - будет масштабироваться пропорционально
-        this.baseSize = 10;
-        this.halfSize = this.baseSize / 2;
+        const lineWidth = 0.2;
+
+        // Базовый размер для гизмо
+        const baseSize = 20;
+        const halfSize = baseSize / 2;
 
         // 1. Прямоугольник в основании (плоскость XZ)
-        this.createBaseRectangle(handleSize, lineWidth);
-        
+        this.createBaseRectangle(baseSize, baseSize, handleSize, lineWidth);
+
         // 2. Прямоугольник по оси Y (вертикальный)
-        this.createVerticalRectangle(handleSize, lineWidth);
+        this.createVerticalRectangle(baseSize, baseSize, handleSize, lineWidth);
+
+        // Центральная сфера для равномерного масштабирования
+        this.createCenterSphere();
     }
 
-        createBaseRectangle(handleSize, lineWidth) {
-        const halfWidth = this.halfSize;
-        const halfDepth = this.halfSize;
+    createBaseRectangle(width, depth, handleSize, lineWidth) {
+        const halfWidth = width / 2;
+        const halfDepth = depth / 2;
 
+        // Создаем 4 линии для прямоугольника
         const positions = [
+            // Линии по X (ширина)
             [-halfWidth, -halfWidth, -halfDepth], [halfWidth, -halfWidth, -halfDepth],
             [-halfWidth, -halfWidth, halfDepth], [halfWidth, -halfWidth, halfDepth],
+
+            // Линии по Z (глубина)
             [-halfWidth, -halfWidth, -halfDepth], [-halfWidth, -halfWidth, halfDepth],
             [halfWidth, -halfWidth, -halfDepth], [halfWidth, -halfWidth, halfDepth]
         ];
@@ -63,41 +67,45 @@ class ScaleTool extends TransformToolBase {
         });
 
         const lines = new THREE.LineSegments(geometry, material);
-        lines.name = 'base_rectangle';
         lines.userData.type = 'scale';
         lines.userData.plane = 'base';
         this.gizmoGroup.add(lines);
 
-        const middleHandlePositions = [
-            { pos: [-halfWidth, -halfWidth, 0], axis: 'x', color: this.axisColors.x, direction: 1 },
-            { pos: [halfWidth, -halfWidth, 0], axis: 'x', color: this.axisColors.x, direction: 1 },
-            { pos: [0, -halfWidth, -halfDepth], axis: 'z', color: this.axisColors.z, direction: 1 },
-            { pos: [0, -halfWidth, halfDepth], axis: 'z', color: this.axisColors.z, direction: 1 }
+        // Кубики по серединам сторон прямоугольника
+        const handlePositions = [
+            // Стороны по X (ширина)
+            { pos: [0, -halfWidth, -halfDepth], axis: 'z', color: this.axisColors.z }, // передняя
+            { pos: [0, -halfWidth, halfDepth], axis: 'z', color: this.axisColors.z }, // задняя
+
+            // Стороны по Z (глубина)
+            { pos: [-halfWidth, -halfWidth, 0], axis: 'x', color: this.axisColors.x }, // левая
+            { pos: [halfWidth, -halfWidth, 0], axis: 'x', color: this.axisColors.x }  // правая
         ];
 
-        this.baseMiddleHandles = [];
-        middleHandlePositions.forEach((handle, index) => {
-            const cube = this.createHandleCube(
+        handlePositions.forEach((handle, index) => {
+            this.createHandleCube(
                 handle.pos,
                 handle.axis,
                 handle.color,
                 handleSize,
-                `base_middle_${handle.axis}_${index}`
+                `base_${handle.axis}_${index}`
             );
-            cube.userData.direction = handle.direction;
-            this.baseMiddleHandles.push(cube);
         });
     }
 
-    createVerticalRectangle(handleSize, lineWidth) {
-        const halfWidth = this.halfSize;
-        const halfHeight = this.halfSize;
-        
+    createVerticalRectangle(width, height, handleSize, lineWidth) {
+        const halfWidth = width / 2;
+        const halfHeight = height / 2;
+
+        // Вертикальный прямоугольник (передняя грань)
         const positions = [
-            [0, -halfWidth, -halfWidth], [0, halfHeight, -halfWidth],
-            [0, -halfWidth, halfWidth], [0, halfHeight, halfWidth],
-            [0, -halfWidth, -halfWidth], [0, -halfWidth, halfWidth],
-            [0, halfHeight, -halfWidth], [0, halfHeight, halfWidth]
+            // Вертикальные линии
+            [-halfWidth, -halfWidth, halfWidth], [-halfWidth, halfHeight, halfWidth],
+            [halfWidth, -halfWidth, halfWidth], [halfWidth, halfHeight, halfWidth],
+
+            // Горизонтальные линии
+            [-halfWidth, -halfWidth, halfWidth], [halfWidth, -halfWidth, halfWidth],
+            [-halfWidth, halfHeight, halfWidth], [halfWidth, halfHeight, halfWidth]
         ];
 
         const geometry = new THREE.BufferGeometry();
@@ -112,29 +120,29 @@ class ScaleTool extends TransformToolBase {
         });
 
         const lines = new THREE.LineSegments(geometry, material);
-        lines.name = 'vertical_rectangle';
         lines.userData.type = 'scale';
         lines.userData.plane = 'vertical';
         this.gizmoGroup.add(lines);
 
-        const middleHandlePositions = [
-            { pos: [0, -halfWidth, 0], axis: 'y', color: this.axisColors.y, direction: 1 },
-            { pos: [0, halfHeight, 0], axis: 'y', color: this.axisColors.y, direction: 1 },
-            { pos: [0, 0, -halfWidth], axis: 'z', color: this.axisColors.z, direction: 1 },
-            { pos: [0, 0, halfWidth], axis: 'z', color: this.axisColors.z, direction: 1 }
+        // Кубики по серединам сторон вертикального прямоугольника
+        const handlePositions = [
+            // Вертикальные стороны (высота)
+            { pos: [-halfWidth, 0, halfWidth], axis: 'x', color: this.axisColors.y }, // левая
+            { pos: [halfWidth, 0, halfWidth], axis: 'x', color: this.axisColors.y }, // правая
+
+            // Горизонтальные стороны (ширина)
+            { pos: [0, -halfWidth, halfWidth], axis: 'y', color: this.axisColors.x }, // нижняя
+            { pos: [0, halfHeight, halfWidth], axis: 'y', color: this.axisColors.x }  // верхняя
         ];
 
-        this.verticalMiddleHandles = [];
-        middleHandlePositions.forEach((handle, index) => {
-            const cube = this.createHandleCube(
+        handlePositions.forEach((handle, index) => {
+            this.createHandleCube(
                 handle.pos,
                 handle.axis,
                 handle.color,
                 handleSize,
-                `vertical_middle_${handle.axis}_${index}`
+                `vertical_${handle.axis}_${index}`
             );
-            cube.userData.direction = handle.direction;
-            this.verticalMiddleHandles.push(cube);
         });
     }
 
@@ -152,230 +160,25 @@ class ScaleTool extends TransformToolBase {
         cube.userData.type = 'scale';
         cube.userData.axis = axis;
         cube.userData.handle = true;
-        
+
         this.gizmoGroup.add(cube);
         return cube;
     }
-    updateGizmoPosition() {
-        if (!this.attachedObject) return;
 
-        const worldPos = new THREE.Vector3();
-        this.attachedObject.getWorldPosition(worldPos);
-        this.gizmoGroup.position.copy(worldPos);
-
-        if (this.useLocalCoordinates) {
-            this.gizmoGroup.quaternion.copy(this.attachedObject.quaternion);
-        } else {
-            this.gizmoGroup.quaternion.identity();
-        }
-
-        const dimensions = this.getObjectDimensions(this.attachedObject);
-        const halfWidth = dimensions.x / 2+1;
-        const halfHeight = dimensions.y / 2+1;
-        const halfDepth = dimensions.z / 2+1;
-
-        if (this.baseMiddleHandles && this.baseMiddleHandles.length >= 4) {
-            this.baseMiddleHandles[0].position.set(-halfWidth, -halfHeight, 0);
-            this.baseMiddleHandles[1].position.set(halfWidth, -halfHeight, 0);
-            this.baseMiddleHandles[2].position.set(0, -halfHeight, -halfDepth);
-            this.baseMiddleHandles[3].position.set(0, -halfHeight, halfDepth);
-        }
-
-        if (this.verticalMiddleHandles && this.verticalMiddleHandles.length >= 4) {
-            this.verticalMiddleHandles[0].position.set(0, -halfHeight, 0);
-            this.verticalMiddleHandles[1].position.set(0, halfHeight, 0);
-            this.verticalMiddleHandles[2].position.set(0, 0, -halfDepth);
-            this.verticalMiddleHandles[3].position.set(0, 0, halfDepth);
-        }
-
-        this.updateRectangleGeometries(halfWidth, halfHeight, halfDepth);
-    }
-
-    updateRectangleGeometries(halfWidth, halfHeight, halfDepth) {
-        const baseRect = this.gizmoGroup.getObjectByName('base_rectangle');
-        if (baseRect && baseRect.geometry) {
-            const positions = [
-                -halfWidth, -halfHeight, -halfDepth, halfWidth, -halfHeight, -halfDepth,
-                -halfWidth, -halfHeight, halfDepth, halfWidth, -halfHeight, halfDepth,
-                -halfWidth, -halfHeight, -halfDepth, -halfWidth, -halfHeight, halfDepth,
-                halfWidth, -halfHeight, -halfDepth, halfWidth, -halfHeight, halfDepth
-            ];
-
-            baseRect.geometry.attributes.position.array = new Float32Array(positions);
-            baseRect.geometry.attributes.position.needsUpdate = true;
-        }
-
-        const verticalRect = this.gizmoGroup.getObjectByName('vertical_rectangle');
-        if (verticalRect && verticalRect.geometry) {
-            const positions = [
-                0, -halfHeight, -halfDepth, 0, halfHeight, -halfDepth,
-                0, -halfHeight, halfDepth, 0, halfHeight, halfDepth,
-                0, -halfHeight, -halfDepth, 0, -halfHeight, halfDepth,
-                0, halfHeight, -halfDepth, 0, halfHeight, halfDepth
-            ];
-
-            verticalRect.geometry.attributes.position.array = new Float32Array(positions);
-            verticalRect.geometry.attributes.position.needsUpdate = true;
-        }
-    }
-
-
-    // Переопределяем onMouseDown для захвата текущего кубика
-    onMouseDown(e) {
-        if (e.button !== 0) return false;
-
-        this.snapEnabled = !e.ctrlKey;
-        this.editor.updateMousePosition(e);
-        this.editor.raycaster.setFromCamera(this.editor.mouse, this.editor.camera);
-
-        const gizmoMeshes = [];
-        this.gizmoGroup.traverse((child) => {
-            if (child instanceof THREE.Mesh && child.userData.handle) {
-                gizmoMeshes.push(child);
-            }
+    createCenterSphere() {
+        const geometry = new THREE.SphereGeometry(0.3, 16, 16);
+        const material = new THREE.MeshBasicMaterial({
+            color: 0xffffff,
+            transparent: true,
+            opacity: 0.9
         });
-
-        const intersects = this.editor.raycaster.intersectObjects(gizmoMeshes, true);
-
-        if (intersects.length > 0) {
-            const object = intersects[0].object;
-            this.currentHandle = object;
-            const axis = object.userData.axis;
-
-            // Получаем мировую позицию кубика в начале перетаскивания
-            this.startHandleWorldPosition.copy(object.getWorldPosition(new THREE.Vector3()));
-
-            this.startDragging(axis, e);
-            return true;
-        }
-
-        const sceneIntersects = this.editor.raycaster.intersectObjects(
-            this.editor.objectsGroup.children,
-            true
-        );
-
-        if (sceneIntersects.length > 0) {
-            const object = this.editor.objectsManager.findTopParent(sceneIntersects[0].object);
-
-            if (this.canTransformObject(object)) {
-                this.editor.selectSingleObject(object);
-                this.attachToObject(object);
-                return true;
-            }
-        }
-
-        return false;
+        const centerSphere = new THREE.Mesh(geometry, material);
+        centerSphere.name = 'scale_center';
+        centerSphere.userData.type = 'scale';
+        centerSphere.userData.axis = 'uniform';
+        this.gizmoGroup.add(centerSphere);
     }
 
-
-    startDragging(axis, e) {
-        super.startDragging(axis, e);
-
-        if (this.attachedObject) {
-            const rect = this.editor.renderer.domElement.getBoundingClientRect();
-            this.startMouse.set(e.clientX, e.clientY);
-            this.lastMousePosition.copy(this.startMouse);
-
-
-            this.sizeStartDimensions = this.getObjectDimensions(this.attachedObject);
-            this.startScale.copy(this.attachedObject.scale);
-            this.moveDelta.set(0, 0, 0);
-
-            if (!this.attachedObject.userData.originalSize) {
-                this.attachedObject.userData.originalSize = this.sizeStartDimensions.clone();
-            }
-        }
-    }
-
-    handleTransform(deltaX, deltaY) {
-        if (!this.attachedObject || !this.currentAxis || !this.currentHandle) return;
-
-        // Создаем луч из текущей позиции мыши
-        const currentMouseX = this.startMouse.x + deltaX;
-        const currentMouseY = this.startMouse.y + deltaY;
-
-        // Нормализуем координаты мыши
-        const rect = this.editor.renderer.domElement.getBoundingClientRect();
-        const mouse = new THREE.Vector2();
-        mouse.x = ((currentMouseX - rect.left) / rect.width) * 2 - 1;
-        mouse.y = -((currentMouseY - rect.top) / rect.height) * 2 + 1;
-
-        this.editor.raycaster.setFromCamera(mouse, this.editor.camera);
-
-        // Получаем вектор направления кубика от центра объекта
-        const objectCenter = new THREE.Vector3();
-        this.attachedObject.getWorldPosition(objectCenter);
-
-        const handleDirection = new THREE.Vector3();
-        handleDirection.copy(this.startHandleWorldPosition).sub(objectCenter).normalize();
-
-        // Находим плоскость, перпендикулярную лучу камеры и проходящую через кубик
-        const cameraDirection = this.editor.raycaster.ray.direction;
-        const planeNormal = cameraDirection.clone();
-        const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(
-            planeNormal,
-            this.startHandleWorldPosition
-        );
-
-        // Находим точку пересечения луча с этой плоскостью
-        const intersectionPoint = new THREE.Vector3();
-        if (this.editor.raycaster.ray.intersectPlane(plane, intersectionPoint)) {
-            // Вычисляем смещение от начальной позиции кубика
-            const displacement = intersectionPoint.sub(this.startHandleWorldPosition);
-
-            // Проецируем смещение на направление кубика
-            const dotProduct = displacement.dot(handleDirection);
-
-            // Определяем, увеличивается ли размер (движение от центра объекта)
-            const direction = this.currentHandle.userData.direction;
-            const scaleChange = dotProduct * 0.05 * direction; // 0.1 - коэффициент чувствительности
-
-            // Применяем изменение масштаба
-            let scaleIncrement = 1.0 + scaleChange;
-
-
-            // Ограничиваем масштаб минимальным значением
-            scaleIncrement = Math.max(0.1, scaleIncrement);
-
-            let newDimensions = new THREE.Vector3();
-
-            // Изменение по одной оси
-            if (this.currentAxis === 'x') {
-                newDimensions.x = this.sizeStartDimensions.x * scaleIncrement;
-                newDimensions.y = this.sizeStartDimensions.y;
-                newDimensions.z = this.sizeStartDimensions.z;
-            } else if (this.currentAxis === 'y') {
-                newDimensions.x = this.sizeStartDimensions.x;
-                newDimensions.y = this.sizeStartDimensions.y * scaleIncrement;
-                newDimensions.z = this.sizeStartDimensions.z;
-            } else if (this.currentAxis === 'z') {
-                newDimensions.x = this.sizeStartDimensions.x;
-                newDimensions.y = this.sizeStartDimensions.y;
-                newDimensions.z = this.sizeStartDimensions.z * scaleIncrement;
-            }
-
-            // Применяем привязку к сетке
-            if (this.snapEnabled && !this.editor.spacePressed) {
-                newDimensions.x = Math.round(newDimensions.x / this.sizeSnapValue) * this.sizeSnapValue;
-                newDimensions.y = Math.round(newDimensions.y / this.sizeSnapValue) * this.sizeSnapValue;
-                newDimensions.z = Math.round(newDimensions.z / this.sizeSnapValue) * this.sizeSnapValue;
-            }
-
-            // Ограничиваем минимальные размеры
-            const minScale = 0.1;
-            newDimensions.x = Math.max(minScale, newDimensions.x);
-            newDimensions.y = Math.max(minScale, newDimensions.y);
-            newDimensions.z = Math.max(minScale, newDimensions.z);
-
-            this.updateObjectSize(newDimensions, false);
-        }
-    }
-
-
-    onMouseUp(e) {
-        super.onMouseUp(e);
-        this.currentHandle = null; // Сбрасываем текущий кубик
-    }
 
     getPropertiesHTML() {
         console.log('ScaleTool: создание HTML свойств');
@@ -524,6 +327,33 @@ class ScaleTool extends TransformToolBase {
             });
         }
     }
+     updateGizmoPosition() {
+        if (!this.attachedObject) return;
+
+        // Получаем мировую позицию объекта
+        const worldPos = new THREE.Vector3();
+        this.attachedObject.getWorldPosition(worldPos);
+        this.gizmoGroup.position.copy(worldPos);
+
+        // Обновляем вращение в зависимости от системы координат
+        if (this.useLocalCoordinates) {
+            this.gizmoGroup.quaternion.copy(this.attachedObject.quaternion);
+        } else {
+            this.gizmoGroup.quaternion.identity();
+        }
+
+        // Масштабируем гизмо в зависимости от размера объекта
+        const box = new THREE.Box3().setFromObject(this.attachedObject);
+        const size = new THREE.Vector3();
+        box.getSize(size);
+
+        // Учитываем только наибольший размер для равномерного масштабирования гизмо
+        const maxSize = Math.max(size.x, size.y, size.z);
+        const gizmoScale = Math.max(0.5, maxSize / 15);
+
+        this.gizmoGroup.scale.setScalar(gizmoScale);
+    }
+
 
     updatePropertiesUI() {
         if (!this.propertiesElement) return;
@@ -683,6 +513,88 @@ class ScaleTool extends TransformToolBase {
         if (percentZ) percentZ.value = Math.round((dimensions.z / originalSize.z) * 100);
     }
 
+    startDragging(axis, e) {
+        super.startDragging(axis, e);
+
+        if (this.attachedObject) {
+            const rect = this.editor.renderer.domElement.getBoundingClientRect();
+            this.startMouse.set(e.clientX, e.clientY);
+            this.lastMousePosition.copy(this.startMouse);
+            this.accumulatedScale = 1.0;
+
+            this.sizeStartDimensions = this.getObjectDimensions(this.attachedObject);
+            this.startScale.copy(this.attachedObject.scale);
+            this.moveDelta.set(0, 0, 0);
+
+            if (axis === 'uniform' && !this.attachedObject.userData.originalSize) {
+                this.attachedObject.userData.originalSize = this.sizeStartDimensions.clone();
+            }
+        }
+    }
+
+    handleTransform(deltaX, deltaY) {
+        if (!this.attachedObject || !this.currentAxis) return;
+
+        const currentMouseX = this.startMouse.x + deltaX;
+        const currentMouseY = this.startMouse.y + deltaY;
+
+        const deltaMouseX = currentMouseX - this.lastMousePosition.x;
+        const deltaMouseY = currentMouseY - this.lastMousePosition.y;
+
+        this.lastMousePosition.set(currentMouseX, currentMouseY);
+
+        // Определяем основное направление движения
+        const delta = (Math.abs(deltaMouseX) > Math.abs(deltaMouseY)) ? deltaMouseX : deltaMouseY;
+
+        // Корректируем направление для разных осей
+        let correctedDelta = delta;
+        if (this.currentAxis === 'y') {
+            correctedDelta = -delta; // Инвертируем для оси Y
+        }
+
+        const scaleIncrement = 1.0 + (correctedDelta * 0.005);
+        this.accumulatedScale *= scaleIncrement;
+
+        let newDimensions = new THREE.Vector3();
+
+        if (this.currentAxis === 'uniform' || this.uniformScaling) {
+            // Равномерное масштабирование
+            newDimensions.x = this.sizeStartDimensions.x * this.accumulatedScale;
+            newDimensions.y = this.sizeStartDimensions.y * this.accumulatedScale;
+            newDimensions.z = this.sizeStartDimensions.z * this.accumulatedScale;
+        } else {
+            // Масштабирование по одной оси
+            if (this.currentAxis === 'x') {
+                newDimensions.x = this.sizeStartDimensions.x * this.accumulatedScale;
+                newDimensions.y = this.sizeStartDimensions.y;
+                newDimensions.z = this.sizeStartDimensions.z;
+            } else if (this.currentAxis === 'y') {
+                newDimensions.x = this.sizeStartDimensions.x;
+                newDimensions.y = this.sizeStartDimensions.y * this.accumulatedScale;
+                newDimensions.z = this.sizeStartDimensions.z;
+            } else if (this.currentAxis === 'z') {
+                newDimensions.x = this.sizeStartDimensions.x;
+                newDimensions.y = this.sizeStartDimensions.y;
+                newDimensions.z = this.sizeStartDimensions.z * this.accumulatedScale;
+            }
+        }
+
+        // Применяем привязку к сетке
+        if (this.snapEnabled && !this.editor.spacePressed) {
+            newDimensions.x = Math.round(newDimensions.x / this.sizeSnapValue) * this.sizeSnapValue;
+            newDimensions.y = Math.round(newDimensions.y / this.sizeSnapValue) * this.sizeSnapValue;
+            newDimensions.z = Math.round(newDimensions.z / this.sizeSnapValue) * this.sizeSnapValue;
+        }
+
+        // Ограничиваем минимальные размеры
+        const minScale = 0.1;
+        newDimensions.x = Math.max(minScale, newDimensions.x);
+        newDimensions.y = Math.max(minScale, newDimensions.y);
+        newDimensions.z = Math.max(minScale, newDimensions.z);
+
+        this.updateObjectSize(newDimensions, false);
+    }
+
     updateObjectSize(newDimensions, updateHistory = true) {
         if (!this.attachedObject) return;
 
@@ -704,7 +616,7 @@ class ScaleTool extends TransformToolBase {
         // Применяем масштаб
         this.attachedObject.scale.set(scaleX, scaleY, scaleZ);
 
-        // Обновляем гизмо
+        // Обновляем gizmo
         this.updateGizmoPosition();
 
         // Сохраняем текущие размеры

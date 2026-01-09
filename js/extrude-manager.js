@@ -1,3 +1,4 @@
+// ExtrudeManager.js - полная версия, совместимая с древовидной структурой FigureManager
 class ExtrudeManager {
     constructor(cadEditor) {
         this.editor = cadEditor;
@@ -228,57 +229,115 @@ class ExtrudeManager {
 
     getFiguresForExtrusion() {
         const result = [];
+        const processedNodes = new Set();
 
-        console.log("=== getFiguresForExtrusion ===");
+        console.log("=== getFiguresForExtrusion (улучшенная версия) ===");
         console.log("Выделенные фигуры:", Array.from(this.selectedFigureIds));
 
+        // Для каждого выбранного ID
         for (const figureId of this.selectedFigureIds) {
-            const figure = this.figureManager.getFigureById(figureId);
-            if (!figure) {
-                console.log("Фигура не найдена:", figureId);
-                continue;
-            }
+            const node = this.figureManager.getNodeById(figureId);
+            if (!node || processedNodes.has(node)) continue;
 
-            if (figure.parentId && this.selectedFigureIds.has(figure.parentId)) {
-                console.log("Пропускаем отверстие, так как родитель выделен:", figureId);
-                continue;
-            }
+            console.log(`Обработка узла ${node.id.substring(0, 8)}: isHole=${node.isHole}, depth=${node.depth}, children=${node.children.length}`);
 
-            const excludedHoles = this.excludedHoles.get(figureId) || new Set();
-            console.log("Исключенные отверстия для фигуры", figureId, ":", Array.from(excludedHoles));
+            // Получаем фигуру для вытягивания с учетом всех отверстий
+            const extrusionFigure = this.getExtrusionFigureForNode(node);
 
-            const filteredHoles = figure.holes.filter(hole => {
-                const holeFigure = this.figureManager.findFigureByHoleContour(hole);
-                if (!holeFigure) {
-                    console.warn("Не найдена фигура для отверстия");
-                    return false;
+            // Если это отверстие, проверяем, не выбран ли его родитель
+            if (node.isHole) {
+                const parentSelected = this.selectedFigureIds.has(node.parent?.id);
+                if (!parentSelected) {
+                    // Вытягиваем отверстие как отдельную фигуру
+                    const excludedHoles = this.excludedHoles.get(node.id) || new Set();
+                    const filteredHoles = extrusionFigure.holes.filter(hole => {
+                        const holeNode = this.figureManager.findNodeByContour(hole);
+                        return holeNode && !excludedHoles.has(holeNode.id);
+                    });
+
+                    result.push({
+                        ...extrusionFigure,
+                        holes: filteredHoles,
+                        isHole: true
+                    });
+
+                    console.log(`  Добавлено отверстие с ${filteredHoles.length} отверстиями внутри`);
+                } else {
+                    console.log(`  Пропускаем отверстие, так как выбран его родитель`);
                 }
+            } else {
+                // Внешний контур
+                const excludedHoles = this.excludedHoles.get(node.id) || new Set();
+                const filteredHoles = extrusionFigure.holes.filter(hole => {
+                    const holeNode = this.figureManager.findNodeByContour(hole);
+                    return holeNode && !excludedHoles.has(holeNode.id);
+                });
 
-                const isExcluded = excludedHoles.has(holeFigure.id);
-                console.log(`Отверстие: ${holeFigure.id}, исключено: ${isExcluded}`);
-                return !isExcluded;
-            });
+                result.push({
+                    ...extrusionFigure,
+                    holes: filteredHoles,
+                    isHole: false
+                });
 
-            console.log("Фильтрованные отверстия:", filteredHoles.length);
+                console.log(`  Добавлен внешний контур с ${filteredHoles.length} отверстиями`);
+            }
 
-            result.push({
-                ...figure,
-                holes: filteredHoles,
-                id: figureId
-            });
+            processedNodes.add(node);
         }
 
         console.log("Итого фигур для вытягивания:", result.length);
         return result;
     }
 
+    // ДОБАВЬТЕ НОВЫЙ МЕТОД В EXTRUDEMANAGER:
+
+    // Получить фигуру для вытягивания из узла с учетом иерархии
+    getExtrusionFigureForNode(node) {
+        const holes = [];
+
+        // Собираем ВСЕ отверстия, которые должны быть в этой фигуре
+        // Для внешнего контура (isHole=false) - это его непосредственные отверстия
+        // Для отверстия (isHole=true) - это его непосредственные внешние контуры (которые станут отверстиями в выступе)
+
+        if (node.isHole) {
+            // Для отверстия: собираем все непосредственные ВНЕШНИЕ контуры (которые станут отверстиями в выступе)
+            node.children.forEach(child => {
+                if (!child.isHole) { // Внешний контур внутри отверстия
+                    holes.push(child.contour);
+                }
+            });
+            console.log(`  Узел-отверстие ${node.id.substring(0, 8)}: ${node.children.length} детей, ${holes.length} будут отверстиями в выступе`);
+        } else {
+            // Для внешнего контура: собираем все непосредственные ОТВЕРСТИЯ
+            node.children.forEach(child => {
+                if (child.isHole) { // Отверстие во внешнем контуре
+                    holes.push(child.contour);
+                }
+            });
+            console.log(`  Внешний узел ${node.id.substring(0, 8)}: ${node.children.length} детей, ${holes.length} отверстий`);
+        }
+
+        return {
+            id: node.id,
+            outer: node.contour,
+            holes: holes,
+            area: node.area,
+            isHole: node.isHole,
+            isOuter: !node.isHole,
+            depth: node.depth,
+            elementIds: node.elementIds,
+            element: node.element,
+            node: node
+        };
+    }
+
     highlightFigure(figure, color) {
         console.log(`highlightFigure: фигура ${figure.id}, цвет ${color.toString(16)}`);
 
-        if (figure.outer.element) {
+        if (figure.outer && figure.outer.element) {
             console.log(`  Подсвечиваем элемент ${figure.outer.element.uuid}`);
             this.editor.objectsManager.safeSetElementColor(figure.outer.element, color);
-        } else if (figure.outer.elements) {
+        } else if (figure.outer && figure.outer.elements) {
             figure.outer.elements.forEach(element => {
                 console.log(`  Подсвечиваем элемент ${element.uuid} (из группы)`);
                 this.editor.objectsManager.safeSetElementColor(element, color);
@@ -288,17 +347,17 @@ class ExtrudeManager {
         if (figure.holes && figure.holes.length > 0) {
             console.log(`  Подсвечиваем ${figure.holes.length} отверстий`);
             figure.holes.forEach((hole, index) => {
-                const holeFigure = this.figureManager.findFigureByHoleContour(hole);
-                if (!holeFigure) {
-                    console.warn(`  Не найдена фигура для отверстия ${index}`);
+                const holeNode = this.figureManager.findNodeByHoleContour(hole);
+                if (!holeNode) {
+                    console.warn(`  Не найден узел для отверстия ${index}`);
                     return;
                 }
 
                 const excludedSet = this.excludedHoles.get(figure.id) || new Set();
-                const isExcluded = excludedSet.has(holeFigure.id);
+                const isExcluded = excludedSet.has(holeNode.id);
                 const holeColor = isExcluded ? 0x888888 : 0xFF9800;
 
-                console.log(`  Отверстие ${index}: holeId=${holeFigure.id}, исключено=${isExcluded}, цвет=${holeColor.toString(16)}`);
+                console.log(`  Отверстие ${index}: holeId=${holeNode.id}, исключено=${isExcluded}, цвет=${holeColor.toString(16)}`);
 
                 if (hole.element) {
                     this.editor.objectsManager.safeSetElementColor(hole.element, holeColor);
@@ -315,9 +374,9 @@ class ExtrudeManager {
         const color = isIncluded ? 0xFF9800 : 0x888888;
         console.log(`highlightHole: отверстие ${holeFigure.id}, включено=${isIncluded}, цвет=${color.toString(16)}`);
 
-        if (holeFigure.outer.element) {
+        if (holeFigure.outer && holeFigure.outer.element) {
             this.editor.objectsManager.safeSetElementColor(holeFigure.outer.element, color);
-        } else if (holeFigure.outer.elements) {
+        } else if (holeFigure.outer && holeFigure.outer.elements) {
             holeFigure.outer.elements.forEach(element => {
                 this.editor.objectsManager.safeSetElementColor(element, color);
             });
@@ -327,9 +386,9 @@ class ExtrudeManager {
     unhighlightFigure(figure) {
         console.log(`unhighlightFigure: фигура ${figure.id}`);
 
-        if (figure.outer.element) {
+        if (figure.outer && figure.outer.element) {
             this.editor.objectsManager.safeRestoreElementColor(figure.outer.element);
-        } else if (figure.outer.elements) {
+        } else if (figure.outer && figure.outer.elements) {
             figure.outer.elements.forEach(element => {
                 this.editor.objectsManager.safeRestoreElementColor(element);
             });
@@ -367,12 +426,12 @@ class ExtrudeManager {
     getFigurePlane(figure) {
         let element = null;
 
-        if (figure.outer.element) {
-            element = figure.outer.element;
-        } else if (figure.outer.elements && figure.outer.elements.length > 0) {
-            element = figure.outer.elements[0];
-        } else if (figure.element) {
+        if (figure.element) {
             element = figure.element;
+        } else if (figure.outer && figure.outer.element) {
+            element = figure.outer.element;
+        } else if (figure.outer && figure.outer.elements && figure.outer.elements.length > 0) {
+            element = figure.outer.elements[0];
         }
 
         if (element) {
@@ -464,7 +523,7 @@ class ExtrudeManager {
 
         // Если направление не совпадает с требуемым, разворачиваем массив
         if (isCurrentlyClockwise !== shouldBeClockwise) {
-            console.log(`Исправляем направление обхода: было ${isCurrentlyClockwise ? 'по часовой' : 'против часовой'}, нужно ${shouldBeClockwise ? 'по часовой' : 'против часовой'}`);
+            console.log(`Исправляем направление обхода: было ${isCurrentlyClockwise ? 'по часовой' : 'против часовой'}, нужно ${shouldBeClockwise ? 'по часовой' : 'против часовой'}, площадь=${area}`);
             return [...points].reverse();
         }
 
@@ -477,45 +536,32 @@ class ExtrudeManager {
         const shapes = [];
 
         figures.forEach(figure => {
-            console.log(`Создание фигуры для вытягивания: ${figure.id}, isHole: ${figure.isHole}, площадь: ${figure.area}`);
+            console.log(`Создание фигуры: ${figure.id}, isHole: ${figure.isHole}, глубина: ${figure.depth}, отверстий: ${figure.holes ? figure.holes.length : 0}`);
 
-            // Получаем точки внешнего контура с учетом базовой плоскости
             const outerPoints = this.getFigurePointsForBasePlane(figure);
             if (outerPoints.length < 3) {
-                console.log(`  Недостаточно точек для фигуры ${figure.id}: ${outerPoints.length}`);
+                console.log(`  Недостаточно точек: ${outerPoints.length}`);
                 return;
             }
 
-            // КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ: Правильно определяем ориентацию
-            // 1. Внешние фигуры (isHole: false) должны быть против часовой стрелки
-            // 2. Отверстия (isHole: true), которые вытягиваются отдельно, должны быть инвертированы
-            let shouldOuterBeClockwise = false; // По умолчанию внешние контуры против часовой стрелки
+            // Определяем ориентацию на основе типа фигуры
+            // Правило:
+            // - Внешние контуры (isHole=false): против часовой стрелки (добавляют материал)
+            // - Отверстия (isHole=true): по часовой стрелке (убирают материал), НО при вытягивании отдельного отверстия нужно инвертировать
+            let shouldBeClockwise = figure.isHole;
 
+            // Если это отверстие, вытягиваемое отдельно, оно должно стать выступом (инвертировать ориентацию)
             if (figure.isHole) {
-                // Внутренняя фигура (отверстие) при отдельном вытягивании должна быть инвертирована
-                console.log(`  Внутренняя фигура ${figure.id} (отверстие) будет инвертирована для правильного вытягивания`);
-                shouldOuterBeClockwise = false; // Инвертируем ориентацию
+                shouldBeClockwise = false; // Инвертируем, чтобы отверстие стало выступом
+                console.log(`  Отверстие вытягивается отдельно - инвертируем ориентацию для создания выступа`);
             }
 
-            const correctedOuterPoints = this.fixContourOrientation(outerPoints, shouldOuterBeClockwise);
+            const correctedOuterPoints = this.fixContourOrientation(outerPoints, shouldBeClockwise);
 
-            // Проверяем ориентацию после исправления
-            let area = 0;
-            const n = correctedOuterPoints.length;
-            for (let i = 0; i < n; i++) {
-                const j = (i + 1) % n;
-                area += correctedOuterPoints[i].x * correctedOuterPoints[j].y;
-                area -= correctedOuterPoints[j].x * correctedOuterPoints[i].y;
-            }
-            area /= 2;
-            console.log(`  Ориентация контура после исправления: площадь=${area}, ${area < 0 ? 'по часовой' : 'против часовой'}`);
+            const shape = new THREE.Shape(correctedOuterPoints.map(p => new THREE.Vector2(p.x, p.y)));
 
-            const shapePoints = correctedOuterPoints.map(p => new THREE.Vector2(p.x, p.y));
-            const shape = new THREE.Shape(shapePoints);
-
-            // Обрабатываем отверстия (только для внешних фигур, у которых isHole = false)
-            if (!figure.isHole && figure.holes && figure.holes.length > 0) {
-                console.log(`  Добавляем ${figure.holes.length} отверстий в фигуру ${figure.id}`);
+            // Добавляем отверстия
+            if (figure.holes && figure.holes.length > 0) {
                 figure.holes.forEach((hole, index) => {
                     const holePoints = this.getContourPointsForBasePlane(hole);
                     if (holePoints.length >= 3) {
@@ -523,13 +569,9 @@ class ExtrudeManager {
                         const correctedHolePoints = this.fixContourOrientation(holePoints, true);
                         const holePath = new THREE.Path(correctedHolePoints.map(p => new THREE.Vector2(p.x, p.y)));
                         shape.holes.push(holePath);
-                        console.log(`    Добавлено отверстие ${index} с ${holePoints.length} точками`);
-                    } else {
-                        console.log(`    Отверстие ${index} имеет недостаточно точек: ${holePoints.length}`);
+                        console.log(`    Добавлено отверстие ${index}`);
                     }
                 });
-            } else if (figure.isHole && figure.holes && figure.holes.length > 0) {
-                console.log(`  Внутренняя фигура ${figure.id} (отверстие) имеет свои отверстия, что невозможно`);
             }
 
             shapes.push(shape);
@@ -584,9 +626,10 @@ class ExtrudeManager {
     }
 
     getContourPointsForBasePlane(contour) {
-        const holeFigure = this.figureManager.findFigureByHoleContour(contour);
-        const figurePlane = holeFigure ? this.getFigurePlane(holeFigure) : null;
+        const holeNode = this.figureManager.findNodeByHoleContour(contour);
+        if (!holeNode) return contour.points || [];
 
+        const figurePlane = this.getFigurePlane(holeNode);
         if (!figurePlane) return contour.points || [];
 
         if (this.arePlanesCompatible(figurePlane, this.basePlane)) {
@@ -931,12 +974,12 @@ class ExtrudeManager {
         planeNormal.applyQuaternion(this.basePlane.quaternion);
         planeNormal.normalize();
 
-        let offset = 0.0;
-//        if (direction === 'negative') {
-//            offset = -height + 0.1;
-//        } else if (direction === 'both') {
-//            offset = -height / 2 + 0.1;
-//        }
+        let offset = 0.1;
+        if (direction === 'negative') {
+            offset = -height + 0.1;
+        } else if (direction === 'both') {
+            offset = -height / 2 + 0.1;
+        }
 
         mesh.position.add(planeNormal.clone().multiplyScalar(offset));
     }
@@ -1344,8 +1387,7 @@ class ExtrudeManager {
         this.editor.objects.forEach(obj => {
             if (obj === mesh || obj.userData.type === 'sketch_plane' ||
                 obj.userData.type === 'work_plane' ||
-                obj.userData.type === 'sketch_element' ||
-                obj.userData.type === 'extrusion') {
+                obj.userData.type === 'sketch_element') {
                 return;
             }
 
@@ -1490,9 +1532,9 @@ class ExtrudeManager {
 
         const figures = this.figureManager.collectAllFigures();
         figures.forEach(figure => {
-            if (figure.outer.element) {
+            if (figure.outer && figure.outer.element) {
                 this.editor.objectsManager.safeSetElementColor(figure.outer.element, 0x2196F3);
-            } else if (figure.outer.elements) {
+            } else if (figure.outer && figure.outer.elements) {
                 figure.outer.elements.forEach(element => {
                     this.editor.objectsManager.safeSetElementColor(element, 0x2196F3);
                 });

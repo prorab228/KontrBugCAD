@@ -1,88 +1,653 @@
+// FigureManager.js - полная исправленная версия
+class FigureNode {
+    constructor(contour) {
+        this.id = `figure_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        this.contour = contour;
+        this.parent = null;
+        this.children = [];
+        this.depth = 0;
+        this.isHole = false;
+        this.isOuter = true;
+        this.area = contour.area || 0;
+        this.boundingBox = contour.boundingBox;
+        this.center = contour.center;
+        this.elementIds = new Set();
+        this.element = contour.element || (contour.elements ? contour.elements[0] : null);
+        
+        if (contour.element) {
+            this.elementIds.add(contour.element.uuid);
+        } else if (contour.elements) {
+            contour.elements.forEach(el => this.elementIds.add(el.uuid));
+        }
+        
+        this.type = contour.type || 'unknown';
+        this.isClosed = contour.isClosed || false;
+        this.isClockwise = contour.isClockwise || false;
+    }
+    
+    addChild(childNode) {
+        if (!this.children.includes(childNode)) {
+            this.children.push(childNode);
+            childNode.parent = this;
+            childNode.depth = this.depth + 1;
+            return true;
+        }
+        return false;
+    }
+    
+    removeChild(childNode) {
+        const index = this.children.indexOf(childNode);
+        if (index > -1) {
+            this.children.splice(index, 1);
+            childNode.parent = null;
+            childNode.depth = 0;
+            return true;
+        }
+        return false;
+    }
+    
+    getAllDescendants() {
+        const descendants = [];
+        const traverse = (node) => {
+            node.children.forEach(child => {
+                descendants.push(child);
+                traverse(child);
+            });
+        };
+        traverse(this);
+        return descendants;
+    }
+    
+    getHoleDescendants() {
+        return this.getAllDescendants().filter(node => node.isHole);
+    }
+    
+    getOuterDescendants() {
+        return this.getAllDescendants().filter(node => !node.isHole);
+    }
+    
+    getImmediateHoles() {
+        return this.children.filter(child => child.isHole);
+    }
+    
+    getImmediateOuters() {
+        return this.children.filter(child => !child.isHole);
+    }
+    
+    isAncestorOf(node) {
+        let current = node;
+        while (current) {
+            if (current === this) return true;
+            current = current.parent;
+        }
+        return false;
+    }
+    
+    isDescendantOf(node) {
+        return node.isAncestorOf(this);
+    }
+    
+    getPathToRoot() {
+        const path = [];
+        let current = this;
+        while (current) {
+            path.unshift(current);
+            current = current.parent;
+        }
+        return path;
+    }
+    
+    getNestingLevel() {
+        return this.depth;
+    }
+    
+    toString() {
+        const type = this.isHole ? "HOLE" : "OUTER";
+        return `${type}[depth=${this.depth}, area=${this.area.toFixed(2)}, children=${this.children.length}]`;
+    }
+}
+
 class FigureManager {
     constructor(cadEditor) {
         this.editor = cadEditor;
-        this.allFigures = new Map(); // id -> Figure
+        this.figureTree = new Map();
+        this.rootNodes = [];
+        this.elementToNodes = new Map();
         this.figureCacheTimestamp = 0;
-        console.log("FigureManager: создан");
+        console.log("FigureManager (Tree Version): создан");
     }
 
-    // Сбор всех фигур на чертеже
+    // ========== ОСНОВНЫЕ МЕТОДЫ ==========
+
     collectAllFigures() {
-        console.log("FigureManager: начинаем сбор фигур");
+        console.log("=== FigureManager: начинаем сбор фигур ===");
         const now = Date.now();
-        if (this.allFigures.size > 0 && now - this.figureCacheTimestamp < 100) {
-            console.log("FigureManager: используем кэш, фигур:", this.allFigures.size);
-            return Array.from(this.allFigures.values());
+        
+        // Кэширование на 200 мс
+        if (this.figureTree.size > 0 && now - this.figureCacheTimestamp < 200) {
+            console.log("FigureManager: используем кэш, узлов:", this.figureTree.size);
+            return this.getAllFiguresFlat();
         }
 
+        // 1. Сбор всех элементов
         const allElements = this.editor.objectsManager.getAllSketchElements();
         console.log("FigureManager: найдено элементов:", allElements.length);
 
-        // Собираем элементы по группам (объединяем дуги в круги)
+        // 2. Группировка элементов
         const elementGroups = this.groupArcElements(allElements);
-        console.log("FigureManager: сгруппировано элементов в группы:", elementGroups.length);
+        console.log("FigureManager: сгруппировано в:", elementGroups.length, "групп");
 
-        // 1. Собираем простые замкнутые элементы и группы
+        // 3. Сбор простых контуров
         const simpleContours = this.collectSimpleContours(elementGroups);
         console.log("FigureManager: простых контуров:", simpleContours.length);
 
-        // 2. Собираем контуры из линий (исключая элементы, уже вошедшие в простые контуры)
+        // 4. Сбор контуров из линий
         const lineContours = this.collectLineContours(allElements, simpleContours);
         console.log("FigureManager: контуров из линий:", lineContours.length);
 
-        // 3. Объединяем все контуры в фигуры
+        // 5. Объединение всех контуров
         const allContours = [...simpleContours, ...lineContours];
         console.log("FigureManager: всего контуров:", allContours.length);
 
-        // 4. Создаем фигуры для каждого контура
-        const figures = this.createFiguresFromContours(allContours);
+        // 6. Создание узлов
+        const allNodes = allContours.map(contour => new FigureNode(contour));
+        console.log("FigureManager: создано узлов:", allNodes.length);
 
-        // 5. Устанавливаем связи parent-child
-        this.buildFigureRelations(figures);
+        // 7. Построение дерева вложенности (исправленный алгоритм)
+        this.buildEnhancedNestingTree(allNodes);
 
-        // 6. Сохраняем в карту
-        this.allFigures.clear();
-        figures.forEach(figure => {
-            this.allFigures.set(figure.id, figure);
-        });
+        // 8. Определение типов (отверстия/внешние)
+        this.determineContourTypes();
+
+        // 9. Сохранение в структуры данных
+        this.updateDataStructures(allNodes);
+
+        // 10. Дебаг вывод
+        this.debugPrintTree();
 
         this.figureCacheTimestamp = now;
-
-        // Выводим отладочную информацию
-        console.log("=== ДЕБАГ: ВСЕ ФИГУРЫ ===");
-        figures.forEach((figure, index) => {
-            console.log(`Фигура ${index}:`, {
-                id: figure.id,
-                area: figure.area,
-                isHole: figure.isHole,
-                parentId: figure.parentId,
-                childrenIds: figure.childrenIds.length,
-                holes: figure.holes ? figure.holes.length : 0,
-                outerType: figure.outer.element ? 'single' : 'multi',
-                outerIsClockwise: figure.outer.isClockwise,
-                elementIds: figure.elementIds ? Array.from(figure.elementIds).slice(0, 3) : []
-            });
-        });
-        console.log("=== КОНЕЦ ДЕБАГА ===");
-
-        return figures;
+        return this.getAllFiguresFlat();
     }
 
-    // Группировка дуг в круги
+    // ========== УЛУЧШЕННОЕ ПОСТРОЕНИЕ ДЕРЕВА ==========
+
+    buildEnhancedNestingTree(nodes) {
+        console.log("=== FigureManager: строим улучшенное дерево вложенности ===");
+        
+        // Очищаем все связи
+        nodes.forEach(node => {
+            node.parent = null;
+            node.children = [];
+            node.depth = 0;
+        });
+        
+        // Сортируем по площади (от большей к меньшей)
+        const sortedNodes = [...nodes].sort((a, b) => b.area - a.area);
+        console.log(`Сортировка: ${sortedNodes.length} узлов, самый большой: ${sortedNodes[0]?.area.toFixed(2)}, самый маленький: ${sortedNodes[sortedNodes.length-1]?.area.toFixed(2)}`);
+        
+        // Для каждого узла ищем всех возможных родителей
+        for (let i = 0; i < sortedNodes.length; i++) {
+            const currentNode = sortedNodes[i];
+            
+            const possibleParents = [];
+            
+            // Ищем всех возможных родителей (узлы, которые содержат текущий узел)
+            for (let j = 0; j < i; j++) {
+                const potentialParent = sortedNodes[j];
+                
+                // Быстрая проверка по bounding box
+                if (!this.isBoundingBoxInside(currentNode.boundingBox, potentialParent.boundingBox)) {
+                    continue;
+                }
+                
+                // Полная проверка вложенности
+                const isInside = this.isContourCompletelyInside(currentNode.contour, potentialParent.contour);
+                
+                if (isInside) {
+                    // Проверяем, не пересекается ли с другими детьми этого родителя
+                    let hasIntersection = false;
+                    for (const sibling of potentialParent.children) {
+                        if (this.doContoursIntersect(currentNode.contour, sibling.contour)) {
+                            hasIntersection = true;
+                            break;
+                        }
+                    }
+                    
+                    if (!hasIntersection) {
+                        possibleParents.push(potentialParent);
+                    }
+                }
+            }
+            
+            // Выбираем ближайшего родителя (самого маленького по площади)
+            if (possibleParents.length > 0) {
+                possibleParents.sort((a, b) => a.area - b.area);
+                const bestParent = possibleParents[0];
+                
+                bestParent.addChild(currentNode);
+            }
+        }
+        
+        // Находим корневые узлы
+        this.rootNodes = sortedNodes.filter(node => node.parent === null);
+        
+        // Обновляем глубины
+        this.updateDepthsRecursively();
+        
+        console.log(`Построено дерево: ${this.rootNodes.length} корневых узлов, всего узлов: ${sortedNodes.length}`);
+    }
+
+    updateDepthsRecursively() {
+        const updateDepth = (node, depth) => {
+            node.depth = depth;
+            node.children.forEach(child => updateDepth(child, depth + 1));
+        };
+        
+        this.rootNodes.forEach(root => updateDepth(root, 0));
+    }
+
+    // ========== ГЕОМЕТРИЧЕСКИЕ МЕТОДЫ ==========
+
+    isContourCompletelyInside(innerContour, outerContour) {
+        const innerPoints = innerContour.points || [];
+        const outerPoints = outerContour.points || [];
+
+        if (innerPoints.length < 3 || outerPoints.length < 3) {
+            return false;
+        }
+
+        // Проверяем все точки внутреннего контура
+        for (let k = 0; k < innerPoints.length; k++) {
+            const point = innerPoints[k];
+            if (!this.isPointInsidePolygon(point, outerPoints)) {
+                return false;
+            }
+        }
+
+        // Также проверяем, что контуры не пересекаются
+        if (this.doContoursIntersect(innerContour, outerContour)) {
+            return false;
+        }
+
+        return true;
+    }
+
+    isBoundingBoxInside(innerBox, outerBox) {
+        if (!innerBox || !outerBox) return false;
+        return (
+            innerBox.min.x >= outerBox.min.x &&
+            innerBox.min.y >= outerBox.min.y &&
+            innerBox.max.x <= outerBox.max.x &&
+            innerBox.max.y <= outerBox.max.y
+        );
+    }
+
+    doContoursIntersect(contour1, contour2) {
+        const points1 = contour1.points || [];
+        const points2 = contour2.points || [];
+        
+        if (points1.length < 2 || points2.length < 2) return false;
+        
+        // Упрощенная проверка: если bounding box не пересекаются, то и контуры не пересекаются
+        if (this.boundingBoxesDontIntersect(contour1, contour2)) {
+            return false;
+        }
+        
+        // Проверяем все сегменты
+        for (let i = 0; i < points1.length; i++) {
+            const p1 = points1[i];
+            const p2 = points1[(i + 1) % points1.length];
+            
+            for (let j = 0; j < points2.length; j++) {
+                const p3 = points2[j];
+                const p4 = points2[(j + 1) % points2.length];
+                
+                if (this.doLineSegmentsIntersect(p1, p2, p3, p4)) {
+                    return true;
+                }
+            }
+        }
+        
+        return false;
+    }
+
+    boundingBoxesDontIntersect(contour1, contour2) {
+        const box1 = contour1.boundingBox;
+        const box2 = contour2.boundingBox;
+        
+        if (!box1 || !box2) return false;
+        
+        return (
+            box1.max.x < box2.min.x ||
+            box1.min.x > box2.max.x ||
+            box1.max.y < box2.min.y ||
+            box1.min.y > box2.max.y
+        );
+    }
+
+    doLineSegmentsIntersect(p1, p2, p3, p4) {
+        // Функция для вычисления ориентации тройки точек
+        const orientation = (a, b, c) => {
+            const val = (b.y - a.y) * (c.x - b.x) - (b.x - a.x) * (c.y - b.y);
+            if (Math.abs(val) < 0.001) return 0; // Колинеарны
+            return val > 0 ? 1 : 2; // По часовой или против
+        };
+        
+        const onSegment = (a, b, c) => {
+            return Math.min(a.x, c.x) <= b.x && b.x <= Math.max(a.x, c.x) &&
+                   Math.min(a.y, c.y) <= b.y && b.y <= Math.max(a.y, c.y);
+        };
+        
+        const o1 = orientation(p1, p2, p3);
+        const o2 = orientation(p1, p2, p4);
+        const o3 = orientation(p3, p4, p1);
+        const o4 = orientation(p3, p4, p2);
+        
+        // Общий случай
+        if (o1 !== o2 && o3 !== o4) return true;
+        
+        // Специальные случаи колинеарности
+        if (o1 === 0 && onSegment(p1, p3, p2)) return true;
+        if (o2 === 0 && onSegment(p1, p4, p2)) return true;
+        if (o3 === 0 && onSegment(p3, p1, p4)) return true;
+        if (o4 === 0 && onSegment(p3, p2, p4)) return true;
+        
+        return false;
+    }
+
+    isPointInsidePolygon(point, polygon) {
+        if (!polygon || polygon.length < 3) return false;
+
+        let inside = false;
+        const x = point.x;
+        const y = point.y;
+        
+        for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+            const xi = polygon[i].x;
+            const yi = polygon[i].y;
+            const xj = polygon[j].x;
+            const yj = polygon[j].y;
+            
+            // Проверка пересечения луча с ребром полигона
+            const intersect = ((yi > y) !== (yj > y)) &&
+                (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+                
+            if (intersect) {
+                inside = !inside;
+            }
+        }
+        
+        return inside;
+    }
+
+    // ========== ОПРЕДЕЛЕНИЕ ТИПОВ КОНТУРОВ ==========
+
+    determineContourTypes() {
+        console.log("=== FigureManager: определяем типы контуров ===");
+        
+        const determineNode = (node) => {
+            // Правило CAD: чередование внешний/отверстие
+            node.isHole = (node.depth % 2 === 1);
+            node.isOuter = !node.isHole;
+            
+            if (node.isHole) {
+                console.log(`  Узел ${node.id.substr(0, 8)}: глубина ${node.depth} -> ОТВЕРСТИЕ`);
+            } else {
+                console.log(`  Узел ${node.id.substr(0, 8)}: глубина ${node.depth} -> ВНЕШНИЙ`);
+            }
+            
+            node.children.forEach(determineNode);
+        };
+        
+        this.rootNodes.forEach(determineNode);
+    }
+
+    // ========== ОБНОВЛЕНИЕ СТРУКТУР ДАННЫХ ==========
+
+    updateDataStructures(nodes) {
+        this.figureTree.clear();
+        this.elementToNodes.clear();
+        
+        nodes.forEach(node => {
+            this.figureTree.set(node.id, node);
+            
+            node.elementIds.forEach(elementId => {
+                if (!this.elementToNodes.has(elementId)) {
+                    this.elementToNodes.set(elementId, []);
+                }
+                this.elementToNodes.get(elementId).push(node);
+            });
+        });
+        
+        this.elementToNodes.forEach((nodes, elementId) => {
+            nodes.sort((a, b) => a.depth - b.depth);
+        });
+    }
+
+    // ========== МЕТОДЫ ДЛЯ ВЫТЯГИВАНИЯ ==========
+
+    getFiguresForExtrusionWithHierarchy(selectedFigureIds) {
+        const result = [];
+        const processedNodes = new Set();
+
+        console.log("=== FigureManager.getFiguresForExtrusionWithHierarchy ===");
+        console.log("Выбранные ID:", Array.from(selectedFigureIds));
+
+        // Обрабатываем выбранные фигуры
+        for (const figureId of selectedFigureIds) {
+            const node = this.getNodeById(figureId);
+            if (!node || processedNodes.has(node)) continue;
+
+            console.log(`Обработка узла ${node.id.substring(0, 8)}: isHole=${node.isHole}, depth=${node.depth}, children=${node.children.length}`);
+
+            // Для любого узла (внешнего или отверстия) собираем фигуру
+            const extrusionFigure = this.getExtrusionFigureForNode(node);
+            result.push(extrusionFigure);
+            processedNodes.add(node);
+
+            console.log(`  Добавлена фигура ${node.isHole ? '(отверстие)' : '(внешний)'} с ${extrusionFigure.holes.length} отверстиями`);
+        }
+
+        console.log(`Итого фигур для вытягивания: ${result.length}`);
+        return result;
+    }
+
+
+    getExtrusionFigureForNode(node) {
+        let holes = [];
+
+        if (node.isHole) {
+            // Для отверстия: его отверстия - это его непосредственные ВНЕШНИЕ дети
+            holes = node.children
+                .filter(child => !child.isHole)
+                .map(child => child.contour);
+        } else {
+            // Для внешнего контура: его отверстия - это его непосредственные ОТВЕРСТИЯ
+            holes = node.children
+                .filter(child => child.isHole)
+                .map(child => child.contour);
+        }
+
+        return {
+            id: node.id,
+            outer: node.contour,
+            holes: holes,
+            area: node.area,
+            isHole: node.isHole,
+            isOuter: !node.isHole,
+            depth: node.depth,
+            elementIds: node.elementIds,
+            element: node.element,
+            node: node
+        };
+    }
+
+    // ========== ПОЛУЧЕНИЕ ДАННЫХ ==========
+
+    getAllFiguresFlat() {
+        const result = [];
+        
+        const traverse = (node) => {
+            const immediateHoles = node.getImmediateHoles().map(child => child.contour);
+            
+            const figure = {
+                id: node.id,
+                outer: node.contour,
+                holes: immediateHoles,
+                area: node.area,
+                selected: false,
+                parentId: node.parent ? node.parent.id : null,
+                childrenIds: node.children.map(child => child.id),
+                isStandalone: node.parent === null,
+                canBeSelected: true,
+                isHole: node.isHole,
+                isOuter: node.isOuter,
+                depth: node.depth,
+                elementIds: node.elementIds,
+                element: node.element,
+                boundingBox: node.boundingBox,
+                center: node.center,
+                type: node.type
+            };
+            
+            result.push(figure);
+            
+            node.children.forEach(child => traverse(child));
+        };
+        
+        this.rootNodes.forEach(root => traverse(root));
+        
+        result.sort((a, b) => a.depth - b.depth);
+        
+        return result;
+    }
+
+    getNodeById(id) {
+        return this.figureTree.get(id);
+    }
+
+    getFigureById(id) {
+        const node = this.getNodeById(id);
+        if (!node) return null;
+        
+        return this.nodeToFigure(node);
+    }
+
+    getFiguresByElement(element) {
+        const elementId = element.uuid;
+        const nodes = this.elementToNodes.get(elementId) || [];
+        
+        return nodes.map(node => this.nodeToFigure(node));
+    }
+
+    findNodeByContour(contour) {
+        for (const node of this.figureTree.values()) {
+            if (node.contour === contour) {
+                return node;
+            }
+        }
+        return null;
+    }
+
+    findNodeByHoleContour(holeContour) {
+        return this.findNodeByContour(holeContour);
+    }
+
+    nodeToFigure(node) {
+        const immediateHoles = node.getImmediateHoles().map(hole => hole.contour);
+        
+        return {
+            id: node.id,
+            outer: node.contour,
+            holes: immediateHoles,
+            area: node.area,
+            isHole: node.isHole,
+            isOuter: node.isOuter,
+            depth: node.depth,
+            parentId: node.parent ? node.parent.id : null,
+            childrenIds: node.children.map(child => child.id),
+            elementIds: node.elementIds,
+            element: node.element,
+            boundingBox: node.boundingBox,
+            center: node.center,
+            type: node.type
+        };
+    }
+
+    // ========== ДЕБАГ И ЛОГИРОВАНИЕ ==========
+
+    debugPrintTree() {
+        console.log("\n=== ДЕРЕВО ФИГУР (иерархия) ===");
+        
+        if (this.rootNodes.length === 0) {
+            console.log("  Дерево пустое");
+            return;
+        }
+        
+        const printNode = (node, indent = "") => {
+            const type = node.isHole ? "○ ОТВЕРСТИЕ" : "● ВНЕШНИЙ";
+            const area = node.area.toFixed(2);
+            const elements = node.elementIds.size;
+            const children = node.children.length;
+            const depth = node.depth;
+            
+            console.log(`${indent}${type} [ID: ${node.id.substring(0, 8)}...]`);
+            console.log(`${indent}  Глубина: ${depth}, Площадь: ${area}, Элементов: ${elements}, Детей: ${children}`);
+            
+            if (node.boundingBox) {
+                const min = node.boundingBox.min;
+                const max = node.boundingBox.max;
+                console.log(`${indent}  BBox: (${min.x.toFixed(1)},${min.y.toFixed(1)}) -> (${max.x.toFixed(1)},${max.y.toFixed(1)})`);
+            }
+            
+            if (node.center) {
+                console.log(`${indent}  Центр: (${node.center.x.toFixed(1)},${node.center.y.toFixed(1)})`);
+            }
+            
+            node.children.forEach(child => printNode(child, indent + "  "));
+        };
+        
+        this.rootNodes.forEach((root, i) => {
+            console.log(`\nКорень ${i + 1}:`);
+            printNode(root);
+        });
+        
+        console.log("\n=== КОНЕЦ ДЕРЕВА ===");
+        
+        // Статистика
+        const allNodes = Array.from(this.figureTree.values());
+        const holes = allNodes.filter(n => n.isHole).length;
+        const outers = allNodes.filter(n => !n.isHole).length;
+        const maxDepth = Math.max(...allNodes.map(n => n.depth));
+        
+        console.log(`\nСтатистика:`);
+        console.log(`  Всего узлов: ${allNodes.length}`);
+        console.log(`  Внешних контуров: ${outers}`);
+        console.log(`  Отверстий: ${holes}`);
+        console.log(`  Корневых узлов: ${this.rootNodes.length}`);
+        console.log(`  Макс. глубина вложенности: ${maxDepth}`);
+        
+        // Подсчет детей для каждого узла
+        const nodesWithChildren = allNodes.filter(n => n.children.length > 0);
+        nodesWithChildren.forEach(node => {
+            const holesCount = node.getImmediateHoles().length;
+            const outersCount = node.getImmediateOuters().length;
+            console.log(`  Узел ${node.id.substring(0, 8)}: ${holesCount} отверстий, ${outersCount} внешних детей`);
+        });
+    }
+
+    // ========== ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ ==========
+
     groupArcElements(allElements) {
         const groups = [];
         const processed = new Set();
 
-        // Сначала находим все дуги и круги
         const arcsAndCircles = allElements.filter(el =>
             el.userData.elementType === 'arc' ||
             el.userData.elementType === 'circle' ||
             (el.userData.elementType === 'polyline' && this.isArcLike(el))
         );
 
-        console.log(`Найдено дуг и кругов: ${arcsAndCircles.length}`);
-
-        // Создаем группы дуг, которые образуют полные круги
         for (let i = 0; i < arcsAndCircles.length; i++) {
             if (processed.has(arcsAndCircles[i])) continue;
 
@@ -90,7 +655,6 @@ class FigureManager {
             const group = [element];
             processed.add(element);
 
-            // Для кругов - создаем отдельную группу
             if (element.userData.elementType === 'circle') {
                 const center = this.getArcCenter(element);
                 const radius = this.getArcRadius(element);
@@ -107,7 +671,6 @@ class FigureManager {
                 continue;
             }
 
-            // Для дуг ищем другие дуги с тем же центром и радиусом
             const center1 = this.getArcCenter(element);
             const radius1 = this.getArcRadius(element);
 
@@ -122,7 +685,6 @@ class FigureManager {
 
                 if (!center2 || radius2 === null) continue;
 
-                // Проверяем, что дуги имеют одинаковый центр и радиус
                 const distance = Math.sqrt(
                     Math.pow(center2.x - center1.x, 2) +
                     Math.pow(center2.y - center1.y, 2)
@@ -134,7 +696,6 @@ class FigureManager {
                 }
             }
 
-            // Если нашли достаточно дуг для круга (минимум 2)
             if (group.length >= 2) {
                 const isFullCircle = this.checkIfFullCircle(group);
                 groups.push({
@@ -144,14 +705,9 @@ class FigureManager {
                     radius: radius1,
                     isFullCircle: isFullCircle
                 });
-                console.log(`Создана группа дуг: ${group.length} дуг, полный круг: ${isFullCircle}`);
-            } else if (group.length === 1) {
-                // Одиночная дуга - не создаем группу
-                console.log(`Одиночная дуга, не создаем группу: ${group[0].userData.elementType}`);
             }
         }
 
-        // Добавляем одиночные элементы, не вошедшие в группы (кроме дуг)
         allElements.forEach(el => {
             if (!processed.has(el) && el.userData.elementType !== 'arc') {
                 groups.push({
@@ -161,292 +717,7 @@ class FigureManager {
             }
         });
 
-        console.log(`Всего создано групп: ${groups.length}`);
         return groups;
-    }
-
-    isArcLike(element) {
-        if (!element.userData || !element.geometry) return false;
-
-        // Проверяем, похожа ли полилиния на дугу
-        const points = this.getElementPoints(element);
-        if (points.length < 3) return false;
-
-        // Для дуги обычно точки лежат на окружности
-        // Упрощенная проверка - вычисляем расстояния до предполагаемого центра
-        const center = this.calculateContourCenter(points);
-        const distances = points.map(p => {
-            const dx = p.x - center.x;
-            const dy = p.y - center.y;
-            return Math.sqrt(dx * dx + dy * dy);
-        });
-
-        // Если все расстояния примерно равны, это может быть дуга
-        const avgDistance = distances.reduce((a, b) => a + b) / distances.length;
-        const variance = distances.reduce((sum, d) => sum + Math.pow(d - avgDistance, 2), 0) / distances.length;
-
-        return variance < 1.0; // Допустимая дисперсия
-    }
-
-    getArcCenter(element) {
-        if (!element.userData) return null;
-
-        if (element.userData.center) {
-            return new THREE.Vector2(
-                element.userData.center.x,
-                element.userData.center.y
-            );
-        }
-
-        // Для круга из userData
-        if (element.userData.cx !== undefined && element.userData.cy !== undefined) {
-            return new THREE.Vector2(element.userData.cx, element.userData.cy);
-        }
-
-        // Вычисляем центр из точек
-        const points = this.getElementPoints(element);
-        if (points.length >= 3) {
-            return this.calculateContourCenter(points);
-        }
-
-        return null;
-    }
-
-    getArcRadius(element) {
-        if (!element.userData) return null;
-
-        if (element.userData.radius !== undefined) {
-            return element.userData.radius;
-        }
-
-        if (element.userData.r !== undefined) {
-            return element.userData.r;
-        }
-
-        if (element.userData.width && element.userData.height) {
-            return Math.max(element.userData.width, element.userData.height) / 2;
-        }
-
-        // Пытаемся вычислить радиус из точек
-        const points = this.getElementPoints(element);
-        if (points.length >= 2) {
-            const center = this.getArcCenter(element);
-            if (center) {
-                // Вычисляем среднее расстояние до центра
-                let totalDistance = 0;
-                let count = 0;
-                for (const point of points) {
-                    const dx = point.x - center.x;
-                    const dy = point.y - center.y;
-                    totalDistance += Math.sqrt(dx * dx + dy * dy);
-                    count++;
-                }
-                return count > 0 ? totalDistance / count : null;
-            }
-        }
-
-        return null;
-    }
-
-    checkIfFullCircle(arcs) {
-        if (arcs.length === 0) return false;
-
-        // Если есть хотя бы один полный круг
-        for (const arc of arcs) {
-            if (arc.userData.elementType === 'circle') {
-                return true;
-            }
-        }
-
-        // Для дуг - собираем все углы
-        const angles = [];
-
-        arcs.forEach(arc => {
-            if (arc.userData.startAngle !== undefined && arc.userData.endAngle !== undefined) {
-                angles.push({
-                    start: arc.userData.startAngle,
-                    end: arc.userData.endAngle
-                });
-            }
-        });
-
-        if (angles.length === 0) return false;
-
-        // Проверяем, покрывают ли дуги полный круг (360 градусов)
-        const coverage = new Array(360).fill(false);
-
-        angles.forEach(angle => {
-            let startDeg = Math.round(angle.start * 180 / Math.PI);
-            let endDeg = Math.round(angle.end * 180 / Math.PI);
-
-            // Нормализуем углы
-            if (startDeg < 0) startDeg += 360;
-            if (endDeg < 0) endDeg += 360;
-
-            if (startDeg <= endDeg) {
-                for (let i = startDeg; i <= endDeg; i++) {
-                    coverage[i] = true;
-                }
-            } else {
-                for (let i = startDeg; i < 360; i++) coverage[i] = true;
-                for (let i = 0; i <= endDeg; i++) coverage[i] = true;
-            }
-        });
-
-        // Проверяем, покрыты ли все градусы
-        const coveredCount = coverage.filter(v => v).length;
-        const isFull = coveredCount >= 350; // Допускаем небольшой зазор
-
-        console.log(`Проверка полного круга: покрыто ${coveredCount}/360 градусов, полный: ${isFull}`);
-        return isFull;
-    }
-
-    createFiguresFromContours(contours) {
-        console.log("FigureManager: создаем фигуры из контуров");
-
-        // Сортируем контуры по площади (от большей к меньшей)
-        const sortedContours = [...contours].sort((a, b) => b.area - a.area);
-
-        const figures = [];
-
-        // Создаем фигуру для каждого контура
-        sortedContours.forEach((contour, index) => {
-            const figure = {
-                id: `figure_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-                outer: contour,
-                holes: [],
-                area: contour.area,
-                selected: false,
-                parentId: null,
-                childrenIds: [],
-                isStandalone: true,
-                canBeSelected: true,
-                isHole: false,
-                elementIds: new Set(),
-                element: contour.element || (contour.elements ? contour.elements[0] : null)
-            };
-
-            // Собираем все ID элементов фигуры
-            if (contour.element) {
-                figure.elementIds.add(contour.element.uuid);
-            } else if (contour.elements) {
-                contour.elements.forEach(el => figure.elementIds.add(el.uuid));
-            }
-
-            figures.push(figure);
-        });
-
-        console.log("FigureManager: создано фигур:", figures.length);
-        return figures;
-    }
-
-    buildFigureRelations(figures) {
-        console.log("=== FigureManager: строим связи между фигурами ===");
-
-        // Сортируем фигуры по площади (от большей к меньшей)
-        const sortedFigures = [...figures].sort((a, b) => b.area - a.area);
-
-        // Для каждой фигуры ищем, какие фигуры находятся внутри неё
-        for (let i = 0; i < sortedFigures.length; i++) {
-            const outerFigure = sortedFigures[i];
-
-            // Пропускаем фигуры, которые уже являются отверстиями
-            if (outerFigure.isHole) {
-                console.log(`  Фигура ${outerFigure.id} уже является отверстием, пропускаем`);
-                continue;
-            }
-
-            for (let j = i + 1; j < sortedFigures.length; j++) {
-                const innerFigure = sortedFigures[j];
-
-                // Пропускаем фигуры, которые уже являются отверстиями
-                if (innerFigure.isHole) {
-                    console.log(`  Фигура ${innerFigure.id} уже является отверстием, пропускаем`);
-                    continue;
-                }
-
-                // Проверяем, находится ли внутренняя фигура полностью внутри внешней
-                if (this.isFigureCompletelyInsideFigure(innerFigure, outerFigure)) {
-                    console.log(`  Найдена вложенность: ${outerFigure.id} (площадь: ${outerFigure.area}) -> ${innerFigure.id} (площадь: ${innerFigure.area})`);
-
-                    // Устанавливаем связь parent-child
-                    outerFigure.childrenIds.push(innerFigure.id);
-                    innerFigure.parentId = outerFigure.id;
-                    innerFigure.isHole = true;
-
-                    // Добавляем контур внутренней фигуры как отверстие во внешнюю фигуру
-                    outerFigure.holes.push(innerFigure.outer);
-
-                    console.log(`  Установлена связь: ${outerFigure.id} -> ${innerFigure.id} (теперь отверстие)`);
-                }
-            }
-
-            // Если у фигуры есть отверстия, она не standalone
-            if (outerFigure.childrenIds.length > 0) {
-                outerFigure.isStandalone = false;
-            }
-        }
-
-        console.log("FigureManager: связи построены");
-    }
-
-    isFigureCompletelyInsideFigure(innerFigure, outerFigure) {
-        // Проверяем несколько точек внутренней фигуры, чтобы убедиться, что она полностью внутри
-        const innerPoints = innerFigure.outer.points;
-        const outerPoints = outerFigure.outer.points;
-
-        if (!innerPoints || !outerPoints || innerPoints.length < 3 || outerPoints.length < 3) {
-            console.log(`  Недостаточно точек для проверки вложенности`);
-            return false;
-        }
-
-        // Проверяем все точки внутренней фигуры
-        let allPointsInside = true;
-        for (const point of innerPoints) {
-            if (!this.isPointInsidePolygon(point, outerPoints)) {
-                console.log(`  Точка (${point.x}, ${point.y}) внутренней фигуры ${innerFigure.id} НЕ находится внутри внешней фигуры ${outerFigure.id}`);
-                allPointsInside = false;
-                break;
-            }
-        }
-
-        if (!allPointsInside) {
-            return false;
-        }
-
-        // Также проверяем, что фигуры не пересекаются
-        // Для этого проверяем, что ни одна точка внешней фигуры не находится внутри внутренней фигуры
-        let anyOuterPointInside = false;
-        for (const point of outerPoints) {
-            if (this.isPointInsidePolygon(point, innerPoints)) {
-                anyOuterPointInside = true;
-                break;
-            }
-        }
-
-        if (anyOuterPointInside) {
-            console.log(`  Фигуры пересекаются: внешняя ${outerFigure.id} имеет точки внутри внутренней ${innerFigure.id}`);
-            return false;
-        }
-
-        console.log(`  Все точки внутренней фигуры ${innerFigure.id} находятся внутри внешней фигуры ${outerFigure.id}`);
-        return true;
-    }
-
-    isPointInsidePolygon(point, polygon) {
-        if (!polygon || polygon.length < 3) return false;
-
-        let inside = false;
-        for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
-            const xi = polygon[i].x, yi = polygon[i].y;
-            const xj = polygon[j].x, yj = polygon[j].y;
-
-            const intersect = ((yi > point.y) !== (yj > point.y)) &&
-                (point.x < (xj - xi) * (point.y - yi) / (yj - yi) + xi);
-
-            if (intersect) inside = !inside;
-        }
-        return inside;
     }
 
     collectSimpleContours(elementGroups) {
@@ -456,7 +727,6 @@ class FigureManager {
             const elements = group.elements;
 
             if (elements.length === 1) {
-                // Одиночный элемент
                 const element = elements[0];
                 if (this.isSketchElementClosed(element)) {
                     const points = this.getElementPoints(element);
@@ -474,23 +744,19 @@ class FigureManager {
                             boundingBox: this.calculateBoundingBox(points),
                             type: 'simple',
                             isClockwise: isClockwise,
-                            originalArea: area
+                            originalArea: area,
+                            isClosed: true
                         });
-                        console.log(`Создан контур для одиночного элемента: ${element.userData.elementType}, площадь: ${Math.abs(area)}`);
                     }
                 }
             } else if (group.type === 'circle' || (group.type === 'arc_group' && group.isFullCircle)) {
-                // Группа дуг, образующих полный круг, или отдельный круг
-                console.log("Обработка группы как круга");
-
-                // Создаем круг из центра и радиуса
                 const center = group.center;
                 const radius = group.radius;
 
                 if (center && radius) {
-                    // Генерируем точки для круга (32 точки для гладкости)
+                    // Увеличиваем количество сегментов для лучшей точности
                     const points = [];
-                    const segments = 32;
+                    const segments = 64;
                     for (let i = 0; i < segments; i++) {
                         const angle = (i / segments) * Math.PI * 2;
                         points.push(new THREE.Vector2(
@@ -500,7 +766,7 @@ class FigureManager {
                     }
 
                     const area = Math.PI * radius * radius;
-                    const isClockwise = false; // Круги всегда против часовой стрелки
+                    const isClockwise = false;
 
                     contours.push({
                         elements: elements,
@@ -515,11 +781,7 @@ class FigureManager {
                         isClockwise: isClockwise,
                         isClosed: true
                     });
-                    console.log(`Создан контур круга: центр (${center.x}, ${center.y}), радиус: ${radius}, площадь: ${area}`);
                 }
-            } else if (group.type === 'arc_group' && !group.isFullCircle) {
-                // Группа дуг, не образующих полный круг - не создаем контур
-                console.log(`Группа дуг не образует полный круг, пропускаем: ${elements.length} дуг`);
             }
         });
 
@@ -527,7 +789,6 @@ class FigureManager {
     }
 
     collectLineContours(allElements, simpleContours) {
-        // Собираем ID элементов, уже вошедших в простые контуры
         const usedElementIds = new Set();
         simpleContours.forEach(contour => {
             if (contour.element) {
@@ -537,7 +798,6 @@ class FigureManager {
             }
         });
 
-        // Фильтруем линии, исключая уже использованные элементы
         const lines = allElements.filter(element =>
             (element.userData.elementType === 'line' ||
             element.userData.elementType === 'polyline') &&
@@ -592,13 +852,102 @@ class FigureManager {
                     type: 'line',
                     isClockwise: isClockwise,
                     isClosed: true,
-                    contourId: `line_contour_${index}`,
                     originalArea: area
                 });
             }
         });
 
         return contours;
+    }
+
+    isArcLike(element) {
+        if (!element.userData || !element.geometry) return false;
+        const points = this.getElementPoints(element);
+        if (points.length < 3) return false;
+        const center = this.calculateContourCenter(points);
+        const distances = points.map(p => {
+            const dx = p.x - center.x;
+            const dy = p.y - center.y;
+            return Math.sqrt(dx * dx + dy * dy);
+        });
+        const avgDistance = distances.reduce((a, b) => a + b) / distances.length;
+        const variance = distances.reduce((sum, d) => sum + Math.pow(d - avgDistance, 2), 0) / distances.length;
+        return variance < 1.0;
+    }
+
+    getArcCenter(element) {
+        if (!element.userData) return null;
+        if (element.userData.center) {
+            return new THREE.Vector2(
+                element.userData.center.x,
+                element.userData.center.y
+            );
+        }
+        if (element.userData.cx !== undefined && element.userData.cy !== undefined) {
+            return new THREE.Vector2(element.userData.cx, element.userData.cy);
+        }
+        const points = this.getElementPoints(element);
+        if (points.length >= 3) {
+            return this.calculateContourCenter(points);
+        }
+        return null;
+    }
+
+    getArcRadius(element) {
+        if (!element.userData) return null;
+        if (element.userData.radius !== undefined) return element.userData.radius;
+        if (element.userData.r !== undefined) return element.userData.r;
+        if (element.userData.width && element.userData.height) {
+            return Math.max(element.userData.width, element.userData.height) / 2;
+        }
+        const points = this.getElementPoints(element);
+        if (points.length >= 2) {
+            const center = this.getArcCenter(element);
+            if (center) {
+                let totalDistance = 0;
+                let count = 0;
+                for (const point of points) {
+                    const dx = point.x - center.x;
+                    const dy = point.y - center.y;
+                    totalDistance += Math.sqrt(dx * dx + dy * dy);
+                    count++;
+                }
+                return count > 0 ? totalDistance / count : null;
+            }
+        }
+        return null;
+    }
+
+    checkIfFullCircle(arcs) {
+        if (arcs.length === 0) return false;
+        for (const arc of arcs) {
+            if (arc.userData.elementType === 'circle') return true;
+        }
+        const angles = [];
+        arcs.forEach(arc => {
+            if (arc.userData.startAngle !== undefined && arc.userData.endAngle !== undefined) {
+                angles.push({
+                    start: arc.userData.startAngle,
+                    end: arc.userData.endAngle
+                });
+            }
+        });
+        if (angles.length === 0) return false;
+        const coverage = new Array(360).fill(false);
+        angles.forEach(angle => {
+            let startDeg = Math.round(angle.start * 180 / Math.PI);
+            let endDeg = Math.round(angle.end * 180 / Math.PI);
+            if (startDeg < 0) startDeg += 360;
+            if (endDeg < 0) endDeg += 360;
+            if (startDeg <= endDeg) {
+                for (let i = startDeg; i <= endDeg; i++) coverage[i] = true;
+            } else {
+                for (let i = startDeg; i < 360; i++) coverage[i] = true;
+                for (let i = 0; i <= endDeg; i++) coverage[i] = true;
+            }
+        });
+        const coveredCount = coverage.filter(v => v).length;
+        return coveredCount >= 350;
     }
 
     buildLineGraphs(lines) {
@@ -631,7 +980,6 @@ class FigureManager {
         edges.forEach(([v1, v2, element]) => {
             if (!graph.has(v1)) graph.set(v1, []);
             if (!graph.has(v2)) graph.set(v2, []);
-
             graph.get(v1).push({ vertex: v2, element });
             graph.get(v2).push({ vertex: v1, element });
         });
@@ -672,7 +1020,6 @@ class FigureManager {
             }
 
             if (visitedVertices.has(currentVertex)) return;
-
             visitedVertices.add(currentVertex);
 
             const neighbors = graph.get(currentVertex) || [];
@@ -702,7 +1049,6 @@ class FigureManager {
                 ...contour.vertices.slice(startIdx),
                 ...contour.vertices.slice(0, startIdx)
             ];
-
             const hash = normalizedVertices.join('-');
             if (!contourHashes.has(hash)) {
                 contourHashes.add(hash);
@@ -713,85 +1059,34 @@ class FigureManager {
         return uniqueContours;
     }
 
-    getFigureById(id) {
-        return this.allFigures.get(id);
-    }
-
-    getFiguresByElement(element) {
-        const elementId = element.uuid;
-        const result = [];
-
-        console.log(`FigureManager: поиск фигур для элемента ${elementId}`);
-
-        for (const figure of this.allFigures.values()) {
-            if (figure.elementIds.has(elementId)) {
-                console.log(`  Найдена фигура: ${figure.id} (isHole: ${figure.isHole}, площадь: ${figure.area})`);
-                result.push(figure);
-            }
-        }
-
-        // Сортируем по площади (от большей к меньшей)
-        result.sort((a, b) => b.area - a.area);
-
-        console.log(`FigureManager: всего найдено фигур: ${result.length}`);
-        return result;
-    }
-
-    // Поиск фигуры по контуру отверстия
-    findFigureByHoleContour(holeContour) {
-        for (const figure of this.allFigures.values()) {
-            if (figure.outer === holeContour) {
-                return figure;
-            }
-        }
-        return null;
-    }
-
     isSketchElementClosed(element) {
         if (!element || !element.userData) return false;
-
-        if (element.userData.isClosed !== undefined) {
-            return element.userData.isClosed === true;
-        }
-
+        if (element.userData.isClosed !== undefined) return element.userData.isClosed === true;
         const type = element.userData.elementType;
         if (type === 'rectangle' || type === 'circle' ||
             type === 'polygon' || type === 'oval' ||
-            type === 'stadium' || type === 'arc') {
-            return true;
-        }
-
+            type === 'stadium' || type === 'arc') return true;
         if (type === 'line') return false;
-
         if (type === 'polyline') {
-            if (!element.geometry || !element.geometry.attributes.position) {
-                return false;
-            }
-
+            if (!element.geometry || !element.geometry.attributes.position) return false;
             const positions = element.geometry.attributes.position.array;
             if (positions.length < 6) return false;
-
             const count = positions.length / 3;
             if (count < 3) return false;
-
             const x1 = positions[0], y1 = positions[1];
             const lastIndex = positions.length - 3;
             const x2 = positions[lastIndex], y2 = positions[lastIndex + 1];
-
             const distance = Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
             return distance < 0.5;
         }
-
         return false;
     }
 
     getElementPoints(element) {
         if (!element.userData) return [];
-
         if (element.userData.localPoints) {
             return element.userData.localPoints.map(p => new THREE.Vector2(p.x, p.y));
         }
-
         if (element.geometry && element.geometry.attributes.position) {
             const positions = element.geometry.attributes.position.array;
             const points = [];
@@ -800,7 +1095,6 @@ class FigureManager {
             }
             return points;
         }
-
         return [];
     }
 
@@ -832,17 +1126,25 @@ class FigureManager {
         if (points.length === 0) {
             return { min: new THREE.Vector2(0, 0), max: new THREE.Vector2(0, 0) };
         }
-
         const min = new THREE.Vector2(Infinity, Infinity);
         const max = new THREE.Vector2(-Infinity, -Infinity);
-
         points.forEach(p => {
             min.x = Math.min(min.x, p.x);
             min.y = Math.min(min.y, p.y);
             max.x = Math.max(max.x, p.x);
             max.y = Math.max(max.y, p.y);
         });
-
         return { min, max };
+    }
+
+    // ========== МЕТОДЫ ДЛЯ ОБРАТНОЙ СОВМЕСТИМОСТИ ==========
+
+    findFigureByHoleContour(holeContour) {
+        const node = this.findNodeByContour(holeContour);
+        return node ? this.nodeToFigure(node) : null;
+    }
+
+    getAllFigures() {
+        return this.getAllFiguresFlat();
     }
 }

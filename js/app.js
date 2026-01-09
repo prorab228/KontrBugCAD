@@ -1349,19 +1349,9 @@ class CADEditor {
             // Инструмент уже сам создал и управляет своими свойствами через createPropertiesSection
         }
 
-        // Обновляем состояние кнопок центрирования
-//        this.enablePropertyFields();
     }
 
-//    enablePropertyFields() {
-//        const centerButtons = ['centerX', 'centerY', 'centerZ', 'centerAll'];
-//        centerButtons.forEach(id => {
-//            const button = document.getElementById(id);
-//            if (button) {
-//                button.disabled = this.selectedObjects.length === 0;
-//            }
-//        });
-//    }
+
 
 
     updateStatus() {
