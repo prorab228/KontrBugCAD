@@ -40,10 +40,9 @@ class SelectTool extends Tool {
         this.editor.updateMousePosition(e);
         this.editor.raycaster.setFromCamera(this.editor.mouse, this.editor.camera);
 
-        const intersects = this.editor.raycaster.intersectObjects(
-            this.editor.objectsGroup.children,
-            true
-        );
+        // Затем используйте его в SelectTool:
+        const visibleObjects = this.editor.getVisibleObjects();
+        const intersects = this.editor.raycaster.intersectObjects(visibleObjects, false);
 
         // Сохраняем начальную позицию для определения клика/перетаскивания
         this.clickStartPos = {

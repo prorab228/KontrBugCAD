@@ -13,7 +13,7 @@ class ScaleTool extends TransformToolBase {
         this.initGizmo();
     }
 
-     initGizmo() {
+    initGizmo() {
         while (this.gizmoGroup.children.length > 0) {
             const child = this.gizmoGroup.children[0];
             if (child.geometry) child.geometry.dispose();
@@ -29,21 +29,17 @@ class ScaleTool extends TransformToolBase {
         const handleSize = 1;
         const lineWidth = 0.1;
         
-        // Базовый размер для гизмо - будет масштабироваться пропорционально
         this.baseSize = 10;
         this.halfSize = this.baseSize / 2;
 
-        // 1. Прямоугольник в основании (плоскость XZ)
         this.createBaseRectangle(handleSize, lineWidth);
-        
-        // 2. Прямоугольник по оси Y (вертикальный)
         this.createVerticalRectangle(handleSize, lineWidth);
     }
 
-        createBaseRectangle(handleSize, lineWidth) {
+    createBaseRectangle(handleSize, lineWidth) {
         const halfWidth = this.halfSize;
         const halfDepth = this.halfSize;
-
+        
         const positions = [
             [-halfWidth, -halfWidth, -halfDepth], [halfWidth, -halfWidth, -halfDepth],
             [-halfWidth, -halfWidth, halfDepth], [halfWidth, -halfWidth, halfDepth],
@@ -54,7 +50,7 @@ class ScaleTool extends TransformToolBase {
         const geometry = new THREE.BufferGeometry();
         const vertices = new Float32Array(positions.flat());
         geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
-
+        
         const material = new THREE.LineBasicMaterial({
             color: 0xffffff,
             linewidth: 2,
@@ -103,7 +99,7 @@ class ScaleTool extends TransformToolBase {
         const geometry = new THREE.BufferGeometry();
         const vertices = new Float32Array(positions.flat());
         geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
-
+        
         const material = new THREE.LineBasicMaterial({
             color: 0xffffff,
             linewidth: 2,
@@ -156,6 +152,7 @@ class ScaleTool extends TransformToolBase {
         this.gizmoGroup.add(cube);
         return cube;
     }
+
     updateGizmoPosition() {
         if (!this.attachedObject) return;
 
@@ -200,7 +197,7 @@ class ScaleTool extends TransformToolBase {
                 -halfWidth, -halfHeight, -halfDepth, -halfWidth, -halfHeight, halfDepth,
                 halfWidth, -halfHeight, -halfDepth, halfWidth, -halfHeight, halfDepth
             ];
-
+            
             baseRect.geometry.attributes.position.array = new Float32Array(positions);
             baseRect.geometry.attributes.position.needsUpdate = true;
         }
@@ -213,14 +210,12 @@ class ScaleTool extends TransformToolBase {
                 0, -halfHeight, -halfDepth, 0, -halfHeight, halfDepth,
                 0, halfHeight, -halfDepth, 0, halfHeight, halfDepth
             ];
-
+            
             verticalRect.geometry.attributes.position.array = new Float32Array(positions);
             verticalRect.geometry.attributes.position.needsUpdate = true;
         }
     }
 
-
-    // Переопределяем onMouseDown для захвата текущего кубика
     onMouseDown(e) {
         if (e.button !== 0) return false;
 
@@ -241,10 +236,10 @@ class ScaleTool extends TransformToolBase {
             const object = intersects[0].object;
             this.currentHandle = object;
             const axis = object.userData.axis;
-
+            
             // Получаем мировую позицию кубика в начале перетаскивания
             this.startHandleWorldPosition.copy(object.getWorldPosition(new THREE.Vector3()));
-
+            
             this.startDragging(axis, e);
             return true;
         }
@@ -266,7 +261,6 @@ class ScaleTool extends TransformToolBase {
 
         return false;
     }
-
 
     startDragging(axis, e) {
         super.startDragging(axis, e);
@@ -293,65 +287,73 @@ class ScaleTool extends TransformToolBase {
         // Создаем луч из текущей позиции мыши
         const currentMouseX = this.startMouse.x + deltaX;
         const currentMouseY = this.startMouse.y + deltaY;
-
+        
         // Нормализуем координаты мыши
         const rect = this.editor.renderer.domElement.getBoundingClientRect();
         const mouse = new THREE.Vector2();
         mouse.x = ((currentMouseX - rect.left) / rect.width) * 2 - 1;
         mouse.y = -((currentMouseY - rect.top) / rect.height) * 2 + 1;
-
+        
         this.editor.raycaster.setFromCamera(mouse, this.editor.camera);
-
+        
         // Получаем вектор направления кубика от центра объекта
         const objectCenter = new THREE.Vector3();
         this.attachedObject.getWorldPosition(objectCenter);
-
+        
         const handleDirection = new THREE.Vector3();
         handleDirection.copy(this.startHandleWorldPosition).sub(objectCenter).normalize();
-
+        
         // Находим плоскость, перпендикулярную лучу камеры и проходящую через кубик
         const cameraDirection = this.editor.raycaster.ray.direction;
         const planeNormal = cameraDirection.clone();
         const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(
-            planeNormal,
+            planeNormal, 
             this.startHandleWorldPosition
         );
-
+        
         // Находим точку пересечения луча с этой плоскостью
         const intersectionPoint = new THREE.Vector3();
         if (this.editor.raycaster.ray.intersectPlane(plane, intersectionPoint)) {
             // Вычисляем смещение от начальной позиции кубика
             const displacement = intersectionPoint.sub(this.startHandleWorldPosition);
-
+            
             // Проецируем смещение на направление кубика
             const dotProduct = displacement.dot(handleDirection);
-
+            
             // Определяем, увеличивается ли размер (движение от центра объекта)
             const direction = this.currentHandle.userData.direction;
-            const scaleChange = dotProduct * 0.05 * direction; // 0.1 - коэффициент чувствительности
-
+            const scaleChange = dotProduct * 0.1 * direction;
+            
             // Применяем изменение масштаба
             let scaleIncrement = 1.0 + scaleChange;
 
-
+            
             // Ограничиваем масштаб минимальным значением
             scaleIncrement = Math.max(0.1, scaleIncrement);
-
+            
             let newDimensions = new THREE.Vector3();
 
-            // Изменение по одной оси
-            if (this.currentAxis === 'x') {
+            // Изменение размера в зависимости от режима
+            if (this.uniformScaling) {
+                // Равномерное масштабирование - изменяем все размеры одинаково
                 newDimensions.x = this.sizeStartDimensions.x * scaleIncrement;
-                newDimensions.y = this.sizeStartDimensions.y;
-                newDimensions.z = this.sizeStartDimensions.z;
-            } else if (this.currentAxis === 'y') {
-                newDimensions.x = this.sizeStartDimensions.x;
                 newDimensions.y = this.sizeStartDimensions.y * scaleIncrement;
-                newDimensions.z = this.sizeStartDimensions.z;
-            } else if (this.currentAxis === 'z') {
-                newDimensions.x = this.sizeStartDimensions.x;
-                newDimensions.y = this.sizeStartDimensions.y;
                 newDimensions.z = this.sizeStartDimensions.z * scaleIncrement;
+            } else {
+                // Масштабирование по одной оси
+                if (this.currentAxis === 'x') {
+                    newDimensions.x = this.sizeStartDimensions.x * scaleIncrement;
+                    newDimensions.y = this.sizeStartDimensions.y;
+                    newDimensions.z = this.sizeStartDimensions.z;
+                } else if (this.currentAxis === 'y') {
+                    newDimensions.x = this.sizeStartDimensions.x;
+                    newDimensions.y = this.sizeStartDimensions.y * scaleIncrement;
+                    newDimensions.z = this.sizeStartDimensions.z;
+                } else if (this.currentAxis === 'z') {
+                    newDimensions.x = this.sizeStartDimensions.x;
+                    newDimensions.y = this.sizeStartDimensions.y;
+                    newDimensions.z = this.sizeStartDimensions.z * scaleIncrement;
+                }
             }
 
             // Применяем привязку к сетке
@@ -371,10 +373,9 @@ class ScaleTool extends TransformToolBase {
         }
     }
 
-
     onMouseUp(e) {
         super.onMouseUp(e);
-        this.currentHandle = null; // Сбрасываем текущий кубик
+        this.currentHandle = null;
     }
 
     getPropertiesHTML() {
@@ -485,11 +486,14 @@ class ScaleTool extends TransformToolBase {
             applyBtn.addEventListener('click', () => this.applySizeFromInputs());
         }
         if (uniformCheckbox) {
+            uniformCheckbox.checked = this.uniformScaling;
             uniformCheckbox.addEventListener('change', (e) => {
                 this.uniformScaling = e.target.checked;
+                console.log('Равномерное масштабирование:', this.uniformScaling);
             });
         }
         if (percentageCheckbox) {
+            percentageCheckbox.checked = this.percentageMode;
             percentageCheckbox.addEventListener('change', (e) => {
                 this.percentageMode = e.target.checked;
                 this.updatePropertiesUI();

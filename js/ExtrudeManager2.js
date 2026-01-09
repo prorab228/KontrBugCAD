@@ -109,60 +109,85 @@ class ExtrudeManager {
     }
 
     toggleFigureSelection(figure) {
-        console.log("=== toggleFigureSelection ===");
-        console.log("Фигура:", figure.id, "isHole:", figure.isHole, "площадь:", figure.area);
-        console.log("Текущее состояние выделения:", this.selectedFigureIds.has(figure.id) ? "выделена" : "не выделена");
+    console.log("=== toggleFigureSelection ===");
+    console.log("Фигура:", figure.id, "isHole:", figure.isHole, "площадь:", figure.area);
+    console.log("Текущее состояние выделения:", this.selectedFigureIds.has(figure.id) ? "выделена" : "не выделена");
 
-        const figureId = figure.id;
+    const figureId = figure.id;
 
-        if (this.selectedFigureIds.has(figureId)) {
-            console.log("Удаляем фигуру из выделения");
-            this.removeFigureFromSelection(figure);
-        } else {
-            console.log("Добавляем фигуру в выделение");
-            this.addFigureToSelection(figure);
-        }
+    if (this.selectedFigureIds.has(figureId)) {
+        console.log("Удаляем фигуру из выделения");
+        this.removeFigureFromSelection(figure);
+    } else {
+        console.log("Добавляем фигуру в выделение");
+        this.addFigureToSelection(figure);
     }
+}
+
 
     addFigureToSelection(figure) {
-        console.log("=== addFigureToSelection ===");
-        const figureId = figure.id;
+    console.log("=== addFigureToSelection ===");
+    const figureId = figure.id;
 
-        let isChildOfSelected = false;
-        let parentFigureId = null;
+    // Проверяем, не является ли эта фигура дочерней для уже выбранной
+    const isChildOfSelected = this.isChildOfAnySelected(figure);
 
-        for (const selectedId of this.selectedFigureIds) {
-            const selectedFigure = this.figureManager.getFigureById(selectedId);
-            if (selectedFigure && selectedFigure.childrenIds.includes(figureId)) {
-                isChildOfSelected = true;
-                parentFigureId = selectedId;
-                console.log("Найден родитель для отверстия:", parentFigureId);
-                break;
+    if (isChildOfSelected) {
+        // Если это дочерняя фигура уже выбранного родителя
+        if (figure.isHole) {
+            // Для отверстия внутри выбранного родителя - исключаем его
+            const parentId = this.findParentIdForSelected(figure);
+            if (parentId) {
+                console.log("Исключаем отверстие из родительской фигуры");
+                this.toggleHoleExclusion(parentId, figureId);
             }
-        }
-
-        if (isChildOfSelected && parentFigureId) {
-            console.log("Исключаем отверстие из родительской фигуры");
-            this.toggleHoleExclusion(parentFigureId, figureId);
         } else {
-            console.log("Добавляем фигуру в selectedFigureIds");
+            // Для внешнего контура внутри выбранного родителя - добавляем как отдельную фигуру
+            console.log("Добавляем внешний дочерний контур как отдельную фигуру");
             this.selectedFigureIds.add(figureId);
+            this.highlightFigure(figure, 0x0066FF);
+        }
+    } else {
+        // Обычное добавление
+        console.log("Добавляем фигуру в selectedFigureIds");
+        this.selectedFigureIds.add(figureId);
 
-            if (!this.basePlane) {
-                this.basePlane = this.getFigurePlane(figure);
-                console.log("Установлена базовая плоскость:", this.basePlane?.uuid);
-            }
-
-            console.log("Подсвечиваем фигуру");
-            if (figure.isHole) {
-                this.highlightFigure(figure, 0x4CAF50);
-            } else {
-                this.highlightFigure(figure, 0x0066FF);
-            }
+        if (!this.basePlane) {
+            this.basePlane = this.getFigurePlane(figure);
+            console.log("Установлена базовая плоскость:", this.basePlane?.uuid);
         }
 
-        console.log("selectedFigureIds после добавления:", Array.from(this.selectedFigureIds));
+        console.log("Подсвечиваем фигуру");
+        if (figure.isHole) {
+            this.highlightFigure(figure, 0x4CAF50);
+        } else {
+            this.highlightFigure(figure, 0x0066FF);
+        }
     }
+
+    console.log("selectedFigureIds после добавления:", Array.from(this.selectedFigureIds));
+}
+// Проверяем, является ли фигура дочерней для любой выбранной фигуры
+isChildOfAnySelected(figure) {
+    for (const selectedId of this.selectedFigureIds) {
+        const selectedFigure = this.figureManager.getFigureById(selectedId);
+        if (selectedFigure && selectedFigure.childrenIds.includes(figure.id)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+// Находим ID родителя для фигуры среди выбранных
+findParentIdForSelected(figure) {
+    for (const selectedId of this.selectedFigureIds) {
+        const selectedFigure = this.figureManager.getFigureById(selectedId);
+        if (selectedFigure && selectedFigure.childrenIds.includes(figure.id)) {
+            return selectedId;
+        }
+    }
+    return null;
+}
 
     removeFigureFromSelection(figure) {
         console.log("=== removeFigureFromSelection ===");
@@ -227,148 +252,233 @@ class ExtrudeManager {
         this.updateExtrudePreview();
     }
 
-    getFiguresForExtrusion() {
-        const result = [];
-        const processedNodes = new Set();
 
-        console.log("=== getFiguresForExtrusion (улучшенная версия) ===");
-        console.log("Выделенные фигуры:", Array.from(this.selectedFigureIds));
+getFiguresForExtrusion() {
+    const result = [];
+    const processedNodes = new Set();
+    const selectedNodes = [];
 
-        // Для каждого выбранного ID
-        for (const figureId of this.selectedFigureIds) {
-            const node = this.figureManager.getNodeById(figureId);
-            if (!node || processedNodes.has(node)) continue;
+    console.log("=== getFiguresForExtrusion (улучшенная версия) ===");
+    console.log("Выделенные фигуры:", Array.from(this.selectedFigureIds));
 
-            console.log(`Обработка узла ${node.id.substring(0, 8)}: isHole=${node.isHole}, depth=${node.depth}, children=${node.children.length}`);
+    // Сначала собираем все выбранные узлы
+    for (const figureId of this.selectedFigureIds) {
+        const node = this.figureManager.getNodeById(figureId);
+        if (node) {
+            selectedNodes.push(node);
+            console.log(`  Выбран узел: ${node.id.substring(0,8)} - isHole: ${node.isHole}, depth: ${node.depth}`);
+        }
+    }
 
-            // Получаем фигуру для вытягивания с учетом всех отверстий
-            const extrusionFigure = this.getExtrusionFigureForNode(node);
+    // Сортируем по глубине (от меньшей к большей)
+    selectedNodes.sort((a, b) => a.depth - b.depth);
 
-            // Если это отверстие, проверяем, не выбран ли его родитель
-            if (node.isHole) {
-                const parentSelected = this.selectedFigureIds.has(node.parent?.id);
-                if (!parentSelected) {
-                    // Вытягиваем отверстие как отдельную фигуру
-                    const excludedHoles = this.excludedHoles.get(node.id) || new Set();
-                    const filteredHoles = extrusionFigure.holes.filter(hole => {
-                        const holeNode = this.figureManager.findNodeByContour(hole);
-                        return holeNode && !excludedHoles.has(holeNode.id);
-                    });
+    // Для каждого выбранного узла
+    for (const node of selectedNodes) {
+        if (processedNodes.has(node)) continue;
 
-                    result.push({
-                        ...extrusionFigure,
-                        holes: filteredHoles,
-                        isHole: true
-                    });
+        console.log(`\nОбработка узла ${node.id.substring(0, 8)}: isHole=${node.isHole}, depth=${node.depth}`);
 
-                    console.log(`  Добавлено отверстие с ${filteredHoles.length} отверстиями внутри`);
-                } else {
-                    console.log(`  Пропускаем отверстие, так как выбран его родитель`);
-                }
-            } else {
-                // Внешний контур
-                const excludedHoles = this.excludedHoles.get(node.id) || new Set();
-                const filteredHoles = extrusionFigure.holes.filter(hole => {
-                    const holeNode = this.figureManager.findNodeByContour(hole);
-                    return holeNode && !excludedHoles.has(holeNode.id);
-                });
+        if (node.isHole) {
+            // Для отверстия
+            console.log(`  Вытягиваем отверстие отдельно`);
+            const excludedHoles = this.excludedHoles.get(node.id) || new Set();
+            const holes = this.collectHolesForHoleNode(node);
+            const filteredHoles = holes.filter(hole => {
+                const holeNode = this.figureManager.findNodeByContour(hole);
+                return holeNode && !excludedHoles.has(holeNode.id);
+            });
 
-                result.push({
-                    ...extrusionFigure,
-                    holes: filteredHoles,
-                    isHole: false
-                });
+            result.push({
+                id: node.id,
+                outer: node.contour,
+                holes: filteredHoles,
+                area: node.area,
+                isHole: true,
+                isOuter: false,
+                depth: node.depth,
+                elementIds: node.elementIds,
+                element: node.element,
+                node: node
+            });
 
-                console.log(`  Добавлен внешний контур с ${filteredHoles.length} отверстиями`);
-            }
+            console.log(`  Добавлено отверстие с ${filteredHoles.length} отверстиями внутри`);
+        } else {
+            // Для внешнего контура
+            console.log(`  Вытягиваем внешний контур`);
+            const allHoles = this.collectAllHolesForSelectedOuter(node, selectedNodes, processedNodes);
+            const excludedHoles = this.excludedHoles.get(node.id) || new Set();
+            const filteredHoles = allHoles.filter(hole => {
+                const holeNode = this.figureManager.findNodeByContour(hole);
+                return holeNode && !excludedHoles.has(holeNode.id);
+            });
 
-            processedNodes.add(node);
+            result.push({
+                id: node.id,
+                outer: node.contour,
+                holes: filteredHoles,
+                area: node.area,
+                isHole: false,
+                isOuter: true,
+                depth: node.depth,
+                elementIds: node.elementIds,
+                element: node.element,
+                node: node
+            });
+
+            console.log(`  Добавлен внешний контур с ${filteredHoles.length} отверстиями`);
+
+            // Помечаем всех выбранных потомков как обработанные
+            this.markSelectedDescendantsAsProcessed(node, selectedNodes, processedNodes);
         }
 
-        console.log("Итого фигур для вытягивания:", result.length);
-        return result;
+        processedNodes.add(node);
     }
+
+    console.log("\nИтого фигур для вытягивания:", result.length);
+    return result;
+}
+
+// Собираем все отверстия для выбранного внешнего узла
+// Собираем все отверстия для выбранного внешнего узла
+collectAllHolesForSelectedOuter(outerNode, selectedNodes, processedNodes) {
+    console.log(`  collectAllHolesForSelectedOuter для ${outerNode.id.substring(0,8)}`);
+    const allHoles = new Set();
+
+    // 1. Добавляем только непосредственные отверстия, которые НЕ выбраны
+    outerNode.children.forEach(child => {
+        if (child.isHole && !selectedNodes.includes(child)) {
+            console.log(`    Добавляем непосредственное отверстие: ${child.id.substring(0,8)}`);
+            allHoles.add(child.contour);
+
+            // НЕ добавляем внуков отверстия (например, маленький круг)
+            // Они должны обрабатываться только если выбрано само отверстие
+        }
+    });
+
+    // 2. Для выбранных отверстий: добавляем их внешних детей как отверстия
+    // (но только если эти внешние дети не выбраны отдельно)
+    outerNode.children.forEach(child => {
+        if (child.isHole && selectedNodes.includes(child)) {
+            console.log(`    Обработка выбранного отверстия: ${child.id.substring(0,8)}`);
+
+            // Для выбранного отверстия, его внешние дети становятся отверстиями
+            child.children.forEach(grandChild => {
+                if (!grandChild.isHole && !selectedNodes.includes(grandChild)) {
+                    console.log(`      Внешний ребенок выбранного отверстия -> отверстие: ${grandChild.id.substring(0,8)}`);
+                    allHoles.add(grandChild.contour);
+                }
+            });
+        }
+    });
+
+    console.log(`    Всего отверстий собрано: ${allHoles.size}`);
+    return Array.from(allHoles);
+}
+
+// Собираем отверстия для узла-отверстия (когда он вытягивается отдельно)
+collectHolesForHoleNode(holeNode) {
+    const holes = [];
+
+    // Для отверстия: его отверстия - это его непосредственные ВНЕШНИЕ дети
+    holeNode.children.forEach(child => {
+        if (!child.isHole) {
+            holes.push(child.contour);
+        }
+    });
+
+    return holes;
+}
+// Помечаем всех выбранных потомков как обработанные
+markSelectedDescendantsAsProcessed(node, selectedNodes, processedNodes) {
+    node.children.forEach(child => {
+        if (selectedNodes.includes(child) && !processedNodes.has(child)) {
+            processedNodes.add(child);
+            this.markSelectedDescendantsAsProcessed(child, selectedNodes, processedNodes);
+        }
+    });
+}
+
+
+
 
     // ДОБАВЬТЕ НОВЫЙ МЕТОД В EXTRUDEMANAGER:
 
     // Получить фигуру для вытягивания из узла с учетом иерархии
     getExtrusionFigureForNode(node) {
-        const holes = [];
+    let holes = [];
 
-        // Собираем ВСЕ отверстия, которые должны быть в этой фигуре
-        // Для внешнего контура (isHole=false) - это его непосредственные отверстия
-        // Для отверстия (isHole=true) - это его непосредственные внешние контуры (которые станут отверстиями в выступе)
-
-        if (node.isHole) {
-            // Для отверстия: собираем все непосредственные ВНЕШНИЕ контуры (которые станут отверстиями в выступе)
-            node.children.forEach(child => {
-                if (!child.isHole) { // Внешний контур внутри отверстия
-                    holes.push(child.contour);
-                }
-            });
-            console.log(`  Узел-отверстие ${node.id.substring(0, 8)}: ${node.children.length} детей, ${holes.length} будут отверстиями в выступе`);
-        } else {
-            // Для внешнего контура: собираем все непосредственные ОТВЕРСТИЯ
-            node.children.forEach(child => {
-                if (child.isHole) { // Отверстие во внешнем контуре
-                    holes.push(child.contour);
-                }
-            });
-            console.log(`  Внешний узел ${node.id.substring(0, 8)}: ${node.children.length} детей, ${holes.length} отверстий`);
-        }
-
-        return {
-            id: node.id,
-            outer: node.contour,
-            holes: holes,
-            area: node.area,
-            isHole: node.isHole,
-            isOuter: !node.isHole,
-            depth: node.depth,
-            elementIds: node.elementIds,
-            element: node.element,
-            node: node
-        };
+    if (node.isHole) {
+        // Для отверстия: собираем все непосредственные ВНЕШНИЕ контуры (которые станут отверстиями в выступе)
+        node.children.forEach(child => {
+            if (!child.isHole) { // Внешний контур внутри отверстия
+                holes.push(child.contour);
+            }
+        });
+        console.log(`  Узел-отверстие ${node.id.substring(0, 8)}: ${node.children.length} детей, ${holes.length} будут отверстиями в выступе`);
+    } else {
+        // Для внешнего контура: собираем все непосредственные ОТВЕРСТИЯ
+        node.children.forEach(child => {
+            if (child.isHole) { // Отверстие во внешнем контуре
+                holes.push(child.contour);
+            }
+        });
+        console.log(`  Внешний узел ${node.id.substring(0, 8)}: ${node.children.length} детей, ${holes.length} отверстий`);
     }
 
-    highlightFigure(figure, color) {
-        console.log(`highlightFigure: фигура ${figure.id}, цвет ${color.toString(16)}`);
+    return {
+        id: node.id,
+        outer: node.contour,
+        holes: holes,
+        area: node.area,
+        isHole: node.isHole,
+        isOuter: !node.isHole,
+        depth: node.depth,
+        elementIds: node.elementIds,
+        element: node.element,
+        node: node
+    };
+}
 
-        if (figure.outer && figure.outer.element) {
-            console.log(`  Подсвечиваем элемент ${figure.outer.element.uuid}`);
-            this.editor.objectsManager.safeSetElementColor(figure.outer.element, color);
-        } else if (figure.outer && figure.outer.elements) {
-            figure.outer.elements.forEach(element => {
-                console.log(`  Подсвечиваем элемент ${element.uuid} (из группы)`);
-                this.editor.objectsManager.safeSetElementColor(element, color);
-            });
-        }
+   highlightFigure(figure, color) {
+    console.log(`highlightFigure: фигура ${figure.id}, цвет ${color.toString(16)}`);
 
-        if (figure.holes && figure.holes.length > 0) {
-            console.log(`  Подсвечиваем ${figure.holes.length} отверстий`);
-            figure.holes.forEach((hole, index) => {
-                const holeNode = this.figureManager.findNodeByHoleContour(hole);
-                if (!holeNode) {
-                    console.warn(`  Не найден узел для отверстия ${index}`);
-                    return;
-                }
-
-                const excludedSet = this.excludedHoles.get(figure.id) || new Set();
-                const isExcluded = excludedSet.has(holeNode.id);
-                const holeColor = isExcluded ? 0x888888 : 0xFF9800;
-
-                console.log(`  Отверстие ${index}: holeId=${holeNode.id}, исключено=${isExcluded}, цвет=${holeColor.toString(16)}`);
-
-                if (hole.element) {
-                    this.editor.objectsManager.safeSetElementColor(hole.element, holeColor);
-                } else if (hole.elements) {
-                    hole.elements.forEach(element => {
-                        this.editor.objectsManager.safeSetElementColor(element, holeColor);
-                    });
-                }
-            });
-        }
+    if (figure.outer && figure.outer.element) {
+        console.log(`  Подсвечиваем элемент ${figure.outer.element.uuid}`);
+        this.editor.objectsManager.safeSetElementColor(figure.outer.element, color);
+    } else if (figure.outer && figure.outer.elements) {
+        figure.outer.elements.forEach(element => {
+            console.log(`  Подсвечиваем элемент ${element.uuid} (из группы)`);
+            this.editor.objectsManager.safeSetElementColor(element, color);
+        });
     }
+
+    // Подсвечиваем все отверстия фигуры
+    if (figure.holes && figure.holes.length > 0) {
+        console.log(`  Подсвечиваем ${figure.holes.length} отверстий`);
+        figure.holes.forEach((hole, index) => {
+            const holeNode = this.figureManager.findNodeByContour(hole);
+            if (!holeNode) {
+                console.warn(`  Не найден узел для отверстия ${index}`);
+                return;
+            }
+
+            const excludedSet = this.excludedHoles.get(figure.id) || new Set();
+            const isExcluded = excludedSet.has(holeNode.id);
+            const holeColor = isExcluded ? 0x888888 : 0xFF9800;
+
+            console.log(`  Отверстие ${index}: holeId=${holeNode.id}, исключено=${isExcluded}, цвет=${holeColor.toString(16)}`);
+
+            if (hole.element) {
+                this.editor.objectsManager.safeSetElementColor(hole.element, holeColor);
+            } else if (hole.elements) {
+                hole.elements.forEach(element => {
+                    this.editor.objectsManager.safeSetElementColor(element, holeColor);
+                });
+            }
+        });
+    }
+}
 
     highlightHole(holeFigure, isIncluded) {
         const color = isIncluded ? 0xFF9800 : 0x888888;
@@ -975,11 +1085,11 @@ class ExtrudeManager {
         planeNormal.normalize();
 
         let offset = 0.1;
-        if (direction === 'negative') {
-            offset = -height + 0.1;
-        } else if (direction === 'both') {
-            offset = -height / 2 + 0.1;
-        }
+//        if (direction === 'negative') {
+//            offset = -height + 0.1;
+//        } else if (direction === 'both') {
+//            offset = -height / 2 + 0.1;
+//        }
 
         mesh.position.add(planeNormal.clone().multiplyScalar(offset));
     }

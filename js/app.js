@@ -233,7 +233,7 @@ class CADEditor {
     }
 
     initHelpers() {
-        this.gridHelper = new THREE.GridHelper(500, 100, 0x444444);
+        this.gridHelper = new THREE.GridHelper(500, 100, 0x999999);
         this.gridHelper.position.y = 0;
         this.gridHelper.visible = this.gridVisible;
         this.worldGroup.add(this.gridHelper);
@@ -522,7 +522,7 @@ class CADEditor {
                 localStorage.setItem('cad-grid-color', e.target.value);
             });
 
-            const savedGridColor = localStorage.getItem('cad-grid-color') || '#444444';
+            const savedGridColor = localStorage.getItem('cad-grid-color') || '#888888';
             gridColorPicker.value = savedGridColor;
             if (this.gridHelper) {
                 this.gridHelper.material.color.set(new THREE.Color(savedGridColor));
@@ -576,7 +576,7 @@ class CADEditor {
         if (this.gridHelper) {
             this.gridHelper.material.color.set(0x444444);
         }
-        document.getElementById('gridColor').value = '#444444';
+        document.getElementById('gridColor').value = '#AAAAAA';
 
         this.showStatus('Настройки окружения сброшены', 'info');
     }
@@ -1555,6 +1555,16 @@ class CADEditor {
     // ПОИСК ОБЪЕКТОВ
     findObjectByUuid(uuid) {
         return this.objects.find(obj => obj.uuid === uuid) || null;
+    }
+
+    getVisibleObjects() {
+        const visibleObjects = [];
+        this.objectsGroup.traverse((child) => {
+            if (child.isMesh && child.visible) {
+                visibleObjects.push(child);
+            }
+        });
+        return visibleObjects;
     }
 
 }
