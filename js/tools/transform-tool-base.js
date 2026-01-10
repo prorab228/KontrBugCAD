@@ -376,7 +376,7 @@ class TransformToolBase extends Tool {
         if (!html) return;
 
         this.tooltip.innerHTML = html;
-        this.tooltip.style.left = (position.x + 20) + 'px';
+        this.tooltip.style.left = (position.x + 120) + 'px';
         this.tooltip.style.top = (position.y - this.tooltip.offsetHeight / 2) + 'px';
     }
 

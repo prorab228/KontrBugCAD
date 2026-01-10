@@ -14,6 +14,21 @@ class MoveTool extends TransformToolBase {
         this.showMoveLine = true; // Флаг для отображения линии
         this.lineThickness = 0.3; // Толщина линии в 3D
         
+        // Размеры стрелок
+        this.arrowBaseLength = 7.0; // Базовая длина линии стрелки (используется только для создания)
+        this.arrowHeadBaseLength = 1.5; // Длина конуса
+        this.arrowHeadBaseRadius = 1; // Радиус конуса
+        this.lineBaseRadius = 0.05; // Радиус линии
+        this.minArrowLength = 2.0; // Минимальная длина стрелки
+        this.arrowOffset = 2.0; // Выступ стрелки за пределы объекта (мм)
+
+        // Ссылки на созданные стрелки
+        this.axisArrows = {
+            x: { line: null, cone: null, group: null },
+            y: { line: null, cone: null, group: null },
+            z: { line: null, cone: null, group: null }
+        };
+
         this.initGizmo();
     }
 
@@ -68,11 +83,14 @@ class MoveTool extends TransformToolBase {
         this.editor.scene.add(this.distanceText);
     }
 
-    createTranslateGizmo() {
-        const arrowLength = 7.0;
-        const arrowHeadLength = 0.7;
-        const coneRadius = 0.5;
-        const lineRadius = 0.05;
+
+     createTranslateGizmo() {
+        // Сбрасываем ссылки на стрелки
+        this.axisArrows = {
+            x: { line: null, cone: null, group: null },
+            y: { line: null, cone: null, group: null },
+            z: { line: null, cone: null, group: null }
+        };
 
         ['x', 'y', 'z'].forEach(axis => {
             const axisGroup = new THREE.Group();
@@ -80,8 +98,16 @@ class MoveTool extends TransformToolBase {
             axisGroup.userData.type = 'translate';
             axisGroup.userData.axis = axis;
 
+            // Сохраняем ссылку на группу
+            this.axisArrows[axis].group = axisGroup;
+
             // Линия оси
-            const lineGeometry = new THREE.CylinderGeometry(lineRadius, lineRadius, arrowLength, 8);
+            const lineGeometry = new THREE.CylinderGeometry(
+                this.lineBaseRadius,
+                this.lineBaseRadius,
+                this.arrowBaseLength,
+                8
+            );
             const lineMaterial = new THREE.MeshBasicMaterial({
                 color: this.axisColors[axis],
                 transparent: true,
@@ -91,8 +117,15 @@ class MoveTool extends TransformToolBase {
             line.name = `translate_line_${axis}`;
             line.userData.axis = axis;
 
+            // Сохраняем ссылку на линию
+            this.axisArrows[axis].line = line;
+
             // Конус стрелки
-            const coneGeometry = new THREE.ConeGeometry(coneRadius, arrowHeadLength, 8);
+            const coneGeometry = new THREE.ConeGeometry(
+                this.arrowHeadBaseRadius,
+                this.arrowHeadBaseLength,
+                8
+            );
             const coneMaterial = new THREE.MeshBasicMaterial({
                 color: this.axisColors[axis],
                 transparent: true,
@@ -102,22 +135,23 @@ class MoveTool extends TransformToolBase {
             cone.name = `translate_cone_${axis}`;
             cone.userData.axis = axis;
 
-            // Позиционирование
-            const totalLength = arrowLength + arrowHeadLength;
+            // Сохраняем ссылку на конус
+            this.axisArrows[axis].cone = cone;
 
+            // Позиционирование - базовая позиция
             if (axis === 'x') {
                 line.rotation.z = -Math.PI / 2;
-                line.position.x = arrowLength / 2;
-                cone.position.x = totalLength;
+                line.position.x = this.arrowBaseLength / 2;
                 cone.rotation.z = -Math.PI / 2;
+                cone.position.x = this.arrowBaseLength + this.arrowHeadBaseLength / 2;
             } else if (axis === 'y') {
-                line.position.y = arrowLength / 2;
-                cone.position.y = totalLength;
+                line.position.y = this.arrowBaseLength / 2;
+                cone.position.y = this.arrowBaseLength + this.arrowHeadBaseLength / 2;
             } else if (axis === 'z') {
                 line.rotation.x = Math.PI / 2;
-                line.position.z = arrowLength / 2;
-                cone.position.z = totalLength;
+                line.position.z = this.arrowBaseLength / 2;
                 cone.rotation.x = Math.PI / 2;
+                cone.position.z = this.arrowBaseLength + this.arrowHeadBaseLength / 2;
             }
 
             axisGroup.add(line);
@@ -596,6 +630,95 @@ class MoveTool extends TransformToolBase {
                 this.updateMoveLine();
             }
         }
+    }
+
+    updateGizmoPosition() {
+        if (!this.attachedObject) return;
+
+        // Получаем мировую позицию объекта
+        const worldPos = new THREE.Vector3();
+        this.attachedObject.getWorldPosition(worldPos);
+        this.gizmoGroup.position.copy(worldPos);
+
+        // Обновляем вращение gizmo в зависимости от системы координат
+        if (this.useLocalCoordinates) {
+            this.gizmoGroup.quaternion.copy(this.attachedObject.quaternion);
+        } else {
+            this.gizmoGroup.quaternion.identity();
+        }
+
+        // Получаем размеры объекта
+        const box = new THREE.Box3().setFromObject(this.attachedObject);
+        const size = new THREE.Vector3();
+        box.getSize(size);
+
+        // Сбрасываем общий масштаб группы
+        this.gizmoGroup.scale.set(1, 1, 1);
+
+        // Масштабируем каждую стрелку отдельно в зависимости от размера объекта по соответствующей оси
+        ['x', 'y', 'z'].forEach(axis => {
+            const arrowData = this.axisArrows[axis];
+            if (!arrowData.group) return;
+
+            // Определяем размер по соответствующей оси
+            let axisSize;
+            if (axis === 'x') axisSize = size.x;
+            else if (axis === 'y') axisSize = size.y;
+            else axisSize = size.z;
+
+            // Вычисляем желаемую общую длину стрелки: половина размера объекта по оси + выступ
+            let desiredTotalLength = (axisSize / 2) + this.arrowOffset;
+
+            // Обеспечиваем минимальную длину
+            desiredTotalLength = Math.max(this.minArrowLength, desiredTotalLength);
+
+            // Вычисляем длину линии: общая длина минус половина длины конуса
+            let lineLength = desiredTotalLength - (this.arrowHeadBaseLength / 2);
+
+            // Если длина линии слишком мала, уменьшаем общую длину
+            if (lineLength < 0) {
+                lineLength = 0;
+                desiredTotalLength = this.arrowHeadBaseLength / 2;
+            }
+
+            // Вычисляем масштаб для линии
+            const lineScale = lineLength / this.arrowBaseLength;
+
+            // Получаем ссылки на линию и конус
+            const line = arrowData.line;
+            const cone = arrowData.cone;
+
+            if (line && cone) {
+                // Обновляем позиции и масштабы в зависимости от оси
+                if (axis === 'x') {
+                    // Линия: масштабируем только по оси X (длине)
+                    line.position.x = lineLength / 2;
+                    line.scale.x = lineScale;
+
+                    // Конус: фиксированный размер, позиция = lineLength + arrowHeadBaseLength/2
+                    cone.position.x = desiredTotalLength;
+                    cone.scale.set(1, 1, 1); // Конус не масштабируем
+
+                } else if (axis === 'y') {
+                    line.position.y = lineLength / 2;
+                    line.scale.y = lineScale;
+
+                    cone.position.y = desiredTotalLength;
+                    cone.scale.set(1, 1, 1);
+
+                } else if (axis === 'z') {
+                    line.position.z = lineLength / 2;
+                    line.scale.z = lineScale;
+
+                    cone.position.z = desiredTotalLength;
+                    cone.scale.set(1, 1, 1);
+                }
+
+                // Обновляем матрицы для корректного отображения
+                line.updateMatrix();
+                cone.updateMatrix();
+            }
+        });
     }
 
     // Новый метод для получения вектора оси

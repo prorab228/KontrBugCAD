@@ -2,7 +2,7 @@
 class ExtrudeManager {
     constructor(cadEditor) {
         this.editor = cadEditor;
-        this.figureManager = new FigureManager(cadEditor);
+         this.figureManager = cadEditor.objectsManager.figureManager; // Используем ОДИН FigureManager
 
         this.extrudePreview = null;
         this.extrudePreviewGroup = null;
@@ -41,9 +41,15 @@ class ExtrudeManager {
 
     initialize() {
         console.log("ExtrudeManager: инициализация");
+        // НЕ создаем новый FigureManager, используем существующий
+        if (!this.figureManager) {
+            console.error("ExtrudeManager: FigureManager не найден!");
+            return;
+        }
+
+        // Пересобираем фигуры
         this.figureManager.collectAllFigures();
     }
-
     handleFigureClick(event) {
         console.log("=== НАЧАЛО handleFigureClick ===");
 
@@ -59,6 +65,7 @@ class ExtrudeManager {
             this.editor.raycaster.setFromCamera(this.editor.mouse, this.editor.camera);
             this.editor.raycaster.params.Line = { threshold: 5 };
 
+            // Получаем все элементы скетча
             const allSketchElements = this.editor.objectsManager.getAllSketchElements();
             const intersects = this.editor.raycaster.intersectObjects(allSketchElements, false);
 
@@ -66,6 +73,7 @@ class ExtrudeManager {
                 const clickedElement = intersects[0].object;
                 console.log("Кликнули элемент:", clickedElement.uuid, "тип:", clickedElement.userData.elementType);
 
+                // Получаем фигуры из FigureManager
                 const figures = this.figureManager.getFiguresByElement(clickedElement);
                 console.log("Найдено фигур, содержащих элемент:", figures.length);
 
@@ -117,6 +125,17 @@ class ExtrudeManager {
 
     if (this.selectedFigureIds.has(figureId)) {
         console.log("Удаляем фигуру из выделения");
+
+        // Если это отверстие, нужно проверить, не было ли оно исключено из родителя
+        if (figure.isHole) {
+            const parentId = this.findParentIdForSelected(figure);
+            if (parentId && this.excludedHoles.get(parentId)?.has(figureId)) {
+                // Если отверстие было исключено из родителя, возвращаем его
+                console.log("Возвращаем отверстие в родительскую фигуру");
+                this.toggleHoleExclusion(parentId, figureId);
+            }
+        }
+
         this.removeFigureFromSelection(figure);
     } else {
         console.log("Добавляем фигуру в выделение");
@@ -132,21 +151,30 @@ class ExtrudeManager {
     // Проверяем, не является ли эта фигура дочерней для уже выбранной
     const isChildOfSelected = this.isChildOfAnySelected(figure);
 
-    if (isChildOfSelected) {
-        // Если это дочерняя фигура уже выбранного родителя
-        if (figure.isHole) {
-            // Для отверстия внутри выбранного родителя - исключаем его
-            const parentId = this.findParentIdForSelected(figure);
-            if (parentId) {
-                console.log("Исключаем отверстие из родительской фигуры");
-                this.toggleHoleExclusion(parentId, figureId);
-            }
-        } else {
-            // Для внешнего контура внутри выбранного родителя - добавляем как отдельную фигуру
-            console.log("Добавляем внешний дочерний контур как отдельную фигуру");
-            this.selectedFigureIds.add(figureId);
-            this.highlightFigure(figure, 0x0066FF);
+    if (isChildOfSelected && figure.isHole) {
+        // Для отверстия внутри выбранного родителя у нас есть два варианта:
+        // 1. Исключить его из родительской фигуры (по умолчанию)
+        // 2. Добавить как отдельную фигуру для вытягивания
+
+        // ВАЖНОЕ ИЗМЕНЕНИЕ: При клике на отверстие, которое является дочерним
+        // для выбранной фигуры, мы ДОБАВЛЯЕМ его как отдельную фигуру,
+        // а не только исключаем из родителя
+
+        console.log("Добавляем отверстие как отдельную фигуру для вытягивания");
+        this.selectedFigureIds.add(figureId);
+        this.highlightFigure(figure, 0x4CAF50);
+
+        // Но также отмечаем, что оно исключено из родительской фигуры
+        const parentId = this.findParentIdForSelected(figure);
+        if (parentId) {
+            console.log("И отмечаем как исключенное из родительской фигуры");
+            this.toggleHoleExclusion(parentId, figureId);
         }
+    } else if (isChildOfSelected && !figure.isHole) {
+        // Для внешнего контура внутри выбранного родителя - добавляем как отдельную фигуру
+        console.log("Добавляем внешний дочерний контур как отдельную фигуру");
+        this.selectedFigureIds.add(figureId);
+        this.highlightFigure(figure, 0x0066FF);
     } else {
         // Обычное добавление
         console.log("Добавляем фигуру в selectedFigureIds");
@@ -280,8 +308,7 @@ getFiguresForExtrusion() {
         console.log(`\nОбработка узла ${node.id.substring(0, 8)}: isHole=${node.isHole}, depth=${node.depth}`);
 
         if (node.isHole) {
-            // Для отверстия
-            console.log(`  Вытягиваем отверстие отдельно`);
+            console.log(`  Вытягиваем отверстие отдельно как выступ`);
             const excludedHoles = this.excludedHoles.get(node.id) || new Set();
             const holes = this.collectHolesForHoleNode(node);
             const filteredHoles = holes.filter(hole => {

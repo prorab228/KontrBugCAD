@@ -8,10 +8,17 @@ class RotateTool extends TransformToolBase {
         this.gizmoWorldPosition = new THREE.Vector3();
         this.rotationPlane = null;
         this.startVector = null;
+        this.hoveredArc = null;
+        this.angleIndicator = null;
+        this.currentAngle = 0;
+        this.arcGeometries = {};
+        this.halfSize = new THREE.Vector3();
+        
         this.initGizmo();
     }
 
     initGizmo() {
+        // Очищаем предыдущий gizmo
         while (this.gizmoGroup.children.length > 0) {
             const child = this.gizmoGroup.children[0];
             if (child.geometry) child.geometry.dispose();
@@ -24,42 +31,202 @@ class RotateTool extends TransformToolBase {
     }
 
     createRotateGizmo() {
-        const ringRadius = 7.0;
-        const tubeRadius = 0.1;
-        const segments = 32;
+        // Инициализируем arcGeometries если не инициализирован
+        if (!this.arcGeometries) {
+            this.arcGeometries = {};
+        }
 
-        // Создаем оси в правильном порядке
+        const tubeRadius = 0.03; // Увеличиваем толщину дуг
+        const segments = 32;
+        const arcAngle = Math.PI / 3; // 30 градусов
+
+        // Создаем геометрии для каждой оси
         ['x', 'y', 'z'].forEach(axis => {
-            const geometry = new THREE.TorusGeometry(ringRadius, tubeRadius, 6, segments);
+            // Создаем геометрию дуги
+            const geometry = new THREE.TorusGeometry(1, tubeRadius, 6, segments, arcAngle);
+            this.arcGeometries[axis] = geometry;
+
             const material = new THREE.MeshBasicMaterial({
                 color: this.axisColors[axis],
                 transparent: true,
-                opacity: 0.4,
+                opacity: 0.8, // Увеличиваем прозрачность для лучшей видимости
                 side: THREE.DoubleSide
             });
 
-            const ring = new THREE.Mesh(geometry, material);
-            ring.name = `rotate_${axis}`;
-            ring.userData.type = 'rotate';
-            ring.userData.axis = axis;
+            const arc = new THREE.Mesh(geometry, material);
+            arc.name = `rotate_${axis}`;
+            arc.userData.type = 'rotate';
+            arc.userData.axis = axis;
+            arc.userData.isArc = true;
 
-            // Правильные ориентации осей:
+            // Базовая ориентация будет обновлена в updateGizmoPosition
+            this.gizmoGroup.add(arc);
+        });
+
+        // Создаем индикатор угла (изначально скрыт)
+        this.createAngleIndicator();
+    }
+
+    createAngleIndicator() {
+        const indicatorRadius = 1.3;
+        const tubeRadius = 0.03;
+        const segments = 32;
+        
+        const geometry = new THREE.TorusGeometry(indicatorRadius, tubeRadius, 6, segments, Math.PI * 2);
+        const material = new THREE.MeshBasicMaterial({
+            color: 0xFFFF00,
+            transparent: true,
+            opacity: 0.9,
+            side: THREE.DoubleSide
+        });
+
+        this.angleIndicator = new THREE.Mesh(geometry, material);
+        this.angleIndicator.name = 'angle_indicator';
+        this.angleIndicator.visible = false;
+        
+        // Создаем текст для отображения угла
+        this.angleText = null;
+        this.gizmoGroup.add(this.angleIndicator);
+    }
+
+    updateGizmoPosition() {
+        if (!this.attachedObject) return;
+
+        // Получаем мировую позицию объекта
+        const worldPos = new THREE.Vector3();
+        this.attachedObject.getWorldPosition(worldPos);
+        this.gizmoGroup.position.copy(worldPos);
+
+        // Обновляем вращение gizmo в зависимости от системы координат
+        if (this.useLocalCoordinates) {
+            this.gizmoGroup.quaternion.copy(this.attachedObject.quaternion);
+        } else {
+            this.gizmoGroup.quaternion.identity();
+        }
+
+        // Получаем размеры объекта
+        const box = new THREE.Box3().setFromObject(this.attachedObject);
+        const size = new THREE.Vector3();
+        box.getSize(size);
+        
+        // Сохраняем половины размеров для использования в других методах
+        this.halfSize.copy(size).multiplyScalar(0.5);
+
+        // Увеличиваем отступ от края объекта для больших дуг
+        const offset = 1.5;
+
+        // Обновляем позицию и масштаб каждой дуги
+        ['x', 'y', 'z'].forEach(axis => {
+            const arc = this.gizmoGroup.getObjectByName(`rotate_${axis}`);
+            if (!arc) return;
+
+            // Вычисляем радиус и позицию для каждой дуги
+            let radius, position = new THREE.Vector3();
+            
             if (axis === 'x') {
-                // Красное кольцо для оси X (вращение вокруг X)
-                // Кольцо должно быть в плоскости YZ
-                ring.rotation.y = Math.PI / 2;
+                // Дуга для оси X (красная) - размещаем на границе по YZ плоскости
+                radius = Math.max(this.halfSize.y, this.halfSize.z) + offset;
+                position.set(this.halfSize.x + offset, 0, 0);
+                arc.rotation.set(0, Math.PI / 2, 0);
             } else if (axis === 'y') {
-                // Зеленое кольцо для оси Y (вращение вокруг Y)
-                // Кольцо должно быть в плоскости XZ
-                ring.rotation.x = Math.PI / 2;
+                // Дуга для оси Y (зеленая) - размещаем на границе по XZ плоскости
+                radius = Math.max(this.halfSize.x, this.halfSize.z) + offset;
+                position.set(0, this.halfSize.y + offset, 0);
+                arc.rotation.set(Math.PI / 2, 0, 0);
             } else if (axis === 'z') {
-                // Синее кольцо для оси Z (вращение вокруг Z)
-                // Кольцо в плоскости XY (по умолчанию)
-                // Ничего не делаем
+                // Дуга для оси Z (синяя) - размещаем на границе по XY плоскости
+                radius = Math.max(this.halfSize.x, this.halfSize.y) + offset;
+                position.set(0, 0, this.halfSize.z + offset);
+                arc.rotation.set(0, 0, 0);
             }
 
-            this.gizmoGroup.add(ring);
+            // Устанавливаем позицию, НЕ масштабируем толщину
+            arc.position.copy(position);
+            arc.scale.setScalar(radius);
+
+            // Обновляем материал при наведении
+            if (this.hoveredArc === arc) {
+                arc.material.color.set(0xFFFF00);
+                arc.material.opacity = 1.0;
+            } else {
+                arc.material.color.set(this.axisColors[axis]);
+                arc.material.opacity = 0.8;
+            }
         });
+
+        // Обновляем позицию индикатора угла (если активен)
+        if (this.angleIndicator && this.angleIndicator.visible && this.currentAxis) {
+            this.updateAngleIndicator();
+        }
+    }
+
+    updateAngleIndicator() {
+        if (!this.angleIndicator || !this.currentAxis) return;
+
+        const arc = this.gizmoGroup.getObjectByName(`rotate_${this.currentAxis}`);
+        if (!arc) return;
+
+        // Копируем позицию и масштаб от соответствующей дуги
+        this.angleIndicator.position.copy(arc.position);
+        this.angleIndicator.rotation.copy(arc.rotation);
+        this.angleIndicator.scale.copy(arc.scale);
+
+        // Обновляем цвет индикатора в зависимости от угла
+        const normalizedAngle = Math.abs(this.currentAngle % 360);
+        let hue = (normalizedAngle / 360) * 120; // От 0° (красный) до 120° (зеленый)
+        const color = new THREE.Color().setHSL(hue / 360, 0.9, 0.5);
+        this.angleIndicator.material.color.copy(color);
+
+        // Удаляем старый текст если есть
+        if (this.angleText && this.angleText.parent) {
+            this.angleText.parent.remove(this.angleText);
+        }
+
+        // Создаем текст для отображения угла
+        const canvas = document.createElement('canvas');
+        const context = canvas.getContext('2d');
+        canvas.width = 256;
+        canvas.height = 128;
+
+        // Очищаем canvas
+        context.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Настраиваем стиль текста
+        context.fillStyle = '#ffffff';
+        context.font = '68px Arial';
+        context.textAlign = 'center';
+        context.textBaseline = 'middle';
+
+        // Рисуем текст
+        const angleText = `${Math.abs(this.currentAngle).toFixed(1)}°`;
+        context.fillText(angleText, canvas.width / 2, canvas.height / 2);
+
+
+        // Создаем текстуру из canvas
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.needsUpdate = true;
+
+        // Создаем спрайт с текстом
+        const spriteMaterial = new THREE.SpriteMaterial({
+            map: texture,
+            transparent: true,
+            opacity: 0.9
+        });
+
+        this.angleText = new THREE.Sprite(spriteMaterial);
+        this.angleText.scale.set(10, 5.5, 1);
+
+        // Позиционируем текст над индикатором
+        const textPosition = this.angleIndicator.position.clone();
+        const cameraDirection = new THREE.Vector3();
+        this.editor.camera.getWorldDirection(cameraDirection);
+        textPosition.add(cameraDirection.multiplyScalar(2));
+
+        this.angleText.position.copy(textPosition);
+        this.angleText.lookAt(this.editor.camera.position);
+
+        // Добавляем текст в сцену
+        this.gizmoGroup.add(this.angleText);
     }
 
     getPropertiesHTML() {
@@ -193,6 +360,84 @@ class RotateTool extends TransformToolBase {
         if (rotZ) rotZ.value = THREE.MathUtils.radToDeg(euler.z).toFixed(2);
     }
 
+    onMouseDown(e) {
+        if (e.button !== 0) return false;
+
+        this.snapEnabled = !e.ctrlKey;
+        this.editor.updateMousePosition(e);
+        this.editor.raycaster.setFromCamera(this.editor.mouse, this.editor.camera);
+
+        // Проверяем, кликнули ли на дугу
+        const gizmoMeshes = [];
+        this.gizmoGroup.traverse((child) => {
+            if (child instanceof THREE.Mesh && child.userData.isArc) {
+                gizmoMeshes.push(child);
+            }
+        });
+
+        const intersects = this.editor.raycaster.intersectObjects(gizmoMeshes, true);
+
+        if (intersects.length > 0) {
+            const object = intersects[0].object;
+            const axis = object.userData.axis;
+            
+            this.startDragging(axis, e);
+            return true;
+        }
+
+        const sceneIntersects = this.editor.raycaster.intersectObjects(
+            this.editor.objectsGroup.children,
+            true
+        );
+
+        if (sceneIntersects.length > 0) {
+            const object = this.editor.objectsManager.findTopParent(sceneIntersects[0].object);
+
+            if (this.canTransformObject(object)) {
+                this.editor.selectSingleObject(object);
+                this.attachToObject(object);
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    onMouseMove(e) {
+        super.onMouseMove(e);
+
+        if (this.isDragging) return;
+
+        // Обработка наведения на дуги
+        this.editor.updateMousePosition(e);
+        this.editor.raycaster.setFromCamera(this.editor.mouse, this.editor.camera);
+
+        const gizmoMeshes = [];
+        this.gizmoGroup.traverse((child) => {
+            if (child instanceof THREE.Mesh && child.userData.isArc) {
+                gizmoMeshes.push(child);
+            }
+        });
+
+        const intersects = this.editor.raycaster.intersectObjects(gizmoMeshes, true);
+
+        // Сбрасываем подсветку предыдущей дуги
+        if (this.hoveredArc && this.hoveredArc.userData && this.hoveredArc.userData.axis) {
+            const axis = this.hoveredArc.userData.axis;
+            this.hoveredArc.material.color.set(this.axisColors[axis]);
+            this.hoveredArc.material.opacity = 0.8;
+            this.hoveredArc = null;
+        }
+
+        // Подсвечиваем новую дугу при наведении
+        if (intersects.length > 0) {
+            const object = intersects[0].object;
+            this.hoveredArc = object;
+            object.material.color.set(0xFFFF00);
+            object.material.opacity = 1.0;
+        }
+    }
+
     startDragging(axis, e) {
         super.startDragging(axis, e);
 
@@ -200,6 +445,7 @@ class RotateTool extends TransformToolBase {
             // Сохраняем начальное вращение
             this.startQuaternion.copy(this.attachedObject.quaternion);
             this.accumulatedAngle = 0;
+            this.currentAngle = 0;
             
             // Получаем мировую позицию Gizmo
             this.gizmoGroup.getWorldPosition(this.gizmoWorldPosition);
@@ -231,6 +477,12 @@ class RotateTool extends TransformToolBase {
                     this.startProjection,
                     this.gizmoWorldPosition
                 ).normalize();
+            }
+
+            // Показываем индикатор угла
+            if (this.angleIndicator) {
+                this.angleIndicator.visible = true;
+                this.updateAngleIndicator();
             }
         }
     }
@@ -291,26 +543,20 @@ class RotateTool extends TransformToolBase {
 
         // Накопление угла
         this.accumulatedAngle += finalAngle;
+        this.currentAngle = THREE.MathUtils.radToDeg(this.accumulatedAngle);
         
         if (this.useLocalCoordinates) {
             // Локальные координаты: вращаем объект вокруг его локальных осей
-            // Для локальных координат нам нужно определить локальную ось объекта в текущий момент
             let localAxis = new THREE.Vector3();
             if (this.currentAxis === 'x') localAxis.set(1, 0, 0);
             else if (this.currentAxis === 'y') localAxis.set(0, 1, 0);
             else if (this.currentAxis === 'z') localAxis.set(0, 0, 1);
-            
-            // Преобразуем локальную ось в мировые координаты с учетом текущего вращения объекта
-            // Но для вращения в локальных координатах нам нужна ось в локальных координатах объекта
-            // На самом деле, нам нужно создать кватернион вращения вокруг локальной оси
-            // и применить его к текущему вращению объекта
             
             // Создаем кватернион вращения вокруг локальной оси
             const rotationQuaternion = new THREE.Quaternion();
             rotationQuaternion.setFromAxisAngle(localAxis.normalize(), this.accumulatedAngle);
             
             // Применяем вращение: начальное вращение * вращение вокруг локальной оси
-            // Это дает вращение объекта в его локальных координатах
             this.attachedObject.quaternion.copy(this.startQuaternion);
             this.attachedObject.quaternion.multiply(rotationQuaternion);
         } else {
@@ -331,6 +577,23 @@ class RotateTool extends TransformToolBase {
         
         // Обновляем начальный вектор для следующего шага
         this.startVector.copy(currentVector);
+        
+        // Обновляем индикатор угла
+        this.updateAngleIndicator();
+    }
+
+    onMouseUp(e) {
+        super.onMouseUp(e);
+        
+        // Скрываем индикатор угла и удаляем текст
+        if (this.angleIndicator) {
+            this.angleIndicator.visible = false;
+        }
+        
+        if (this.angleText && this.angleText.parent) {
+            this.angleText.parent.remove(this.angleText);
+            this.angleText = null;
+        }
     }
 
     getTooltipContent() {
@@ -341,8 +604,26 @@ class RotateTool extends TransformToolBase {
         const degY = THREE.MathUtils.radToDeg(euler.y).toFixed(1);
         const degZ = THREE.MathUtils.radToDeg(euler.z).toFixed(1);
 
+        // Если идет вращение, показываем текущий угол
+        let angleInfo = '';
+        if (this.isDragging && this.currentAxis) {
+            const axisNames = { x: 'X', y: 'Y', z: 'Z' };
+            const axisColors = { x: '#ff6b6b', y: '#51cf66', z: '#339af0' };
+            
+            angleInfo = `
+                <div style="margin: 8px 0; padding: 8px; background: rgba(255,255,255,0.1); border-radius: 4px; border-left: 3px solid ${axisColors[this.currentAxis]}">
+                    <div style="font-size: 11px; opacity: 0.8;">Текущее вращение:</div>
+                    <div style="font-size: 16px; font-weight: bold; color: ${axisColors[this.currentAxis]}">
+                        ${this.currentAngle.toFixed(1)}° ${this.currentAngle >= 0 ? '↻' : '↺'}
+                    </div>
+                    <div style="font-size: 10px; opacity: 0.7;">Вокруг оси ${axisNames[this.currentAxis]}</div>
+                </div>
+            `;
+        }
+
         return `
-            <div style="font-weight: 600; margin-bottom: 6px; color: #fff;">Вращение (°):</div>
+            <div style="font-weight: 600; margin-bottom: 6px; color: #fff;">Вращение объекта (°):</div>
+            ${angleInfo}
             <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;">
                 <div style="color: #ff6b6b;">
                     <div style="font-size: 10px; opacity: 0.8;">X</div>

@@ -2,6 +2,23 @@
 class ObjectsManager {
     constructor(cadEditor) {
         this.editor = cadEditor;
+        this.figureManager = new FigureManager(cadEditor); // Единый экземпляр
+    }
+
+    // Инициализация FigureManager
+    initializeFigureManager() {
+        if (!this.figureManager) {
+            this.figureManager = new FigureManager(this.editor);
+        }
+        return this.figureManager;
+    }
+
+    // Получение FigureManager
+    getFigureManager() {
+        if (!this.figureManager) {
+            this.initializeFigureManager();
+        }
+        return this.figureManager;
     }
 
     getObjectDimensions(object) {

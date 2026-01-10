@@ -1,6 +1,5 @@
-
 /**
- * SketchManager - менеджер для работы со скетчами
+ * SketchManager с автоматическим определением замкнутых контуров
  */
 class SketchManager {
     constructor(cadEditor) {
@@ -55,6 +54,10 @@ class SketchManager {
         // Инструменты
         this.tools = {};
         this.activeTool = null;
+        
+        // Контурный детектор
+        this.contourDetector = new ContourDetector();
+        this.autoDetectContours = true;
 
         this.initialize();
     }
@@ -82,7 +85,7 @@ class SketchManager {
         this.registerTool('stadium', new StadiumSketchTool(this));
         this.registerTool('arc', new ArcSketchTool(this));
 
-         // Новые инструменты импорта/экспорта
+        // Новые инструменты импорта/экспорта
         this.registerTool('export', new ExportSketchTool(this));
         this.registerTool('import', new ImportSketchTool(this));
 
@@ -130,6 +133,7 @@ class SketchManager {
         this.elements = [];
         this.selectedElements = [];
         this.clearDimensionObjects();
+        this.contourDetector.clear();
         this.setCurrentTool('line');
         this.attachMouseHandlers();
         this.orientCameraToPlane(planeObject);
@@ -160,6 +164,13 @@ class SketchManager {
             elements: this.elements,
             created: planeObject.userData.createdAt || new Date().toISOString()
         };
+
+        // Инициализируем детектор контуров с существующими элементами
+        if (this.autoDetectContours) {
+            const allMeshes = this.elements.map(el => el.mesh);
+            this.contourDetector.updateElements(allMeshes);
+            this.updateFigureManagerWithContours();
+        }
 
         this.attachMouseHandlers();
         this.orientCameraToPlane(planeObject);
@@ -204,7 +215,7 @@ class SketchManager {
         // Сохраняем текущий скетч перед выходом
         // Восстанавливаем параметры камеры
         this.restoreCamera();
-
+         this.removeContourVisualization();
         if (this.cursorCross) {
             this.currentPlane.remove(this.cursorCross);
             this.cursorCross = null;
@@ -221,6 +232,7 @@ class SketchManager {
         this.clearDimensionObjects();
         this.hideDimensionInput();
         this.detachMouseHandlers();
+        this.contourDetector.clear();
 
         this.removeSketchGrid();
 
@@ -815,6 +827,297 @@ class SketchManager {
         };
 
         this.editor.showStatus(`Добавлен элемент: ${toolNames[element.type] || element.type}`, 'success');
+
+        // Автоматическое определение контуров
+        // Автоматическое определение контуров
+        if (this.autoDetectContours) {
+            this.detectContours();
+        }
+    }
+
+    // Новый метод для детекции контуров
+detectContours() {
+    if (!this.currentPlane || this.elements.length === 0) return;
+
+    console.log("=== Детекция контуров ===");
+
+    try {
+        // Собираем все элементы на текущей плоскости
+        const elementsOnPlane = [];
+
+        // Сначала добавляем обычные элементы
+        this.elements.forEach(element => {
+            if (element.mesh && element.mesh.parent === this.currentPlane) {
+                elementsOnPlane.push(element.mesh);
+            }
+        });
+
+        // Также ищем элементы напрямую на плоскости
+        this.currentPlane.traverse((child) => {
+            if (child.userData && child.userData.type === 'sketch_element') {
+                if (!elementsOnPlane.includes(child)) {
+                    elementsOnPlane.push(child);
+                }
+            }
+        });
+
+        console.log(`Найдено элементов на плоскости: ${elementsOnPlane.length}`);
+
+        // Обновляем детектор
+        this.contourDetector.updateElements(elementsOnPlane);
+
+        // Ищем контуры
+        const contours = this.contourDetector.findClosedContours();
+
+        console.log(`Найдено контуров: ${contours.length}`);
+
+        if (contours.length > 0) {
+            // Преобразуем контуры в формат для FigureManager
+            const figureContours = contours.map((contour, index) => {
+                if (!contour.isValid || !contour.points || contour.points.length < 3) {
+                    console.log(`Контур ${index} невалиден`);
+                    return null;
+                }
+
+                // Рассчитываем площадь
+                const area = Math.abs(this.calculatePolygonArea(contour.points));
+                if (area < 0.01) {
+                    console.log(`Контур ${index} слишком мал: ${area}`);
+                    return null;
+                }
+
+                // Рассчитываем центр и bounding box
+                const center = this.calculateContourCenter(contour.points);
+                const boundingBox = this.calculateBoundingBox(contour.points);
+
+                return {
+                    elements: contour.elements || [],
+                    points: contour.points,
+                    area: area,
+                    center: center,
+                    boundingBox: boundingBox,
+                    type: 'auto_detected',
+                    isClosed: true,
+                    isClockwise: contour.isClockwise || false,
+                    source: 'auto_detection'
+                };
+            }).filter(contour => contour !== null);
+
+            console.log(`Валидных контуров: ${figureContours.length}`);
+
+            // Обновляем FigureManager
+            if (figureContours.length > 0) {
+                // Проверяем, есть ли FigureManager
+                if (!this.editor.objectsManager.figureManager) {
+                    console.log("Создаем новый FigureManager");
+                    this.editor.objectsManager.figureManager = new FigureManager(this.editor);
+                }
+
+                this.editor.objectsManager.figureManager.updateWithAutoContours(figureContours);
+
+                // Визуализируем для отладки
+                this.visualizeContours(figureContours);
+            }
+        }
+
+    } catch (error) {
+        console.error("Ошибка детекции контуров:", error);
+    }
+}
+
+calculatePolygonArea(points) {
+    let area = 0;
+    const n = points.length;
+
+    for (let i = 0; i < n; i++) {
+        const j = (i + 1) % n;
+        area += points[i].x * points[j].y;
+        area -= points[j].x * points[i].y;
+    }
+
+    return area / 2;
+}
+
+calculateContourCenter(points) {
+    const center = new THREE.Vector2(0, 0);
+    points.forEach(p => {
+        center.x += p.x;
+        center.y += p.y;
+    });
+    if (points.length > 0) {
+        center.x /= points.length;
+        center.y /= points.length;
+    }
+    return center;
+}
+
+calculateBoundingBox(points) {
+    const min = new THREE.Vector2(Infinity, Infinity);
+    const max = new THREE.Vector2(-Infinity, -Infinity);
+
+    points.forEach(p => {
+        min.x = Math.min(min.x, p.x);
+        min.y = Math.min(min.y, p.y);
+        max.x = Math.max(max.x, p.x);
+        max.y = Math.max(max.y, p.y);
+    });
+
+    return { min, max };
+}
+// Визуализация найденных контуров (для отладки)
+visualizeContours(contours) {
+    // Удаляем старую визуализацию
+    this.removeContourVisualization();
+
+    // Создаем группу для визуализации
+    this.contourVisualization = new THREE.Group();
+    this.contourVisualization.name = 'contour_debug';
+
+    // Для каждого контура создаем линию
+    contours.forEach((contour, index) => {
+        if (!contour.points || contour.points.length < 3) return;
+
+        // Создаем геометрию из точек
+        const vertices = [];
+        contour.points.forEach(point => {
+            vertices.push(point.x, point.y, 0.1); // Немного выше плоскости
+        });
+
+        // Добавляем первую точку в конец для замыкания
+        const firstPoint = contour.points[0];
+        vertices.push(firstPoint.x, firstPoint.y, 0.1);
+
+        const geometry = new THREE.BufferGeometry();
+        geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+
+        // Случайный цвет для каждого контура
+        const hue = (index * 137.5) % 360; // Золотой угол
+        const color = new THREE.Color().setHSL(hue / 360, 0.8, 0.6);
+
+        const material = new THREE.LineBasicMaterial({
+            color: color,
+            linewidth: 3,
+            transparent: true,
+            opacity: 0.7
+        });
+
+        const line = new THREE.Line(geometry, material);
+        line.userData.isContourDebug = true;
+        line.userData.contourId = contour.id;
+
+        this.contourVisualization.add(line);
+    });
+
+    // Добавляем визуализацию на плоскость скетча
+    if (this.currentPlane) {
+        this.currentPlane.add(this.contourVisualization);
+    }
+}
+
+// Удаление визуализации контуров
+removeContourVisualization() {
+    if (this.contourVisualization && this.currentPlane) {
+        this.currentPlane.remove(this.contourVisualization);
+        this.contourVisualization.traverse(child => {
+            if (child.geometry) child.geometry.dispose();
+            if (child.material) child.material.dispose();
+        });
+        this.contourVisualization = null;
+    }
+}
+
+    // Обновление контуров из элементов
+    updateContoursFromElements() {
+        if (!this.currentPlane || this.elements.length === 0) return;
+
+        console.log("=== Автоматическое определение контуров ===");
+        
+        // Собираем все элементы
+        const allMeshes = this.elements.map(el => el.mesh);
+        
+        // Обновляем детектор контуров
+        this.contourDetector.updateElements(allMeshes);
+        
+        // Находим все замкнутые контуры
+        const contours = this.contourDetector.findClosedContours();
+        
+        console.log(`Найдено замкнутых контуров: ${contours.length}`);
+        
+        // Обновляем FigureManager с найденными контурами
+        this.updateFigureManagerWithContours(contours);
+    }
+
+    // Обновление FigureManager с найденными контурами
+    updateFigureManagerWithContours(contours = null) {
+        // Получаем общий FigureManager
+        const figureManager = this.editor.objectsManager.figureManager;
+
+        if (!figureManager) {
+            console.error("FigureManager не найден!");
+            return;
+        }
+
+        // Если контуры не переданы, получаем их из детектора
+        if (!contours && this.contourDetector) {
+            contours = this.contourDetector.findClosedContours();
+        }
+
+        if (!contours || contours.length === 0) return;
+
+        // Преобразуем контуры в формат FigureManager
+        const figureContours = contours.map((contour, index) => {
+            const points = contour.points.map(p => new THREE.Vector2(p.x, p.y));
+            const center = this.calculateContourCenter(points);
+            const boundingBox = this.calculateBoundingBox(points);
+            
+            return {
+                elements: contour.elements,
+                points: points,
+                area: contour.area,
+                center: center,
+                boundingBox: boundingBox,
+                type: 'auto_detected',
+                isClosed: true,
+                isClockwise: contour.isClockwise,
+                source: 'auto_detection'
+            };
+        });
+
+        // Обновляем фигуры в FigureManager
+        this.editor.objectsManager.figureManager.updateWithAutoContours(figureContours);
+    }
+
+    // Расчет центра контура
+    calculateContourCenter(points) {
+        const center = new THREE.Vector2(0, 0);
+        points.forEach(p => {
+            center.x += p.x;
+            center.y += p.y;
+        });
+        if (points.length > 0) {
+            center.x /= points.length;
+            center.y /= points.length;
+        }
+        return center;
+    }
+
+    // Расчет bounding box
+    calculateBoundingBox(points) {
+        if (points.length === 0) {
+            return { min: new THREE.Vector2(0, 0), max: new THREE.Vector2(0, 0) };
+        }
+        
+        const min = new THREE.Vector2(Infinity, Infinity);
+        const max = new THREE.Vector2(-Infinity, -Infinity);
+        
+        points.forEach(p => {
+            min.x = Math.min(min.x, p.x);
+            min.y = Math.min(min.y, p.y);
+            max.x = Math.max(max.x, p.x);
+            max.y = Math.max(max.y, p.y);
+        });
+        
+        return { min, max };
     }
 
     getElementAtPoint(point) {
@@ -990,6 +1293,12 @@ class SketchManager {
 
         this.selectedElements = [];
         this.saveToHistory();
+        
+        // Обновляем контуры после удаления
+        if (this.autoDetectContours) {
+            this.updateContoursFromElements();
+        }
+        
         this.editor.showStatus(`Удалено элементов: ${deletedElements.length}`, 'success');
     }
 
@@ -1010,6 +1319,7 @@ class SketchManager {
 
         this.elements = [];
         this.selectedElements = [];
+        this.contourDetector.clear();
         this.saveToHistory();
         this.editor.showStatus('Чертеж очищен', 'success');
     }
@@ -1043,6 +1353,12 @@ class SketchManager {
         this.historyIndex--;
         const state = this.history[this.historyIndex];
         this.restoreState(state);
+        
+        // Обновляем контуры после отмены
+        if (this.autoDetectContours) {
+            this.updateContoursFromElements();
+        }
+        
         this.editor.showStatus('Отменено последнее действие', 'info');
     }
 
@@ -1052,6 +1368,12 @@ class SketchManager {
         this.historyIndex++;
         const state = this.history[this.historyIndex];
         this.restoreState(state);
+        
+        // Обновляем контуры после повтора
+        if (this.autoDetectContours) {
+            this.updateContoursFromElements();
+        }
+        
         this.editor.showStatus('Повторено последнее действие', 'info');
     }
 
