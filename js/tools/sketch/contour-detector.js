@@ -1,3 +1,4 @@
+
 /**
  * Упрощенный детектор замкнутых контуров
  */
@@ -10,39 +11,58 @@ class ContourDetector {
     }
 
     // Обновление элементов для анализа
-    updateElements(elements) {
-        this.segments = [];
-        this.points = [];
-        this.edges = [];
-        this.contours = [];
+   updateElements(elements) {
+    this.segments = [];
+    this.points = [];
+    this.edges = [];
+    this.contours = [];
 
-        // Создаем упрощенное представление всех сегментов
-        elements.forEach(element => {
-            if (!element || !element.userData) return;
+    // Создаем упрощенное представление всех сегментов
+    elements.forEach(element => {
+        if (!element || !element.userData) return;
 
-            // Получаем точки элемента
-            const elementPoints = this.getElementPoints(element);
-            if (elementPoints.length < 2) return;
+        // Получаем точки элемента
+        const elementPoints = this.getElementPoints(element);
+        if (elementPoints.length < 2) return;
 
-            // Для линий и полилиний - разбиваем на сегменты
-            for (let i = 0; i < elementPoints.length - 1; i++) {
-                const start = elementPoints[i];
-                const end = elementPoints[i + 1];
+        // Для ВСЕХ элементов - разбиваем на сегменты
+        // Это важно для поиска пересечений
+        for (let i = 0; i < elementPoints.length - 1; i++) {
+            const start = elementPoints[i];
+            const end = elementPoints[i + 1];
 
-                // Проверяем, что сегмент имеет ненулевую длину
-                if (start.distanceTo(end) < 0.001) continue;
+            // Проверяем, что сегмент имеет ненулевую длину
+            if (start.distanceTo(end) < 0.001) continue;
 
-                this.segments.push({
-                    element: element,
-                    start: start.clone(),
-                    end: end.clone(),
-                    index: this.segments.length
-                });
-            }
-        });
+            this.segments.push({
+                element: element,
+                start: start.clone(),
+                end: end.clone(),
+                index: this.segments.length,
+                isClosed: (i === elementPoints.length - 2) &&
+                         element.userData.isClosed
+            });
+        }
 
-        console.log(`ContourDetector: найдено ${this.segments.length} сегментов`);
-    }
+        // Для замкнутых контуров добавляем сегмент от последней к первой точке
+        if (element.userData.isClosed && elementPoints.length > 2) {
+            const start = elementPoints[elementPoints.length - 1];
+            const end = elementPoints[0];
+
+         //   if (start.distanceTo(end) < 0.001) continue;
+
+            this.segments.push({
+                element: element,
+                start: start.clone(),
+                end: end.clone(),
+                index: this.segments.length,
+                isClosed: true
+            });
+        }
+    });
+
+    console.log(`ContourDetector: найдено ${this.segments.length} сегментов`);
+}
 
     // Получение точек элемента
     getElementPoints(element) {
@@ -79,10 +99,16 @@ class ContourDetector {
         // 2. Строим граф
         this.buildGraph();
 
-        // 3. Ищем циклы
-        this.findCycles();
+        // 3. Ищем циклы - используем улучшенный алгоритм
+        this.findAllContours();
 
         console.log(`ContourDetector: найдено ${this.contours.length} контуров`);
+        
+        // Выводим информацию о каждом контуре
+        this.contours.forEach((contour, index) => {
+            console.log(`Контур ${index}: площадь ${contour.area}, точек ${contour.points.length}`);
+        });
+        
         return this.contours;
     }
 
@@ -138,10 +164,12 @@ class ContourDetector {
         const ua = ((p4.x - p3.x) * (p1.y - p3.y) - (p4.y - p3.y) * (p1.x - p3.x)) / denominator;
         const ub = ((p2.x - p1.x) * (p1.y - p3.y) - (p2.y - p1.y) * (p1.x - p3.x)) / denominator;
 
-        if (ua >= 0 && ua <= 1 && ub >= 0 && ub <= 1) {
+        if (ua >= -0.0001 && ua <= 1.0001 && ub >= -0.0001 && ub <= 1.0001) {
+            // Уточняем точку пересечения (корректируем параметры в диапазон [0, 1])
+            const uaClamped = Math.max(0, Math.min(1, ua));
             return new THREE.Vector2(
-                p1.x + ua * (p2.x - p1.x),
-                p1.y + ua * (p2.y - p1.y)
+                p1.x + uaClamped * (p2.x - p1.x),
+                p1.y + uaClamped * (p2.y - p1.y)
             );
         }
 
@@ -208,134 +236,376 @@ class ContourDetector {
         console.log(`После разбиения: ${this.segments.length} сегментов`);
     }
 
-    // Построение графа
-    buildGraph() {
-        console.log("Построение графа...");
+   /** Построение графа - исправленная версия */
+buildGraph() {
+    console.log("Построение графа...");
 
-        // Создаем карту вершин
-        const vertexMap = new Map();
+    // Создаем карту вершин
+    const vertexMap = new Map();
 
-        // Функция для получения ключа вершины
-        const getVertexKey = (point) => {
-            return `${point.x.toFixed(2)},${point.y.toFixed(2)}`;
-        };
+    // Функция для получения ключа вершины
+    const getVertexKey = (point) => {
+        return `${point.x.toFixed(4)},${point.y.toFixed(4)}`;
+    };
 
-        // Собираем все уникальные точки
-        this.segments.forEach(segment => {
-            const startKey = getVertexKey(segment.start);
-            const endKey = getVertexKey(segment.end);
+    // Собираем все уникальные точки
+    this.segments.forEach(segment => {
+        const startKey = getVertexKey(segment.start);
+        const endKey = getVertexKey(segment.end);
 
-            if (!vertexMap.has(startKey)) {
-                vertexMap.set(startKey, {
-                    point: segment.start.clone(),
-                    edges: []
-                });
-            }
-
-            if (!vertexMap.has(endKey)) {
-                vertexMap.set(endKey, {
-                    point: segment.end.clone(),
-                    edges: []
-                });
-            }
-
-            const startVertex = vertexMap.get(startKey);
-            const endVertex = vertexMap.get(endKey);
-
-            // Добавляем ребра в обе стороны (неориентированный граф)
-            startVertex.edges.push({
-                to: endKey,
-                segmentIndex: segment.index
+        if (!vertexMap.has(startKey)) {
+            vertexMap.set(startKey, {
+                point: segment.start.clone(),
+                edges: []
             });
-
-            endVertex.edges.push({
-                to: startKey,
-                segmentIndex: segment.index
-            });
-        });
-
-        this.points = Array.from(vertexMap.values());
-        console.log(`Граф построен: ${this.points.length} вершин`);
-    }
-
-    // Поиск циклов в графе
-    findCycles() {
-        console.log("Поиск циклов...");
-        this.contours = [];
-
-        if (this.points.length < 3) return;
-
-        const visitedEdges = new Set();
-
-        // Для каждой вершины пытаемся найти цикл
-        for (const vertex of this.points) {
-            const cycles = this.findCyclesFromVertex(vertex, visitedEdges);
-            this.contours.push(...cycles);
         }
 
-        // Удаляем дубликаты
-        this.removeDuplicateContours();
+        if (!vertexMap.has(endKey)) {
+            vertexMap.set(endKey, {
+                point: segment.end.clone(),
+                edges: []
+            });
+        }
+
+        const startVertex = vertexMap.get(startKey);
+        const endVertex = vertexMap.get(endKey);
+
+        // Добавляем ребра в обе стороны (неориентированный граф)
+        startVertex.edges.push({
+            to: endKey,
+            segmentIndex: segment.index
+        });
+
+        endVertex.edges.push({
+            to: startKey,
+            segmentIndex: segment.index
+        });
+    });
+
+    this.points = Array.from(vertexMap.values());
+    console.log(`Граф построен: ${this.points.length} вершин`);
+}
+
+    // Найти все контуры
+findAllContours() {
+    console.log("Поиск всех контуров...");
+    this.contours = [];
+
+    if (this.segments.length < 3) {
+        console.log("Недостаточно сегментов для поиска контуров");
+        return [];
     }
 
-    // Поиск циклов, начиная с заданной вершины
-    findCyclesFromVertex(startVertex, visitedEdges) {
-        const cycles = [];
-        const stack = [];
+    // 1. Находим все точки пересечения
+    this.findIntersections();
 
-        const dfs = (currentVertex, prevVertex, path, edgePath) => {
+    // 2. Строим граф
+    this.buildGraph();
+
+    // 3. Ищем циклы - используем упрощенный алгоритм
+    this.findContoursSimple();
+
+    console.log(`ContourDetector: найдено ${this.contours.length} контуров`);
+
+    // Выводим информацию о каждом контуре
+    this.contours.forEach((contour, index) => {
+        console.log(`Контур ${index}: площадь ${contour.area}, точек ${contour.points.length}`);
+    });
+
+    return this.contours;
+}
+
+/** Упрощенный поиск контуров */
+findContoursSimple() {
+    console.log("Упрощенный поиск контуров...");
+
+    if (!this.points || this.points.length === 0) return;
+
+    const allCycles = [];
+    const visitedEdges = new Set();
+    const processedVertices = new Set(); // Только для текущего поиска
+
+    // Для каждой вершины пытаемся найти циклы
+    for (const vertex of this.points) {
+        const vertexKey = this.getVertexKey(vertex.point);
+
+        // Если вершина уже была обработана в каком-то контуре, пропускаем
+        if (processedVertices.has(vertexKey)) {
+            continue;
+        }
+
+        const cycles = this.findContoursFromVertexSimple(vertex, visitedEdges);
+
+        // Добавляем вершины найденных циклов в processedVertices
+        cycles.forEach(cycle => {
+            if (cycle.points && cycle.points.length > 0) {
+                cycle.points.forEach(point => {
+                    const pointKey = this.getVertexKey(point);
+                    processedVertices.add(pointKey);
+                });
+                allCycles.push(cycle);
+            }
+        });
+    }
+
+    console.log(`Найдено циклов: ${allCycles.length}`);
+
+    // Обрабатываем найденные циклы
+    this.processFoundContours(allCycles);
+}
+
+/** Упрощенный поиск контуров от вершины */
+findContoursFromVertexSimple(startVertex, visitedEdges) {
+    const cycles = [];
+
+    // Если у вершины меньше 2 ребер, не может быть цикла
+    if (startVertex.edges.length < 2) return cycles;
+
+    // Используем BFS вместо DFS для поиска первого цикла
+    const queue = [];
+    const startKey = this.getVertexKey(startVertex.point);
+
+    queue.push({
+        vertex: startVertex,
+        path: [startVertex],
+        edgePath: [],
+        visited: new Set()
+    });
+
+    while (queue.length > 0) {
+        const current = queue.shift();
+        const currentVertex = current.vertex;
+        const currentPath = current.path;
+        const currentEdgePath = current.edgePath;
+        const currentVisited = current.visited;
+
+        // Перебираем все ребра из текущей вершины
+        for (const edge of currentVertex.edges) {
+            const edgeKey = this.getEdgeKey(currentVertex.point, edge.to);
+
+            // Пропускаем уже посещенные ребра в этом пути
+            if (currentVisited.has(edgeKey)) continue;
+
+            // Пропускаем ребра, которые уже вошли в какие-то циклы
+            if (visitedEdges.has(edgeKey)) continue;
+
+            // Находим следующую вершину
+            const nextVertex = this.points.find(v =>
+                this.getVertexKey(v.point) === edge.to
+            );
+
+            if (!nextVertex) continue;
+
+            const nextKey = this.getVertexKey(nextVertex.point);
+
             // Если вернулись в начальную вершину
-            if (path.length > 2 && currentVertex === startVertex) {
-                // Проверяем, что цикл не слишком мал
-                if (path.length >= 3) {
-                    const contour = this.createContourFromPath(path, edgePath);
-                    if (contour && contour.area > 0.01) {
-                        cycles.push(contour);
-                    }
+            if (nextKey === startKey && currentPath.length >= 3) {
+                // Создаем контур
+                const contour = this.createContourFromPath(currentPath, currentEdgePath.concat(edge.segmentIndex));
+                if (contour && contour.area > 0.01) {
+                    cycles.push(contour);
+                    // Добавляем все ребра цикла в visitedEdges
+                    currentEdgePath.forEach(segIndex => {
+                        const seg = this.segments[segIndex];
+                        if (seg) {
+                            const segKey = this.getEdgeKey(seg.start, seg.end);
+                            visitedEdges.add(segKey);
+                        }
+                    });
+                    // Добавляем текущее ребро
+                    visitedEdges.add(edgeKey);
+                    return cycles; // Возвращаем первый найденный цикл
                 }
-                return;
             }
 
-            // Если уже были в этой вершине (но это не начальная)
-            if (path.includes(currentVertex) && currentVertex !== startVertex) {
-                return;
-            }
+            // Если уже были в этой вершине, пропускаем
+            const alreadyInPath = currentPath.some(v =>
+                this.getVertexKey(v.point) === nextKey
+            );
 
-            // Добавляем текущую вершину в путь
-            path.push(currentVertex);
+            if (alreadyInPath) continue;
 
-            // Перебираем все ребра из текущей вершины
-            for (const edge of currentVertex.edges) {
-                const edgeKey = this.getEdgeKey(currentVertex.point, edge.to);
+            // Продолжаем поиск
+            const newVisited = new Set(currentVisited);
+            newVisited.add(edgeKey);
 
-                // Пропускаем уже посещенные ребра
-                if (visitedEdges.has(edgeKey)) continue;
-
-                // Пропускаем ребро, ведущее назад
-                if (prevVertex && edge.to === prevVertex) continue;
-
-                // Находим следующую вершину
-                const nextVertex = this.points.find(v =>
-                    this.getVertexKey(v.point) === edge.to
-                );
-
-                if (!nextVertex) continue;
-
-                visitedEdges.add(edgeKey);
-                edgePath.push(edge.segmentIndex);
-
-                dfs(nextVertex, this.getVertexKey(currentVertex.point), [...path], [...edgePath]);
-
-                visitedEdges.delete(edgeKey);
-                edgePath.pop();
-            }
-
-            path.pop();
-        };
-
-        dfs(startVertex, null, [], []);
-
-        return cycles;
+            queue.push({
+                vertex: nextVertex,
+                path: [...currentPath, nextVertex],
+                edgePath: [...currentEdgePath, edge.segmentIndex],
+                visited: newVisited
+            });
+        }
     }
+
+    return cycles;
+}
+
+    // Найти контуры, начиная с заданной вершины (оптимизированная версия)
+findContoursFromVertex(startVertex, visitedEdges) {
+    const cycles = [];
+
+    // Если у вершины меньше 2 ребер, не может быть цикла
+    if (startVertex.edges.length < 2) return cycles;
+
+    const stack = [[startVertex, null, [startVertex], [], new Set()]];
+
+    while (stack.length > 0) {
+        const [currentVertex, prevVertexKey, path, edgePath, localVisitedEdges] = stack.pop();
+
+        // Если вернулись в начальную вершину
+        if (path.length > 2 && currentVertex === startVertex) {
+            // Проверяем, что цикл не слишком мал
+            if (path.length >= 3) {
+                const contour = this.createContourFromPath(path, edgePath);
+                if (contour && contour.area > 0.01) {
+                    cycles.push(contour);
+                }
+            }
+            continue;
+        }
+
+        // Если уже были в этой вершине (но это не начальная)
+        if (currentVertex !== startVertex && path.includes(currentVertex)) {
+            continue;
+        }
+
+        // Перебираем все ребра из текущей вершины
+        for (const edge of currentVertex.edges) {
+            const edgeKey = this.getEdgeKey(currentVertex.point, edge.to);
+
+            // Пропускаем уже посещенные ребра в этом пути
+            if (localVisitedEdges.has(edgeKey)) continue;
+
+            // Пропускаем ребро, ведущее назад
+            if (prevVertexKey && edge.to === prevVertexKey) continue;
+
+            // Находим следующую вершину
+            const nextVertex = this.points.find(v =>
+                this.getVertexKey(v.point) === edge.to
+            );
+
+            if (!nextVertex) continue;
+
+            // Создаем новые копии для следующего шага
+            const newPath = [...path, nextVertex];
+            const newEdgePath = [...edgePath, edge.segmentIndex];
+            const newLocalVisitedEdges = new Set(localVisitedEdges);
+            newLocalVisitedEdges.add(edgeKey);
+
+            stack.push([nextVertex, this.getVertexKey(currentVertex.point),
+                       newPath, newEdgePath, newLocalVisitedEdges]);
+        }
+    }
+
+    return cycles;
+}
+
+/** Упрощенный хэш контура */
+getContourHashSimple(contour) {
+    if (!contour.points || contour.points.length === 0) return '';
+
+    // Рассчитываем площадь
+    const area = Math.round(contour.area * 100) / 100;
+
+    // Сортируем элементы по UUID
+    const elementIds = contour.elements ?
+        contour.elements.map(e => e.uuid).sort().join(',') : '';
+
+    return `${area}|${elementIds}`;
+}
+
+    /** Обработка найденных контуров - упрощенная */
+processFoundContours(allCycles) {
+    const validContours = [];
+    const contourHashes = new Set();
+
+    // Фильтруем и удаляем дубликаты
+    allCycles.forEach(contour => {
+        if (!contour.isValid || contour.points.length < 3) return;
+
+        const hash = this.getContourHashSimple(contour);
+        if (!contourHashes.has(hash)) {
+            contourHashes.add(hash);
+            validContours.push(contour);
+        }
+    });
+
+    console.log(`Всего уникальных контуров: ${validContours.length}`);
+
+    // Находим контуры, которые состоят только из круга (без линии)
+    const circleOnlyContours = validContours.filter(contour => {
+        const elementTypes = new Set(contour.elements.map(el => el.userData.elementType));
+        return elementTypes.size === 1 && elementTypes.has('circle');
+    });
+
+    // Находим контуры, которые содержат и круг, и линию
+    const mixedContours = validContours.filter(contour => {
+        const elementTypes = new Set(contour.elements.map(el => el.userData.elementType));
+        return elementTypes.has('circle') && elementTypes.has('line');
+    });
+
+    console.log(`Контуров только из круга: ${circleOnlyContours.length}`);
+    console.log(`Контуров из круга и линии: ${mixedContours.length}`);
+
+    // Если есть контуры, содержащие и круг, и линию, то удаляем контуры только из круга
+    // (так как круг был разрезан линией)
+    const finalContours = [];
+
+    if (mixedContours.length > 0) {
+        // Удаляем контуры только из круга (целый круг)
+        console.log("Есть разрезанные контуры, удаляем целый круг");
+        validContours.forEach(contour => {
+            const elementTypes = new Set(contour.elements.map(el => el.userData.elementType));
+            if (elementTypes.has('line')) {
+                finalContours.push(contour);
+            }
+        });
+    } else {
+        // Если нет смешанных контуров, сохраняем все
+        finalContours.push(...validContours);
+    }
+
+    // Удаляем контуры, которые полностью содержат другие контуры (по элементам)
+    const filteredContours = [];
+    for (let i = 0; i < finalContours.length; i++) {
+        const contourA = finalContours[i];
+        let isRedundant = false;
+
+        for (let j = 0; j < finalContours.length; j++) {
+            if (i === j) continue;
+            const contourB = finalContours[j];
+
+            // Проверяем, содержит ли контур B все элементы контура A
+            const elementsA = new Set(contourA.elements.map(e => e.uuid));
+            const elementsB = new Set(contourB.elements.map(e => e.uuid));
+
+            let containsAll = true;
+            for (const elem of elementsA) {
+                if (!elementsB.has(elem)) {
+                    containsAll = false;
+                    break;
+                }
+            }
+
+            // Если контур B содержит все элементы контура A, но имеет другие элементы,
+            // и при этом площадь B больше, то A - часть B
+            if (containsAll && elementsB.size > elementsA.size && contourB.area > contourA.area) {
+                console.log(`Удаляем контур ${i} (площадь ${contourA.area}), так как он входит в контур ${j} (площадь ${contourB.area})`);
+                isRedundant = true;
+                break;
+            }
+        }
+
+        if (!isRedundant) {
+            filteredContours.push(contourA);
+        }
+    }
+
+    this.contours = filteredContours;
+    console.log(`Обработано контуров: ${this.contours.length}`);
+}
+
 
     // Создание контура из пути
     createContourFromPath(path, edgePath) {
@@ -376,40 +646,69 @@ class ContourDetector {
         };
     }
 
-    // Удаление дублирующих контуров
-    removeDuplicateContours() {
-        const uniqueContours = [];
-        const contourHashes = new Set();
+    // Вычисление центра масс полигона
+calculatePolygonCentroid(points) {
+    let area = 0;
+    let centroidX = 0;
+    let centroidY = 0;
+    const n = points.length;
 
-        this.contours.forEach(contour => {
-            const hash = this.getContourHash(contour);
-            if (!contourHashes.has(hash)) {
-                contourHashes.add(hash);
-                uniqueContours.push(contour);
-            }
-        });
-
-        this.contours = uniqueContours;
+    for (let i = 0; i < n; i++) {
+        const j = (i + 1) % n;
+        const cross = points[i].x * points[j].y - points[j].x * points[i].y;
+        area += cross;
+        centroidX += (points[i].x + points[j].x) * cross;
+        centroidY += (points[i].y + points[j].y) * cross;
     }
+
+    area *= 0.5;
+    if (Math.abs(area) < 0.0001) {
+        return new THREE.Vector2(points[0].x, points[0].y);
+    }
+
+    const factor = 1 / (6 * area);
+    centroidX *= factor;
+    centroidY *= factor;
+
+    return new THREE.Vector2(centroidX, centroidY);
+}
 
     // Получение хэша контура
     getContourHash(contour) {
-        // Сортируем точки по углу относительно центра
-        const center = this.calculateContourCenter(contour.points);
-        const points = contour.points.map(p => ({
-            x: p.x.toFixed(1),
-            y: p.y.toFixed(1),
-            angle: Math.atan2(p.y - center.y, p.x - center.x)
-        }));
+    if (!contour.points || contour.points.length === 0) return '';
 
-        points.sort((a, b) => a.angle - b.angle);
+    // Рассчитываем центр масс (не просто среднее)
+    const center = this.calculatePolygonCentroid(contour.points);
 
-        return points.map(p => `${p.x},${p.y}`).join('|');
+    // Нормализуем точки относительно центра
+    const normalizedPoints = contour.points.map(p => ({
+        x: Math.round((p.x - center.x) * 1000) / 1000,
+        y: Math.round((p.y - center.y) * 1000) / 1000
+    }));
+
+    // Находим точку с минимальным углом для нормализации вращения
+    const angles = normalizedPoints.map(p => Math.atan2(p.y, p.x));
+    const minAngleIndex = angles.indexOf(Math.min(...angles));
+
+    // Перестраиваем массив, начиная с точки с минимальным углом
+    const rotatedPoints = [];
+    for (let i = 0; i < normalizedPoints.length; i++) {
+        const idx = (minAngleIndex + i) % normalizedPoints.length;
+        rotatedPoints.push(normalizedPoints[idx]);
     }
+
+    // Создаем строку хэша
+    const pointString = rotatedPoints.map(p => `${p.x},${p.y}`).join('|');
+    const elementString = contour.elements ?
+        contour.elements.map(e => e.uuid).sort().join(',') : '';
+
+    return `${pointString}|${elementString}`;
+}
+
 
     // Вспомогательные методы
     getVertexKey(point) {
-        return `${point.x.toFixed(2)},${point.y.toFixed(2)}`;
+        return `${point.x.toFixed(4)},${point.y.toFixed(4)}`;
     }
 
     getEdgeKey(point1, point2Key) {

@@ -1,3 +1,4 @@
+
 // FigureManager.js - исправленная версия
 class FigureManager {
     constructor(cadEditor) {
@@ -7,6 +8,7 @@ class FigureManager {
         this.elementToNodes = new Map();
         this.figureCacheTimestamp = 0;
         this.autoContours = []; // Автоматически найденные контуры
+        this.brokenElements = new Set(); // Элементы, которые были разбиты на сегменты
         console.log("FigureManager: создан");
     }
 
@@ -38,31 +40,85 @@ class FigureManager {
         const autoContours = this.getAutoContours();
         console.log("FigureManager: автоматических контуров:", autoContours.length);
 
-        // 5. Объединение всех контуров
-        const allContours = [...simpleContours, ...lineContours, ...autoContours];
+        // 5. Обновляем список разбитых элементов на основе автоматических контуров
+        this.updateBrokenElements(autoContours);
+
+        // 6. Фильтруем контуры: исключаем простые контуры, которые были разбиты
+        const filteredContours = this.filterBrokenContours(simpleContours);
+        console.log("FigureManager: после фильтрации контуров:", filteredContours.length);
+
+        // 7. Объединение всех контуров
+        const allContours = [...filteredContours, ...lineContours, ...autoContours];
         console.log("FigureManager: всего контуров:", allContours.length);
 
-        // 6. Создание узлов
+        // 8. Создание узлов
         const allNodes = allContours.map(contour => new FigureNode(contour));
         console.log("FigureManager: создано узлов:", allNodes.length);
 
-        // 7. Построение дерева вложенности
+        // 9. Построение дерева вложенности
         if (allNodes.length > 0) {
             this.buildEnhancedNestingTree(allNodes);
         } else {
             this.rootNodes = [];
         }
 
-        // 8. Определение типов (отверстия/внешние)
+        // 10. Определение типов (отверстия/внешние)
         if (this.rootNodes.length > 0) {
             this.determineContourTypes();
         }
 
-        // 9. Сохранение в структуры данных
+        // 11. Сохранение в структуры данных
         this.updateDataStructures(allNodes);
 
         this.figureCacheTimestamp = now;
         return this.getAllFiguresFlat();
+    }
+
+    // Обновление списка разбитых элементов
+    updateBrokenElements(autoContours) {
+        this.brokenElements.clear();
+        
+        autoContours.forEach(contour => {
+            if (contour.elements) {
+                contour.elements.forEach(element => {
+                    // Проверяем, является ли элемент замкнутым контуром, который был разбит
+                    if (this.isSketchElementClosed(element)) {
+                        this.brokenElements.add(element);
+
+                    }
+                });
+            }
+        });
+        
+        console.log("Разбитых элементов:", this.brokenElements.size);
+    }
+
+    // Фильтрация разбитых контуров
+    filterBrokenContours(simpleContours) {
+        if (this.brokenElements.size === 0) return simpleContours;
+        
+        const filtered = simpleContours.filter(contour => {
+            // Если у контура есть элемент и он в списке разбитых - исключаем
+            if (contour.element && this.brokenElements.has(contour.element)) {
+                console.log("Исключаем разбитый контур:", contour.type, "площадь:", contour.area);
+                return false;
+            }
+            
+            // Если у контура несколько элементов и все они разбиты - исключаем
+            if (contour.elements && contour.elements.length > 0) {
+                const allElementsBroken = contour.elements.every(element => 
+                    this.brokenElements.has(element)
+                );
+                if (allElementsBroken) {
+                    console.log("Исключаем разбитый составной контур:", contour.type, "площадь:", contour.area);
+                    return false;
+                }
+            }
+            
+            return true;
+        });
+        
+        return filtered;
     }
 
     // Получение всех элементов скетча (исправленный метод)
@@ -110,6 +166,12 @@ class FigureManager {
             // Проверяем, замкнут ли элемент
             const isClosed = this.isSketchElementClosed(element);
             if (!isClosed) return;
+
+            // Если элемент уже помечен как разбитый, не создаем для него простой контур
+            if (this.brokenElements.has(element)) {
+                console.log("Пропускаем разбитый элемент при создании простого контура:", elementType);
+                return;
+            }
 
             const area = this.calculatePolygonArea(points);
             if (Math.abs(area) < 0.01) return;
@@ -199,25 +261,29 @@ class FigureManager {
 
     // Обновление автоматическими контурами
     updateWithAutoContours(contours) {
-        console.log("=== FigureManager: обновление автоматическими контурами ===");
-        console.log("Получено контуров:", contours.length);
+    console.log("=== FigureManager: обновление автоматическими контурами ===");
+    console.log("Получено контуров:", contours.length);
 
-        // Фильтруем только валидные контуры
-        this.autoContours = contours.filter(contour =>
-            contour &&
-            contour.points &&
-            contour.points.length >= 3 &&
-            contour.area > 0.01
-        );
+    contours.forEach((contour, index) => {
+        console.log(`Автоконтур ${index}: площадь ${contour.area}, тип ${contour.type}, точек ${contour.points ? contour.points.length : 0}`);
+    });
 
-        console.log("Валидных контуров:", this.autoContours.length);
+    // Фильтруем только валидные контуры
+    this.autoContours = contours.filter(contour =>
+        contour &&
+        contour.points &&
+        contour.points.length >= 3 &&
+        contour.area > 0.01
+    );
 
-        // Сбрасываем кэш
-        this.figureCacheTimestamp = 0;
+    console.log("Валидных контуров:", this.autoContours.length);
 
-        // Перестраиваем фигуры
-        this.collectAllFigures();
-    }
+    // Сбрасываем кэш
+    this.figureCacheTimestamp = 0;
+
+    // Перестраиваем фигуры
+    this.collectAllFigures();
+}
 
     // ========== ГЕОМЕТРИЧЕСКИЕ МЕТОДЫ ==========
 
@@ -518,7 +584,53 @@ class FigureManager {
         const elementId = element.uuid;
         const nodes = this.elementToNodes.get(elementId) || [];
 
-        return nodes.map(node => this.nodeToFigure(node));
+        // Фильтруем узлы, исключая те, которые созданы из разбитых элементов
+        const validNodes = nodes.filter(node => {
+            // Проверяем, не был ли элемент разбит
+            if (node.element && this.brokenElements.has(node.element)) {
+                return false;
+            }
+            
+            // Проверяем, не все ли элементы узла разбиты
+            if (node.elementIds && node.elementIds.size > 0) {
+                const allElementsBroken = Array.from(node.elementIds).every(id => {
+                    const element = this.findElementById(id);
+                    return element && this.brokenElements.has(element);
+                });
+                if (allElementsBroken) {
+                    return false;
+                }
+            }
+            
+            return true;
+        });
+
+        return validNodes.map(node => this.nodeToFigure(node));
+    }
+
+    findElementById(elementId) {
+        // Ищем элемент в сцене по UUID
+        let foundElement = null;
+        
+        const searchInObject = (object) => {
+            if (object.uuid === elementId) {
+                foundElement = object;
+                return true;
+            }
+            
+            if (object.children && object.children.length > 0) {
+                for (const child of object.children) {
+                    if (searchInObject(child)) {
+                        return true;
+                    }
+                }
+            }
+            
+            return false;
+        };
+        
+        searchInObject(this.editor.scene);
+        return foundElement;
     }
 
     findNodeByContour(contour) {
@@ -592,7 +704,6 @@ class FigureManager {
     }
 
     findNodeByHoleContour(holeContour) {
-    return this.findNodeByContour(holeContour);
+        return this.findNodeByContour(holeContour);
+    }
 }
-}
-

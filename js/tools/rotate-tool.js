@@ -142,7 +142,7 @@ class RotateTool extends TransformToolBase {
 
             // Устанавливаем позицию, НЕ масштабируем толщину
             arc.position.copy(position);
-            arc.scale.setScalar(radius);
+            arc.scale.setScalar(12);
 
             // Обновляем материал при наведении
             if (this.hoveredArc === arc) {
@@ -180,6 +180,7 @@ class RotateTool extends TransformToolBase {
         // Удаляем старый текст если есть
         if (this.angleText && this.angleText.parent) {
             this.angleText.parent.remove(this.angleText);
+            this.angleText = null;
         }
 
         // Создаем текст для отображения угла
@@ -201,7 +202,6 @@ class RotateTool extends TransformToolBase {
         const angleText = `${Math.abs(this.currentAngle).toFixed(1)}°`;
         context.fillText(angleText, canvas.width / 2, canvas.height / 2);
 
-
         // Создаем текстуру из canvas
         const texture = new THREE.CanvasTexture(canvas);
         texture.needsUpdate = true;
@@ -210,24 +210,124 @@ class RotateTool extends TransformToolBase {
         const spriteMaterial = new THREE.SpriteMaterial({
             map: texture,
             transparent: true,
-            opacity: 0.9
+            opacity: 0.9,
+            depthTest: false // Чтобы текст всегда был поверх объектов
         });
 
         this.angleText = new THREE.Sprite(spriteMaterial);
         this.angleText.scale.set(10, 5.5, 1);
 
-        // Позиционируем текст над индикатором
-        const textPosition = this.angleIndicator.position.clone();
-        const cameraDirection = new THREE.Vector3();
-        this.editor.camera.getWorldDirection(cameraDirection);
-        textPosition.add(cameraDirection.multiplyScalar(2));
+        // Получаем позицию индикатора в мировых координатах
+        const indicatorWorldPos = new THREE.Vector3();
+        this.angleIndicator.getWorldPosition(indicatorWorldPos);
+
+        // Получаем направление от индикатора к камере
+        const cameraDirection = new THREE.Vector3().subVectors(
+            this.editor.camera.position,
+            indicatorWorldPos
+        ).normalize();
+
+        // Смещаем текст на 3 единицы в направлении от индикатора к камере
+        const textPosition = indicatorWorldPos.clone().add(
+            cameraDirection.multiplyScalar(3)
+        );
+
+        // Добавляем небольшое смещение вверх для лучшей видимости
+        textPosition.y += 2;
 
         this.angleText.position.copy(textPosition);
+
+        // Ориентируем текст к камере (чтобы он всегда был развернут к пользователю)
         this.angleText.lookAt(this.editor.camera.position);
 
-        // Добавляем текст в сцену
-        this.gizmoGroup.add(this.angleText);
+        // Добавляем текст в сцену (не в группу гизмо, чтобы не масштабировался)
+        this.editor.scene.add(this.angleText);
     }
+
+
+//    updateAngleIndicator() {
+//        if (!this.angleIndicator || !this.currentAxis) return;
+//
+//        const arc = this.gizmoGroup.getObjectByName(`rotate_${this.currentAxis}`);
+//        if (!arc) return;
+//
+//        // Копируем позицию и масштаб от соответствующей дуги
+//        this.angleIndicator.position.copy(arc.position);
+//        this.angleIndicator.rotation.copy(arc.rotation);
+//        this.angleIndicator.scale.copy(arc.scale);
+//
+//        // Обновляем цвет индикатора в зависимости от угла
+//        const normalizedAngle = Math.abs(this.currentAngle % 360);
+//        let hue = (normalizedAngle / 360) * 120; // От 0° (красный) до 120° (зеленый)
+//        const color = new THREE.Color().setHSL(hue / 360, 0.9, 0.5);
+//        this.angleIndicator.material.color.copy(color);
+//
+//        // Удаляем старый текст если есть
+//        if (this.angleText && this.angleText.parent) {
+//            this.angleText.parent.remove(this.angleText);
+//            this.angleText = null;
+//        }
+//
+//        // Создаем текст для отображения угла
+//        const canvas = document.createElement('canvas');
+//        const context = canvas.getContext('2d');
+//        canvas.width = 256;
+//        canvas.height = 128;
+//
+//        // Очищаем canvas
+//        context.clearRect(0, 0, canvas.width, canvas.height);
+//
+//        // Настраиваем стиль текста
+//        context.fillStyle = '#ffffff';
+//        context.font = '68px Arial';
+//        context.textAlign = 'center';
+//        context.textBaseline = 'middle';
+//
+//        // Рисуем текст
+//        const angleText = `${Math.abs(this.currentAngle).toFixed(1)}°`;
+//        context.fillText(angleText, canvas.width / 2, canvas.height / 2);
+//
+//        // Создаем текстуру из canvas
+//        const texture = new THREE.CanvasTexture(canvas);
+//        texture.needsUpdate = true;
+//
+//        // Создаем спрайт с текстом
+//        const spriteMaterial = new THREE.SpriteMaterial({
+//            map: texture,
+//            transparent: true,
+//            opacity: 0.9,
+//            depthTest: false // Чтобы текст всегда был поверх объектов
+//        });
+//
+//        this.angleText = new THREE.Sprite(spriteMaterial);
+//        this.angleText.scale.set(10, 5.5, 1);
+//
+//        // Получаем позицию индикатора в мировых координатах
+//        const indicatorWorldPos = new THREE.Vector3();
+//        this.angleIndicator.getWorldPosition(indicatorWorldPos);
+//
+//        // Получаем направление от индикатора к камере
+//        const cameraDirection = new THREE.Vector3().subVectors(
+//            this.editor.camera.position,
+//            indicatorWorldPos
+//        ).normalize();
+//
+//        // Смещаем текст на 3 единицы в направлении от индикатора к камере
+//        const textPosition = indicatorWorldPos.clone().add(
+//            cameraDirection.multiplyScalar(3)
+//        );
+//
+//        // Добавляем небольшое смещение вверх для лучшей видимости
+//        textPosition.y += 2;
+//
+//        this.angleText.position.copy(textPosition);
+//
+//        // Ориентируем текст к камере (чтобы он всегда был развернут к пользователю)
+//        this.angleText.lookAt(this.editor.camera.position);
+//
+//        // Добавляем текст в сцену (не в группу гизмо, чтобы не масштабировался)
+//        this.editor.scene.add(this.angleText);
+//    }
 
     getPropertiesHTML() {
         console.log('RotateTool: создание HTML свойств');

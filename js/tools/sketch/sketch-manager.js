@@ -367,7 +367,7 @@ class SketchManager {
                 color: (i === 0) ? centerColor : gridColor,
                 linewidth: 1,
                 transparent: true,
-                opacity: 0.6
+                opacity: 0.3
             });
 
             const line = new THREE.Line(geometry, material);
@@ -835,6 +835,40 @@ class SketchManager {
         }
     }
 
+    filterOverlappingContours(contours) {
+        const result = [];
+        const elementGroups = new Map();
+
+        // Группируем контуры по элементам
+        contours.forEach(contour => {
+            const elementIds = contour.elements.map(el => el.uuid).sort().join('|');
+            if (!elementGroups.has(elementIds)) {
+                elementGroups.set(elementIds, []);
+            }
+            elementGroups.get(elementIds).push(contour);
+        });
+
+        // Для каждой группы берем контур с наибольшей площадью
+        for (const [elementId, groupContours] of elementGroups) {
+            if (groupContours.length === 1) {
+                result.push(groupContours[0]);
+            } else {
+                // Сортируем по площади и берем самый большой
+                const sorted = groupContours.sort((a, b) => b.area - a.area);
+                result.push(sorted[0]);
+
+                // Остальные считаем отверстиями, если они внутри
+                for (let i = 1; i < sorted.length; i++) {
+                    if (this.isContourInsideContour(sorted[i], sorted[0])) {
+                        result.push(sorted[i]);
+                    }
+                }
+            }
+        }
+
+        return result;
+    }
+
     // Новый метод для детекции контуров
 detectContours() {
     if (!this.currentPlane || this.elements.length === 0) return;
@@ -870,6 +904,14 @@ detectContours() {
         const contours = this.contourDetector.findClosedContours();
 
         console.log(`Найдено контуров: ${contours.length}`);
+
+        // Выводим информацию о каждом контуре
+        contours.forEach((contour, index) => {
+            console.log(`Контур ${index}: площадь ${contour.area}, точек ${contour.points.length}`);
+            if (contour.elements && contour.elements.length > 0) {
+                console.log(`  Элементов: ${contour.elements.length}, типы: ${contour.elements.map(el => el.userData.elementType).join(', ')}`);
+            }
+        });
 
         if (contours.length > 0) {
             // Преобразуем контуры в формат для FigureManager
