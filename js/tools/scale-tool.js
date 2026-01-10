@@ -1,4 +1,3 @@
-
 class ScaleTool extends TransformToolBase {
     constructor(editor) {
         super('scale', 'fa-expand-alt', editor);
@@ -10,6 +9,10 @@ class ScaleTool extends TransformToolBase {
 
         this.currentHandle = null;
         this.startHandleWorldPosition = new THREE.Vector3();
+        
+        // Для подсветки при наведении
+        this.hoveredHandle = null;
+
         this.initGizmo();
     }
 
@@ -26,7 +29,7 @@ class ScaleTool extends TransformToolBase {
     }
 
     createScaleGizmo() {
-        const handleSize = 1;
+        const handleSize = 1.5;
         const lineWidth = 0.1;
         
         this.baseSize = 10;
@@ -186,6 +189,35 @@ class ScaleTool extends TransformToolBase {
         }
 
         this.updateRectangleGeometries(halfWidth, halfHeight, halfDepth);
+        
+        // Обновляем материалы для подсветки
+        this.updateHandleMaterials();
+    }
+    
+    updateHandleMaterials() {
+        // Обновляем материалы базовых кубиков
+        this.baseMiddleHandles.forEach(handle => {
+            const isHovered = (handle === this.hoveredHandle);
+            const targetColor = isHovered ? 0xFFFF00 : this.axisColors[handle.userData.axis];
+            const targetOpacity = isHovered ? 1.0 : 0.9;
+            
+            if (handle.material) {
+                handle.material.color.set(targetColor);
+                handle.material.opacity = targetOpacity;
+            }
+        });
+        
+        // Обновляем материалы вертикальных кубиков
+        this.verticalMiddleHandles.forEach(handle => {
+            const isHovered = (handle === this.hoveredHandle);
+            const targetColor = isHovered ? 0xFFFF00 : this.axisColors[handle.userData.axis];
+            const targetOpacity = isHovered ? 1.0 : 0.9;
+            
+            if (handle.material) {
+                handle.material.color.set(targetColor);
+                handle.material.opacity = targetOpacity;
+            }
+        });
     }
 
     updateRectangleGeometries(halfWidth, halfHeight, halfDepth) {
@@ -261,6 +293,39 @@ class ScaleTool extends TransformToolBase {
 
         return false;
     }
+    
+    onMouseMove(e) {
+        super.onMouseMove(e);
+
+        if (this.isDragging) return;
+
+        // Обработка наведения на кубики
+        this.editor.updateMousePosition(e);
+        this.editor.raycaster.setFromCamera(this.editor.mouse, this.editor.camera);
+
+        const gizmoMeshes = [];
+        this.gizmoGroup.traverse((child) => {
+            if (child instanceof THREE.Mesh && child.userData.handle) {
+                gizmoMeshes.push(child);
+            }
+        });
+
+        const intersects = this.editor.raycaster.intersectObjects(gizmoMeshes, true);
+
+        // Сбрасываем подсветку предыдущего кубика
+        if (this.hoveredHandle) {
+            this.hoveredHandle = null;
+        }
+
+        // Подсвечиваем новый кубик при наведении
+        if (intersects.length > 0) {
+            const object = intersects[0].object;
+            this.hoveredHandle = object;
+        }
+
+        // Обновляем гизмо, чтобы применить подсветку
+        this.updateGizmoPosition();
+    }
 
     startDragging(axis, e) {
         super.startDragging(axis, e);
@@ -311,7 +376,7 @@ class ScaleTool extends TransformToolBase {
             this.startHandleWorldPosition
         );
         
-        // Находим точку пересечения луча с этой плоскостью
+        // Находим точку пересечения луча с этой плоскости
         const intersectionPoint = new THREE.Vector3();
         if (this.editor.raycaster.ray.intersectPlane(plane, intersectionPoint)) {
             // Вычисляем смещение от начальной позиции кубика
@@ -376,6 +441,26 @@ class ScaleTool extends TransformToolBase {
     onMouseUp(e) {
         super.onMouseUp(e);
         this.currentHandle = null;
+        
+        // Сбрасываем подсветку
+        this.hoveredHandle = null;
+        this.updateGizmoPosition();
+    }
+    
+    detach() {
+        // Сбрасываем подсветку
+        this.hoveredHandle = null;
+        
+        // Вызываем родительский метод
+        super.detach();
+    }
+    
+    onDeactivate() {
+        // Сбрасываем подсветку
+        this.hoveredHandle = null;
+        
+        // Вызываем родительский метод
+        super.onDeactivate();
     }
 
     getPropertiesHTML() {

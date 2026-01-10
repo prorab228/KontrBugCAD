@@ -1,4 +1,4 @@
-// ExtrudeManager.js - полная версия с историей и булевыми операциями
+// ExtrudeManager.js - упрощенная версия с геометрической проверкой
 class ExtrudeManager {
     constructor(cadEditor) {
         this.editor = cadEditor;
@@ -20,13 +20,17 @@ class ExtrudeManager {
 
         // Для подсветки
         this.hoveredFigure = null;
-        this.hoveredColor = 0xFFFF00; // Желтый для наведения
-        this.selectedColor = 0x0066FF; // Синий для выделения
+        this.hoveredColor = 0xFFFF00;
+        this.selectedColor = 0x0066FF;
 
         // Предотвращение двойного клика
         this.isProcessingClick = false;
 
-        console.log("ExtrudeManager: создан (полная версия с историей)");
+        // Объединение фигур
+        this.mergeConnectedFigures = false;
+        this.mergeThreshold = 0.1; // Увеличенный порог для учёта небольших погрешностей
+
+        console.log("ExtrudeManager: создан (упрощенная версия с геометрической проверкой)");
     }
 
     // === ОСНОВНЫЕ МЕТОДЫ ===
@@ -57,14 +61,12 @@ class ExtrudeManager {
                 return false;
             }
 
-            // Получаем все фигуры
             const allFigures = this.figureManager.getAllFigures();
             if (allFigures.length === 0) {
                 console.log("Нет фигур для выбора");
                 return false;
             }
 
-            // Находим фигуру под курсором
             const figure = this.findFigureAtPoint(point, allFigures);
             if (!figure) {
                 console.log("Не найдена фигура под курсором");
@@ -74,10 +76,8 @@ class ExtrudeManager {
             console.log("Найдена фигура:", figure.id, "isHole:", figure.isHole,
                        "depth:", figure.depth, "children:", figure.childrenIds?.length || 0);
 
-            // Переключаем выделение
             this.toggleSelection(figure);
 
-            // Обновляем UI
             this.updateExtrudePreview();
             this.updateExtrudeUI();
             this.createExtrudeDirectionIndicator();
@@ -92,24 +92,20 @@ class ExtrudeManager {
 
     // Найти фигуру в точке
     findFigureAtPoint(point, figures) {
-        // Сортируем по глубине (глубже сверху) и площади (маленькие сверху)
         const sorted = [...figures].sort((a, b) => {
-            if (a.depth !== b.depth) return b.depth - a.depth; // Глубже сверху
-            return a.area - b.area; // Меньше сверху
+            if (a.depth !== b.depth) return b.depth - a.depth;
+            return a.area - b.area;
         });
 
         for (const figure of sorted) {
             if (!figure.outer || !figure.outer.points) continue;
 
-            // Получаем плоскость фигуры
             const figurePlane = this.getFigurePlane(figure);
             if (!figurePlane) continue;
 
-            // Преобразуем точку в локальные координаты
             const localPoint = figurePlane.worldToLocal(point.clone());
             const localPoint2D = new THREE.Vector2(localPoint.x, localPoint.y);
 
-            // Проверяем попадание
             if (this.isPointInContour(localPoint2D, figure.outer.points)) {
                 return figure;
             }
@@ -123,32 +119,27 @@ class ExtrudeManager {
         const figureId = figure.id;
 
         if (this.selectedFigures.has(figureId)) {
-            // Снимаем выделение
             this.selectedFigures.delete(figureId);
             this.unhighlightFigure(figure);
 
-            // Если это был последний выделенный элемент, сбрасываем базовую плоскость
             if (this.selectedFigures.size === 0) {
                 this.basePlane = null;
             }
         } else {
-            // Добавляем выделение
             this.selectedFigures.set(figureId, figure);
 
-            // Устанавливаем базовую плоскость, если еще не установлена
             if (!this.basePlane) {
                 this.basePlane = this.getFigurePlane(figure);
                 console.log("Установлена базовая плоскость:", this.basePlane?.uuid);
             }
 
-            // Подсвечиваем синим
             this.highlightFigure(figure, this.selectedColor);
         }
 
         console.log("Выделено фигур:", this.selectedFigures.size);
     }
 
-    // Получить фигуры для вытягивания (исправленная версия для вложенных фигур)
+    // Получить фигуры для вытягивания
     getFiguresForExtrusion() {
         const result = [];
         const processedFigures = new Set();
@@ -156,8 +147,40 @@ class ExtrudeManager {
         console.log("=== getFiguresForExtrusion ===");
         console.log("Выделено фигур:", this.selectedFigures.size);
 
-        // Собираем все выделенные фигуры
-        for (const figure of this.selectedFigures.values()) {
+        // Если выбрано несколько фигур и включено объединение, проверяем соединение
+        if (this.selectedFigures.size > 1 && this.mergeConnectedFigures) {
+            const figuresArray = Array.from(this.selectedFigures.values());
+
+            // Проверяем, все ли фигуры на одной плоскости
+            const allSamePlane = this.areAllFiguresOnSamePlane(figuresArray);
+            if (!allSamePlane) {
+                console.log("Фигуры на разных плоскостях, объединение невозможно");
+                return this.getIndividualFigures(figuresArray);
+            }
+
+            // Проверяем геометрическое соединение
+            const connected = this.areFiguresGeometricallyConnected(figuresArray);
+            if (connected) {
+                console.log("Фигуры геометрически соединены, создаем объединенную фигуру");
+                const mergedFigure = this.createMergedFigureFromConnected(figuresArray);
+                if (mergedFigure) {
+                    return [mergedFigure];
+                }
+            } else {
+                console.log("Фигуры не соединены геометрически");
+            }
+        }
+
+        // Возвращаем фигуры по отдельности
+        return this.getIndividualFigures(Array.from(this.selectedFigures.values()));
+    }
+
+    // Получить фигуры по отдельности
+    getIndividualFigures(figures) {
+        const result = [];
+        const processedFigures = new Set();
+
+        for (const figure of figures) {
             if (processedFigures.has(figure.id)) continue;
 
             console.log(`Обрабатываем фигуру ${figure.id}: isHole=${figure.isHole}, depth=${figure.depth}`);
@@ -188,7 +211,302 @@ class ExtrudeManager {
         return result;
     }
 
-    // Получить все непосредственные отверстия (вложенность 1)
+    // Проверить, все ли фигуры на одной плоскости
+    areAllFiguresOnSamePlane(figures) {
+        if (figures.length < 2) return true;
+
+        const firstPlane = this.getFigurePlane(figures[0]);
+        if (!firstPlane) return false;
+
+        for (let i = 1; i < figures.length; i++) {
+            const plane = this.getFigurePlane(figures[i]);
+            if (!plane || !this.arePlanesCompatible(firstPlane, plane)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    // Проверить геометрическое соединение фигур
+    areFiguresGeometricallyConnected(figures) {
+        if (figures.length < 2) return true;
+
+        // Создаем Bounding Box для каждой фигуры в локальных координатах базовой плоскости
+        const boundingBoxes = figures.map(figure => {
+            const points = this.getFigurePointsForBasePlane(figure);
+            if (!points || points.length === 0) return null;
+
+            const bbox = new THREE.Box2();
+            points.forEach(point => {
+                bbox.expandByPoint(new THREE.Vector2(point.x, point.y));
+            });
+
+            // Немного расширяем bbox для учёта погрешностей
+            bbox.expandByScalar(this.mergeThreshold);
+
+            return {
+                figure,
+                bbox,
+                points
+            };
+        }).filter(item => item !== null);
+
+        // Проверяем пересечение bounding box
+        for (let i = 0; i < boundingBoxes.length; i++) {
+            for (let j = i + 1; j < boundingBoxes.length; j++) {
+                if (boundingBoxes[i].bbox.intersectsBox(boundingBoxes[j].bbox)) {
+                    // Если bbox пересекаются, проверяем геометрическое соединение более точно
+                    if (this.areTwoFiguresConnected(boundingBoxes[i], boundingBoxes[j])) {
+                        return true;
+                    }
+                }
+            }
+        }
+
+        return false;
+    }
+
+    // Проверить соединение двух фигур
+    areTwoFiguresConnected(fig1, fig2) {
+        // 1. Проверяем пересечение контуров
+        if (this.doContoursIntersect(fig1.points, fig2.points)) {
+            return true;
+        }
+
+        // 2. Проверяем, что одна фигура полностью внутри другой
+        // (это тоже считается соединением для вложенных фигур)
+        if (this.isContourInsideAnother(fig1.points, fig2.points) ||
+            this.isContourInsideAnother(fig2.points, fig1.points)) {
+            return true;
+        }
+
+        // 3. Проверяем близость вершин
+        return this.areVerticesClose(fig1.points, fig2.points);
+    }
+
+    // Проверить пересечение контуров
+    doContoursIntersect(points1, points2) {
+        // Проверяем пересечение отрезков
+        for (let i = 0; i < points1.length; i++) {
+            const p1 = points1[i];
+            const p2 = points1[(i + 1) % points1.length];
+
+            for (let j = 0; j < points2.length; j++) {
+                const p3 = points2[j];
+                const p4 = points2[(j + 1) % points2.length];
+
+                if (this.segmentsIntersect(p1, p2, p3, p4)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    // Проверить, находится ли один контур внутри другого
+    isContourInsideAnother(innerPoints, outerPoints) {
+        // Проверяем несколько точек внутреннего контура
+        for (const point of innerPoints) {
+            if (!this.isPointInContour(point, outerPoints)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    // Проверить близость вершин
+    areVerticesClose(points1, points2) {
+        const thresholdSq = this.mergeThreshold * this.mergeThreshold;
+
+        for (const p1 of points1) {
+            for (const p2 of points2) {
+                const dx = p1.x - p2.x;
+                const dy = p1.y - p2.y;
+                const distSq = dx * dx + dy * dy;
+
+                if (distSq < thresholdSq) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    // Проверить пересечение двух отрезков
+    segmentsIntersect(p1, p2, p3, p4) {
+        const d1 = this.direction(p3, p4, p1);
+        const d2 = this.direction(p3, p4, p2);
+        const d3 = this.direction(p1, p2, p3);
+        const d4 = this.direction(p1, p2, p4);
+
+        if (((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) &&
+            ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0))) {
+            return true;
+        }
+
+        // Проверяем коллинеарные случаи
+        if (d1 === 0 && this.onSegment(p3, p4, p1)) return true;
+        if (d2 === 0 && this.onSegment(p3, p4, p2)) return true;
+        if (d3 === 0 && this.onSegment(p1, p2, p3)) return true;
+        if (d4 === 0 && this.onSegment(p1, p2, p4)) return true;
+
+        return false;
+    }
+
+    // Проверить, лежит ли точка на отрезке
+    onSegment(p1, p2, p) {
+        return Math.min(p1.x, p2.x) <= p.x && p.x <= Math.max(p1.x, p2.x) &&
+               Math.min(p1.y, p2.y) <= p.y && p.y <= Math.max(p1.y, p2.y);
+    }
+
+    // Определить направление
+    direction(p1, p2, p3) {
+        return (p3.x - p1.x) * (p2.y - p1.y) - (p2.x - p1.x) * (p3.y - p1.y);
+    }
+
+    // Создать объединенную фигуру из соединённых фигур
+    createMergedFigureFromConnected(figures) {
+        console.log("Создание объединенной фигуры из", figures.length, "фигур");
+
+        // Находим все точки всех фигур
+        const allPoints = [];
+        const allHoles = [];
+
+        for (const figure of figures) {
+            const points = this.getFigurePointsForBasePlane(figure);
+            allPoints.push(...points);
+
+            // Добавляем отверстия этой фигуры
+            const holes = this.getAllImmediateHoles(figure);
+            allHoles.push(...holes);
+        }
+
+        if (allPoints.length === 0) {
+            console.log("Нет точек для создания фигуры");
+            return null;
+        }
+
+        // Создаем выпуклую оболочку из всех точек
+        const convexHull = this.createConvexHull(allPoints);
+        if (!convexHull || convexHull.length < 3) {
+            console.log("Не удалось создать выпуклую оболочку");
+            return null;
+        }
+
+        return {
+            id: 'merged_' + Date.now(),
+            outer: {
+                points: convexHull,
+                center: this.calculateContourCenter(convexHull),
+                area: this.calculateSignedPolygonArea(convexHull)
+            },
+            holes: allHoles.map(hole => ({
+                points: this.getContourPointsForBasePlane(hole),
+                center: this.calculateContourCenter(this.getContourPointsForBasePlane(hole)),
+                area: this.calculateSignedPolygonArea(this.getContourPointsForBasePlane(hole))
+            })),
+            area: this.calculateSignedPolygonArea(convexHull),
+            isHole: false,
+            parentId: null,
+            childrenIds: [],
+            depth: figures[0].depth,
+            isMerged: true,
+            sourceFigures: figures.map(f => f.id),
+            geometricMerge: true
+        };
+    }
+
+    // Создать выпуклую оболочку
+    createConvexHull(points) {
+        if (points.length < 3) return points;
+
+        // Удаляем дубликаты
+        const uniquePoints = [];
+        const seen = new Set();
+
+        for (const point of points) {
+            const key = `${point.x.toFixed(6)},${point.y.toFixed(6)}`;
+            if (!seen.has(key)) {
+                seen.add(key);
+                uniquePoints.push(point);
+            }
+        }
+
+        if (uniquePoints.length < 3) return uniquePoints;
+
+        // Находим самую левую нижнюю точку
+        let startIndex = 0;
+        for (let i = 1; i < uniquePoints.length; i++) {
+            if (uniquePoints[i].y < uniquePoints[startIndex].y ||
+                (uniquePoints[i].y === uniquePoints[startIndex].y &&
+                 uniquePoints[i].x < uniquePoints[startIndex].x)) {
+                startIndex = i;
+            }
+        }
+
+        // Начинаем с самой левой нижней точки
+        const hull = [];
+        let current = startIndex;
+
+        do {
+            hull.push(uniquePoints[current]);
+
+            let next = (current + 1) % uniquePoints.length;
+
+            for (let i = 0; i < uniquePoints.length; i++) {
+                if (i === current) continue;
+
+                const cross = this.crossProduct(
+                    uniquePoints[current],
+                    uniquePoints[i],
+                    uniquePoints[next]
+                );
+
+                if (cross > 0 ||
+                    (cross === 0 &&
+                     this.distanceSquared(uniquePoints[current], uniquePoints[i]) >
+                     this.distanceSquared(uniquePoints[current], uniquePoints[next]))) {
+                    next = i;
+                }
+            }
+
+            current = next;
+        } while (current !== startIndex);
+
+        return hull;
+    }
+
+    // Вычислить квадрат расстояния
+    distanceSquared(p1, p2) {
+        const dx = p1.x - p2.x;
+        const dy = p1.y - p2.y;
+        return dx * dx + dy * dy;
+    }
+
+    // Векторное произведение
+    crossProduct(p1, p2, p3) {
+        return (p2.x - p1.x) * (p3.y - p1.y) - (p2.y - p1.y) * (p3.x - p1.x);
+    }
+
+    // Вычислить центр контура
+    calculateContourCenter(points) {
+        if (points.length === 0) return new THREE.Vector2(0, 0);
+
+        let sumX = 0;
+        let sumY = 0;
+
+        points.forEach(p => {
+            sumX += p.x;
+            sumY += p.y;
+        });
+
+        return new THREE.Vector2(sumX / points.length, sumY / points.length);
+    }
+
+    // Получить все непосредственные отверстия
     getAllImmediateHoles(figure) {
         const holes = [];
 
@@ -196,8 +514,6 @@ class ExtrudeManager {
             for (const childId of figure.childrenIds) {
                 const childFigure = this.figureManager.getFigureById(childId);
                 if (childFigure) {
-                    // Для внешнего контура: отверстия - это его дети с isHole=true
-                    // Для отверстия: отверстия - это его дети с isHole=false
                     if ((!figure.isHole && childFigure.isHole) ||
                         (figure.isHole && !childFigure.isHole)) {
                         holes.push(childFigure.outer);
@@ -215,7 +531,6 @@ class ExtrudeManager {
     highlightFigure(figure, color) {
         if (!figure || !figure.outer) return;
 
-        // Подсвечиваем только основной контур
         if (figure.outer.element) {
             this.editor.objectsManager.safeSetElementColor(figure.outer.element, color);
         } else if (figure.outer.elements) {
@@ -228,7 +543,6 @@ class ExtrudeManager {
     unhighlightFigure(figure) {
         if (!figure || !figure.outer) return;
 
-        // Возвращаем исходный цвет
         if (figure.outer.element) {
             this.editor.objectsManager.safeRestoreElementColor(figure.outer.element);
         } else if (figure.outer.elements) {
@@ -247,13 +561,11 @@ class ExtrudeManager {
         const point = this.getPointOnPlane(event);
         if (!point) return;
 
-        // Снимаем подсветку с предыдущей фигуры
         if (this.hoveredFigure) {
             this.unhighlightFigure(this.hoveredFigure);
             this.hoveredFigure = null;
         }
 
-        // Находим фигуру под курсором
         const allFigures = this.figureManager.getAllFigures();
         const figure = this.findFigureAtPoint(point, allFigures);
 
@@ -270,14 +582,12 @@ class ExtrudeManager {
     clearSelection() {
         console.log("=== clearSelection ===");
 
-        // Снимаем подсветку со всех выделенных фигур
         for (const figure of this.selectedFigures.values()) {
             this.unhighlightFigure(figure);
         }
 
         this.selectedFigures.clear();
 
-        // Снимаем подсветку с фигуры под курсором
         if (this.hoveredFigure) {
             this.unhighlightFigure(this.hoveredFigure);
             this.hoveredFigure = null;
@@ -297,7 +607,6 @@ class ExtrudeManager {
 
         this.editor.raycaster.setFromCamera(mouse, this.editor.camera);
 
-        // Используем базовую плоскость, если есть
         if (this.basePlane) {
             const planeNormal = new THREE.Vector3(0, 0, 1);
             planeNormal.applyQuaternion(this.basePlane.quaternion);
@@ -310,7 +619,6 @@ class ExtrudeManager {
             }
         }
 
-        // Или ищем любую плоскость
         const sketchPlanes = this.editor.sketchPlanes || [];
         const workPlanes = this.editor.workPlanes || [];
         const allPlanes = [...sketchPlanes, ...workPlanes];
@@ -899,10 +1207,17 @@ class ExtrudeManager {
                         <option value="join">Объединить</option>
                     </select>
                 </div>
+                <div class="control-group">
+                    <label>
+                        <input type="checkbox" id="mergeFigures" ${this.mergeConnectedFigures ? 'checked' : ''}>
+                        Автоматически объединять соединённые фигуры
+                    </label>
+                </div>
                 <div class="extrude-info">
                     <div id="selectedContourInfo">
                         ${selectedCount > 0 ? `Выбрано фигур: ${selectedCount}` : 'Кликните по фигуре для выбора'}
                     </div>
+                    <div id="mergeStatus" style="font-size: 12px; color: #888; margin-top: 5px;"></div>
                 </div>
                 <button id="performExtrude" class="btn-primary" ${selectedCount > 0 ? '' : 'disabled'}>
                     <i class="fas fa-check"></i> Выполнить вытягивание
@@ -911,6 +1226,7 @@ class ExtrudeManager {
             <div class="extrude-hint">
                 <i class="fas fa-info-circle"></i>
                 <div>• Клик по фигуре: выделить/снять выделение</div>
+                <div>• Соединённые фигуры будут объединены при вытягивании</div>
                 <div>• Перетаскивайте стрелку для изменения высоты</div>
                 <div>• Escape для отмены, Enter для подтверждения</div>
             </div>
@@ -943,10 +1259,20 @@ class ExtrudeManager {
             this.currentOperation = operationSelect.value;
             this.updateExtrudeUI();
         });
+
+        const mergeCheckbox = container.querySelector('#mergeFigures');
+        mergeCheckbox.addEventListener('change', (e) => {
+            this.mergeConnectedFigures = e.target.checked;
+            this.updateExtrudePreview();
+            this.updateExtrudeUI();
+        });
+
+        this.updateExtrudeUI();
     }
 
     updateExtrudeUI() {
         const selectedContourInfo = document.getElementById('selectedContourInfo');
+        const mergeStatus = document.getElementById('mergeStatus');
         const performExtrudeBtn = document.getElementById('performExtrude');
 
         if (selectedContourInfo) {
@@ -954,9 +1280,32 @@ class ExtrudeManager {
             if (count > 0) {
                 selectedContourInfo.textContent = `Выбрано фигур: ${count}`;
                 selectedContourInfo.style.color = '#4CAF50';
+
+                // Обновляем статус объединения
+                if (mergeStatus && count > 1 && this.mergeConnectedFigures) {
+                    const figuresArray = Array.from(this.selectedFigures.values());
+                    const allSamePlane = this.areAllFiguresOnSamePlane(figuresArray);
+
+                    if (!allSamePlane) {
+                        mergeStatus.textContent = '✗ Фигуры на разных плоскостях';
+                        mergeStatus.style.color = '#f44336';
+                    } else {
+                        const connected = this.areFiguresGeometricallyConnected(figuresArray);
+                        if (connected) {
+                            mergeStatus.textContent = '✓ Фигуры соединены и будут объединены';
+                            mergeStatus.style.color = '#4CAF50';
+                        } else {
+                            mergeStatus.textContent = '✗ Фигуры не соединены';
+                            mergeStatus.style.color = '#f44336';
+                        }
+                    }
+                } else {
+                    mergeStatus.textContent = '';
+                }
             } else {
                 selectedContourInfo.textContent = 'Кликните по фигуре для выбора';
                 selectedContourInfo.style.color = '#888';
+                if (mergeStatus) mergeStatus.textContent = '';
             }
         }
 
@@ -965,7 +1314,7 @@ class ExtrudeManager {
         }
     }
 
-    // === ВЫПОЛНЕНИЕ ВЫТЯГИВАНИЯ С ИСТОРИЕЙ И БУЛЕВЫМИ ОПЕРАЦИЯМИ ===
+    // === ВЫПОЛНЕНИЕ ВЫТЯГИВАНИЯ ===
 
     performExtrude() {
         const figures = this.getFiguresForExtrusion();
@@ -1008,7 +1357,9 @@ class ExtrudeManager {
 
         const sourceFigureData = figures.map(figure => ({
             id: figure.id,
-            elements: figure.outer.element ? [figure.outer.element] : figure.outer.elements
+            elements: figure.outer.element ? [figure.outer.element] : figure.outer.elements,
+            isMerged: figure.isMerged || false,
+            sourceFigures: figure.sourceFigures || [figure.id]
         }));
 
         const historyData = {
@@ -1016,7 +1367,8 @@ class ExtrudeManager {
             sketchPlane: this.editor.projectManager.serializeObject(this.basePlane),
             height: height,
             direction: direction,
-            operation: operation
+            operation: operation,
+            merged: figures.some(f => f.isMerged)
         };
 
         switch (operation) {
@@ -1032,7 +1384,13 @@ class ExtrudeManager {
         }
 
         this.cancelExtrudeMode();
-        this.editor.showStatus(`Выполнено выдавливание (${height} мм)`, 'success');
+
+        const mergedCount = figures.filter(f => f.isMerged).length;
+        if (mergedCount > 0) {
+            this.editor.showStatus(`Выполнено выдавливание (${height} мм) с объединением фигур`, 'success');
+        } else {
+            this.editor.showStatus(`Выполнено выдавливание (${height} мм)`, 'success');
+        }
     }
 
     createExtrusionMesh(geometry, height, direction, sourceFigures) {
@@ -1049,17 +1407,21 @@ class ExtrudeManager {
         mesh.castShadow = true;
         mesh.receiveShadow = true;
 
+        const isMerged = sourceFigures.some(f => f.isMerged);
+
         mesh.userData = {
             type: 'extrusion',
-            sourceFigureIds: sourceFigures.map(f => f.id),
+            sourceFigureIds: sourceFigures.flatMap(f => f.sourceFigures || [f.id]),
             height: height,
             direction: direction,
             operation: this.currentOperation,
-            name: `Вытягивание (${height} мм)`,
+            name: `Вытягивание (${height} мм)${isMerged ? ' [объединенное]' : ''}`,
             figureCount: sourceFigures.length,
             holeCount: sourceFigures.reduce((sum, fig) => sum + (fig.holes ? fig.holes.length : 0), 0),
             basePlaneId: this.basePlane?.uuid,
-            createdAt: new Date().toISOString()
+            createdAt: new Date().toISOString(),
+            isMerged: isMerged,
+            mergedFrom: isMerged ? sourceFigures.flatMap(f => f.sourceFigures || []) : null
         };
 
         return mesh;

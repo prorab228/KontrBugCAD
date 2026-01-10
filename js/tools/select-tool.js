@@ -156,6 +156,49 @@ class SelectTool extends Tool {
         }
     }
 
+    // Добавьте этот метод в класс SelectTool в select-tool.js
+    onDoubleClick(e) {
+        // Обрабатываем только левую кнопку мыши
+        if (e.button !== 0) return false;
+
+        // Обновляем позицию мыши
+        this.editor.updateMousePosition(e);
+        this.editor.raycaster.setFromCamera(this.editor.mouse, this.editor.camera);
+
+        const intersects = this.editor.raycaster.intersectObjects(
+            this.editor.objectsGroup.children,
+            true
+        );
+
+        if (intersects.length > 0) {
+            const object = this.editor.objectsManager.findTopParent(intersects[0].object);
+
+            // Проверяем, является ли объект плоскостью скетча
+            if (object.userData.type === 'sketch_plane' ||
+                object.userData.type === 'work_plane') {
+
+                // Проверяем, есть ли элементы скетча на этой плоскости
+                const hasSketchElements = this.editor.objectsManager.checkPlaneForSketchElements(object);
+
+                if (hasSketchElements) {
+                    // Редактируем существующий скетч
+                    this.editor.selectSingleObject(object);
+                    const sketchTool = this.editor.toolManager.getTool('sketch');
+                    if (sketchTool) {
+                        sketchTool.editExistingSketch(object);
+                    }
+                    return true;
+                }
+            }
+
+            // Фокус камеры на объекте при двойном клике
+            this.editor.focusCameraOnObject(object);
+            return true;
+        }
+
+        return false;
+    }
+
     canDragObject(object) {
         if (!object) return false;
 

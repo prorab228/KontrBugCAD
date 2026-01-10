@@ -138,9 +138,11 @@ class CADEditor {
         this.controls.rotateSpeed = 1.0;
         this.controls.zoomSpeed = 1.0;
         this.controls.minDistance = 1;
-        this.controls.maxDistance = 500;
+        this.controls.maxDistance = 1000;
         this.controls.maxPolarAngle = Math.PI;
     }
+
+
 
     initManagers() {
         this.history = new HistoryManager(this);
@@ -646,35 +648,35 @@ class CADEditor {
             return;
         }
 
-        // Стандартная обработка двойного клика
-        if (e.button !== 0) return;
-
-        this.updateMousePosition(e);
-        this.raycaster.setFromCamera(this.mouse, this.camera);
-
-        const intersects = this.raycaster.intersectObjects(this.objectsGroup.children, true);
-
-        if (intersects.length > 0) {
-            const object = this.objectsManager.findTopParent(intersects[0].object);
-
-            // Проверяем, является ли объект плоскостью скетча
-            if (object.userData.type === 'sketch_plane' ||
-                object.userData.type === 'work_plane') {
-
-                // Проверяем, есть ли элементы скетча на этой плоскости
-                const hasSketchElements = this.objectsManager.checkPlaneForSketchElements(object);
-
-                if (hasSketchElements) {
-                    // Редактируем существующий скетч
-                    this.selectSingleObject(object);
-                    const sketchTool = this.toolManager.getTool('sketch');
-                    if (sketchTool) {
-                        sketchTool.editExistingSketch(object);
-                    }
-                    return;
-                }
-            }
-        }
+//        // Стандартная обработка двойного клика
+//        if (e.button !== 0) return;
+//
+//        this.updateMousePosition(e);
+//        this.raycaster.setFromCamera(this.mouse, this.camera);
+//
+//        const intersects = this.raycaster.intersectObjects(this.objectsGroup.children, true);
+//
+//        if (intersects.length > 0) {
+//            const object = this.objectsManager.findTopParent(intersects[0].object);
+//
+//            // Проверяем, является ли объект плоскостью скетча
+//            if (object.userData.type === 'sketch_plane' ||
+//                object.userData.type === 'work_plane') {
+//
+//                // Проверяем, есть ли элементы скетча на этой плоскости
+//                const hasSketchElements = this.objectsManager.checkPlaneForSketchElements(object);
+//
+//                if (hasSketchElements) {
+//                    // Редактируем существующий скетч
+//                    this.selectSingleObject(object);
+//                    const sketchTool = this.toolManager.getTool('sketch');
+//                    if (sketchTool) {
+//                        sketchTool.editExistingSketch(object);
+//                    }
+//                    return;
+//                }
+//            }
+//        }
     }
 
     updateMousePosition(e) {

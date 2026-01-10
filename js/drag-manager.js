@@ -453,8 +453,7 @@ class DragManager {
                 this.updateMoveLines();
             }
 
-            // Обновляем свойства в панели
-            this.updatePropertiesPanel();
+
 
             // Обновляем координаты в статус-баре
             this.updateCoordinates(finalPosition);
@@ -485,14 +484,6 @@ class DragManager {
         return null;
     }
 
-    updatePropertiesPanel() {
-        if (this.draggedObjects.length === 1) {
-            const obj = this.draggedObjects[0];
-            document.getElementById('posX').value = obj.position.x.toFixed(1);
-            document.getElementById('posY').value = obj.position.y.toFixed(1);
-            document.getElementById('posZ').value = obj.position.z.toFixed(1);
-        }
-    }
 
     updateCoordinates(position) {
         // Показываем текущие координаты (Y остается неизменным)
@@ -565,8 +556,7 @@ class DragManager {
                 }
             }
 
-            // Обновляем свойства
-            this.updatePropertiesPanel();
+
 
             this.editor.showStatus('Перетаскивание отменено', 'info');
         }
