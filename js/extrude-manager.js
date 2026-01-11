@@ -1209,8 +1209,9 @@ class ExtrudeManager {
                 </div>
                 <div class="control-group">
                     <label>
+
+                        Автоматически объединять соединённые фигуры (экспериментальное)
                         <input type="checkbox" id="mergeFigures" ${this.mergeConnectedFigures ? 'checked' : ''}>
-                        Автоматически объединять соединённые фигуры
                     </label>
                 </div>
                 <div class="extrude-info">
@@ -1650,6 +1651,8 @@ class ExtrudeManager {
             context: historyContext?.sourceExtrude
         });
     }
+
+
 
     cancelExtrudeMode() {
         this.clearSelection();

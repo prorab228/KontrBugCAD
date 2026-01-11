@@ -2,7 +2,7 @@
 class CADEditor {
     constructor() {
         // Константы версии
-        this.APP_VERSION = '0.6.0';
+        this.APP_VERSION = '0.7.0';
         this.APP_NAME = 'КонтрБагCAD';
         this.APP_AUTHOR = 'Лунев Валерий Константинович ';
 
@@ -836,6 +836,7 @@ class CADEditor {
         this.clearSelection();
         this.objectsManager.updateSceneStats();
         this.objectsManager.updateSceneList();
+        this.toolManager.setCurrentTool('select');
     }
 
     // ОПЕРАЦИИ С ОБЪЕКТАМИ

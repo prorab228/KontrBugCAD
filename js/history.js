@@ -66,12 +66,71 @@ class HistoryManager {
                 return this.enhanceGroupAction(action);
             case 'ungroup':
                 return this.enhanceUngroupAction(action);
+            // ДОБАВЛЯЕМ ДЛЯ СКЕТЧА
+            case 'sketch_add':
+            case 'sketch_delete':
+                return this.enhanceSketchAction(action);
             default:
                 return action;
         }
     }
 
-    // Добавляем метод для улучшения данных множественных трансформаций
+    // Улучшение данных для скетча
+    enhanceSketchAction(action) {
+        // Если есть sketchPlaneId, получаем данные скетча с плоскости
+        if (action.sketchPlaneId && this.editor.objectsManager) {
+            const plane = this.editor.findObjectByUuid(action.sketchPlaneId);
+            if (plane && plane.userData && (plane.userData.hasSketch || plane.userData.type === 'sketch_plane')) {
+                // Сохраняем полное состояние скетча с этой плоскости
+                action.sketchData = this.serializeSketchState(plane);
+            }
+        }
+
+        // Если есть элементы, сериализуем их
+        if (action.elements && Array.isArray(action.elements) && this.editor.projectManager) {
+            action.elements = action.elements.map(elementData => {
+                // Если элемент уже сериализован, возвращаем как есть
+                if (elementData.data) return elementData;
+
+                // Иначе сериализуем
+                const element = this.editor.findObjectByUuid(elementData.uuid);
+                if (element) {
+                    return {
+                        uuid: element.uuid,
+                        data: this.editor.projectManager.serializeObjectForHistory(element)
+                    };
+                }
+                return elementData;
+            });
+        }
+
+        return action;
+    }
+
+    // Сериализация состояния скетча
+    serializeSketchState(plane) {
+        const sketchData = {
+            planeId: plane.uuid,
+            planeData: this.editor.projectManager.serializeObject(plane),
+            elements: []
+        };
+
+        // Собираем все элементы скетча с этой плоскости
+        plane.children.forEach(child => {
+            if (child.userData && child.userData.type === 'sketch_element') {
+                const elementData = this.editor.projectManager.serializeObjectForHistory(child);
+                if (elementData) {
+                    sketchData.elements.push({
+                        uuid: child.uuid,
+                        data: elementData
+                    });
+                }
+            }
+        });
+
+        return sketchData;
+    }
+
     enhanceMultipleModifyAction(action) {
         if (!action.objects || !Array.isArray(action.objects)) {
             return action;
@@ -97,11 +156,6 @@ class HistoryManager {
             objects: enhancedObjects
         };
     }
-
-
-
-
-
 
     enhanceCreateAction(action) {
         const obj = this.editor.findObjectByUuid(action.object);
@@ -196,8 +250,6 @@ class HistoryManager {
         return action;
     }
 
-    //ГРУППИРОВКА
-
     enhanceGroupAction(action) {
         // Улучшаем данные группы
         const group = this.editor.findObjectByUuid(action.groupUuid);
@@ -231,7 +283,6 @@ class HistoryManager {
         }
         return action;
     }
-
 
     // ОТМЕНА И ПОВТОР
     undo() {
@@ -300,13 +351,146 @@ class HistoryManager {
                 return isUndo ? this.undoGroup(action) : this.redoGroup(action);
             case 'ungroup':
                 return isUndo ? this.undoUngroup(action) : this.redoUngroup(action);
+            // ДОБАВЛЯЕМ ДЛЯ СКЕТЧА
+            case 'sketch_add':
+                return isUndo ? this.undoSketchAdd(action) : this.redoSketchAdd(action);
+            case 'sketch_delete':
+                return isUndo ? this.undoSketchDelete(action) : this.redoSketchDelete(action);
             default:
                 console.warn('Unknown action type:', action.type);
                 return false;
         }
     }
 
-    // Методы для обработки множественных трансформаций:
+    // МЕТОДЫ ДЛЯ СКЕТЧА
+    undoSketchAdd(action) {
+        console.log('Undoing sketch add action');
+
+        // Удаляем добавленные элементы
+        if (action.elements && Array.isArray(action.elements)) {
+            action.elements.forEach(elementData => {
+                const element = this.editor.findObjectByUuid(elementData.uuid);
+                if (element) {
+                    this.removeSketchElement(element);
+                }
+            });
+        }
+
+        // Восстанавливаем предыдущее состояние скетча, если есть
+        if (action.previousSketchState) {
+            this.restoreSketchState(action.previousSketchState);
+        }
+
+        return true;
+    }
+
+    redoSketchAdd(action) {
+        console.log('Redoing sketch add action');
+
+        // Добавляем элементы обратно
+        if (action.elements && Array.isArray(action.elements)) {
+            let addedCount = 0;
+            action.elements.forEach(elementData => {
+                if (elementData.data && this.editor.projectManager) {
+                    const element = this.editor.projectManager.deserializeObjectOptimized(elementData.data);
+                    if (element && action.sketchPlaneId) {
+                        // Находим плоскость и добавляем элемент
+                        const plane = this.editor.findObjectByUuid(action.sketchPlaneId);
+                        if (plane) {
+                            plane.add(element);
+                            addedCount++;
+                        }
+                    }
+                }
+            });
+            return addedCount > 0;
+        }
+        return false;
+    }
+
+    undoSketchDelete(action) {
+        console.log('Undoing sketch delete action');
+
+        // Восстанавливаем удаленные элементы
+        if (action.elements && Array.isArray(action.elements)) {
+            let restoredCount = 0;
+            action.elements.forEach(elementData => {
+                if (elementData.data && this.editor.projectManager) {
+                    const element = this.editor.projectManager.deserializeObjectOptimized(elementData.data);
+                    if (element && action.sketchPlaneId) {
+                        const plane = this.editor.findObjectByUuid(action.sketchPlaneId);
+                        if (plane) {
+                            plane.add(element);
+                            restoredCount++;
+                        }
+                    }
+                }
+            });
+            return restoredCount > 0;
+        }
+        return false;
+    }
+
+    redoSketchDelete(action) {
+        console.log('Redoing sketch delete action');
+
+        // Удаляем элементы снова
+        if (action.elements && Array.isArray(action.elements)) {
+            let deletedCount = 0;
+            action.elements.forEach(elementData => {
+                const element = this.editor.findObjectByUuid(elementData.uuid);
+                if (element) {
+                    this.removeSketchElement(element);
+                    deletedCount++;
+                }
+            });
+            return deletedCount > 0;
+        }
+        return false;
+    }
+
+    // Вспомогательный метод для удаления элемента скетча
+    removeSketchElement(element) {
+        if (element.parent) {
+            element.parent.remove(element);
+        }
+
+        // Освобождаем ресурсы
+        if (element.geometry) element.geometry.dispose();
+        if (element.material) element.material.dispose();
+    }
+
+    // Восстановление состояния скетча
+    restoreSketchState(sketchState) {
+        if (!sketchState || !sketchState.planeId) return false;
+
+        const plane = this.editor.findObjectByUuid(sketchState.planeId);
+        if (!plane) return false;
+
+        // Удаляем текущие элементы
+        for (let i = plane.children.length - 1; i >= 0; i--) {
+            const child = plane.children[i];
+            if (child.userData && child.userData.type === 'sketch_element') {
+                plane.remove(child);
+                if (child.geometry) child.geometry.dispose();
+                if (child.material) child.material.dispose();
+            }
+        }
+
+        // Восстанавливаем элементы
+        if (sketchState.elements && Array.isArray(sketchState.elements)) {
+            sketchState.elements.forEach(elementData => {
+                if (elementData.data && this.editor.projectManager) {
+                    const element = this.editor.projectManager.deserializeObjectOptimized(elementData.data);
+                    if (element) {
+                        plane.add(element);
+                    }
+                }
+            });
+        }
+
+        return true;
+    }
 
     applyModifyPositionMultiple(action, isUndo) {
         if (!action.objects || !Array.isArray(action.objects)) {
@@ -329,7 +513,6 @@ class HistoryManager {
         this.editor.updatePropertiesPanel();
         return successCount > 0;
     }
-
 
     // ОПЕРАЦИИ СОЗДАНИЯ
     undoCreate(action) {
@@ -433,7 +616,6 @@ class HistoryManager {
 
         return false;
     }
-
 
     // ИЗМЕНЕНИЯ СВОЙСТВ
     applyModifyPosition(action, isUndo) {
@@ -549,10 +731,7 @@ class HistoryManager {
         return true;
     }
 
-    //ГРУППИРОВКА
-
-    // В HistoryManager добавьте/обновите методы:
-
+    // ГРУППИРОВКА
     undoGroup(action) {
         // Удаляем группу
         const group = this.editor.findObjectByUuid(action.groupUuid);
@@ -769,7 +948,6 @@ class HistoryManager {
         this.editor.updatePropertiesPanel();
     }
 
-
     removeObjectFromScene(obj) {
         // Удаляем из сцены
         if (obj.parent) {
@@ -922,7 +1100,10 @@ class HistoryManager {
                 color: '#9C27B0'
             },
             'modify_color': { icon: 'fas fa-palette', text: 'Изменение цвета', color: '#E91E63' },
-            'modify_opacity': { icon: 'fas fa-adjust', text: 'Изменение прозрачности', color: '#795548' }
+            'modify_opacity': { icon: 'fas fa-adjust', text: 'Изменение прозрачности', color: '#795548' },
+            // ДОБАВЛЯЕМ ДЛЯ СКЕТЧА
+            'sketch_add': { icon: 'fas fa-drafting-compass', text: 'Добавлен элемент скетча', color: '#FF9800' },
+            'sketch_delete': { icon: 'fas fa-drafting-compass', text: `Удалено элементов скетча: ${action.elements?.length || 1}`, color: '#F44336' }
         };
 
         return actions[action.type] || { icon: 'fas fa-history', text: action.type, color: '#757575' };
