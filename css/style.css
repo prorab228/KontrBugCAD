@@ -1395,12 +1395,7 @@ input:checked + .toggle-slider:before {
     color: #90caf9;
 }
 
-/* Адаптивность */
-@media (max-width: 1400px) {
-    .properties-panel {
-        width: 280px;
-    }
-}
+
 
 @media (max-width: 1200px) {
     .toolbar-container {
@@ -1441,9 +1436,7 @@ input:checked + .toggle-slider:before {
         padding-left: 0;
     }
 
-    .properties-panel {
-        width: 250px;
-    }
+
 
     .sketch-modal {
         width: 98%;
@@ -1464,9 +1457,7 @@ input:checked + .toggle-slider:before {
         display: none;
     }
 
-    .properties-panel {
-        display: none;
-    }
+
 
     .project-info {
         padding-left: 10px;
@@ -1843,6 +1834,7 @@ input:checked + .toggle-slider:before {
     gap: 12px;
     max-height: 66%;
     overflow-y: auto;
+    overflow-x: clip;
     padding: 5px;
 }
 
