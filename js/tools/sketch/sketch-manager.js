@@ -240,6 +240,7 @@ class SketchManager {
         this.editor.objectsManager.figureManager.updateWithAutoContours(figureContours);
     }
 
+
     collectSketchElements(planeObject) {
         this.elements = [];
         this.selectedElements = [];

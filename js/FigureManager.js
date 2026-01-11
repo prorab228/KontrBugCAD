@@ -93,6 +93,8 @@ class FigureManager {
         console.log("Разбитых элементов:", this.brokenElements.size);
     }
 
+
+
     // Фильтрация разбитых контуров
     filterBrokenContours(simpleContours) {
         if (this.brokenElements.size === 0) return simpleContours;

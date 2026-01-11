@@ -1,9 +1,7 @@
-// drag-manager.js - оптимизированная версия с исправленными проблемами производительности
 class DragManager {
     constructor(cadEditor) {
         this.editor = cadEditor;
 
-        // Состояние перетаскивания
         this.isDragging = false;
         this.draggedObjects = [];
         this.dragStartPositions = [];
@@ -13,35 +11,42 @@ class DragManager {
         this.dragOffsets = [];
         this.mainObjectIndex = 0;
 
-        // Для визуализации перемещения
         this.moveLinesX = [];
         this.moveLinesZ = [];
-        this.distanceTextsX = [];
-        this.distanceTextsZ = [];
         this.lineThickness = 0.3;
         this.showMoveLines = true;
 
-        // Параметры
         this.snapToGrid = true;
         this.gridSize = 1;
 
-        // Кэшированные объекты для оптимизации
         this._tempVector = new THREE.Vector3();
         this._tempVector2 = new THREE.Vector3();
         this._tempQuaternion = new THREE.Quaternion();
         this._raycaster = new THREE.Raycaster();
 
-        // Кэш для canvas текстур
-        this._canvasCache = new Map();
-        this._lastTextValues = new Map();
-
-        // Флаг для отложенного обновления
-        this._needsUpdate = false;
         this._lastUpdateTime = 0;
-        this._updateInterval = 10; // ~60 FPS
+        this._updateInterval = 16;
+
+        // DOM элементы для ввода
+        this._inputContainerX = null;
+        this._inputElementX = null;
+        this._inputValueX = null;
+
+        this._inputContainerZ = null;
+        this._inputElementZ = null;
+        this._inputValueZ = null;
+
+        this._isInputFocusedX = false;
+        this._isInputFocusedZ = false;
+        this._lastInputX = 0;
+        this._lastInputZ = 0;
+
+        this._linesInitialized = false;
+
+        // Флаги для контроля отображения
+        this._shouldShowLinesAfterDrag = false;
     }
 
-    // Подготовка к перетаскиванию
     prepareDrag(object, intersectionPoint) {
         this.draggedObjects = [...this.editor.selectedObjects];
         this.mainObjectIndex = this.draggedObjects.indexOf(object);
@@ -78,98 +83,74 @@ class DragManager {
         this.dragIntersection = intersectionPoint.clone();
     }
 
-    // Начало перетаскивания
     startDrag(e) {
         this.isDragging = true;
         this.dragStartMouse = new THREE.Vector2(e.clientX, e.clientY);
-        this.initMoveLines();
+
+        // Очищаем предыдущие линии
+        this.clearLinesAndInputs();
+
+        if (this.showMoveLines) {
+            this.initMoveLines();
+        }
 
         this.editor.showStatus(
             `Перетаскивание: ${this.draggedObjects.length} объект(ов) (только по XZ)`,
             'info'
         );
+
+        this.initInputElements();
         this.onMouseMove(e);
     }
 
-    // Инициализация линий перемещения по осям
     initMoveLines() {
         this.removeMoveLines();
-
-        // Создаем геометрии и материалы один раз
-        const lineGeometry = new THREE.CylinderGeometry(
-            this.lineThickness / 2,
-            this.lineThickness / 2,
-            1,
-            6, // Уменьшили количество сегментов
-            1,
-            false
-        );
-
-        const xMaterial = new THREE.MeshBasicMaterial({
-            color: 0xff4444,
-            transparent: true,
-            opacity: 0.7,
-            side: THREE.DoubleSide
-        });
-
-        const zMaterial = new THREE.MeshBasicMaterial({
-            color: 0x4444ff,
-            transparent: true,
-            opacity: 0.7,
-            side: THREE.DoubleSide
-        });
+        this._linesInitialized = true;
 
         for (let i = 0; i < this.draggedObjects.length; i++) {
             const obj = this.draggedObjects[i];
             const startPos = this.dragStartPositions[i];
 
-            // Линия по оси X (используем одну геометрию для всех)
-            const lineX = new THREE.Mesh(lineGeometry, xMaterial);
-            lineX.userData.axis = 'x';
-            lineX.userData.objIndex = i;
-            lineX.visible = this.showMoveLines;
-            lineX.renderOrder = 1000;
-            this.updateAxisLine(lineX, startPos, startPos, 'x');
+            const lineX = this.createAxisLine(startPos, startPos, 0xff4444, 'x');
             this.editor.scene.add(lineX);
             this.moveLinesX.push(lineX);
 
-            // Линия по оси Z
-            const lineZ = new THREE.Mesh(lineGeometry, zMaterial);
-            lineZ.userData.axis = 'z';
-            lineZ.userData.objIndex = i;
-            lineZ.visible = this.showMoveLines;
-            lineZ.renderOrder = 1000;
-            this.updateAxisLine(lineZ, startPos, startPos, 'z');
+            const lineZ = this.createAxisLine(startPos, startPos, 0x4444ff, 'z');
             this.editor.scene.add(lineZ);
             this.moveLinesZ.push(lineZ);
-
-            // Создаем группы для текста
-            const textGroupX = new THREE.Group();
-            textGroupX.name = `drag_text_x_${i}`;
-            textGroupX.visible = false;
-            textGroupX.userData.objIndex = i;
-            textGroupX.userData.axis = 'x';
-            this.editor.scene.add(textGroupX);
-            this.distanceTextsX.push(textGroupX);
-
-            const textGroupZ = new THREE.Group();
-            textGroupZ.name = `drag_text_z_${i}`;
-            textGroupZ.visible = false;
-            textGroupZ.userData.objIndex = i;
-            textGroupZ.userData.axis = 'z';
-            this.editor.scene.add(textGroupZ);
-            this.distanceTextsZ.push(textGroupZ);
         }
-
-        // Освобождаем память (геометрия уже использована в мешах)
-        lineGeometry.dispose();
     }
 
-    // Обновление линии для оси (оптимизированная версия)
+    createAxisLine(startPos, endPos, color, axis) {
+        const geometry = new THREE.CylinderGeometry(
+            this.lineThickness / 2,
+            this.lineThickness / 2,
+            1,
+            6,
+            1,
+            false
+        );
+
+        const material = new THREE.MeshBasicMaterial({
+            color: color,
+            transparent: true,
+            opacity: 0.6,
+            side: THREE.DoubleSide
+        });
+
+        const line = new THREE.Mesh(geometry, material);
+        line.userData.axis = axis;
+        line.visible = this.showMoveLines;
+        line.renderOrder = 1000;
+
+        this.updateAxisLine(line, startPos, endPos, axis);
+
+        return line;
+    }
+
     updateAxisLine(line, startPos, currentPos, axis) {
         if (!line) return null;
 
-        // Используем кэшированные векторы
         const lineStart = this._tempVector;
         const lineEnd = this._tempVector2;
 
@@ -181,20 +162,22 @@ class DragManager {
             lineEnd.copy(currentPos);
         }
 
-        // Вычисляем середину
+        const distance = lineStart.distanceTo(lineEnd);
+
+        if (distance < 0.001) {
+            line.visible = false;
+            return null;
+        }
+
+        line.visible = true;
+
         const midPoint = new THREE.Vector3()
             .addVectors(lineStart, lineEnd)
             .multiplyScalar(0.5);
 
-        const distance = lineStart.distanceTo(lineEnd);
-
-        // Устанавливаем позицию линии в середину
         line.position.copy(midPoint);
-
-        // Масштабируем линию по длине
         line.scale.set(1, distance, 1);
 
-        // Поворачиваем линию (только если длина > 0)
         if (distance > 0.001) {
             const direction = new THREE.Vector3()
                 .subVectors(lineEnd, lineStart)
@@ -214,254 +197,210 @@ class DragManager {
         };
     }
 
-    // Обновление линий перемещения с регулировкой частоты
+    initInputElements() {
+        // Создаем поле ввода для оси X
+        if (!this._inputContainerX) {
+            this._inputContainerX = document.createElement('div');
+            this._inputContainerX.className = 'drag-input-container-x';
+            this._inputContainerX.style.cssText = `
+                border: 2px solid #ff4444;
+            `;
+
+            this._inputElementX = document.createElement('input');
+            this._inputElementX.type = 'number';
+            this._inputElementX.step = '0.1';
+            this._inputElementX.placeholder = 'ΔX';
+
+
+
+
+            this._inputContainerX.appendChild(this._inputElementX);
+
+            document.body.appendChild(this._inputContainerX);
+
+            this._inputElementX.addEventListener('focus', () => {
+                this._isInputFocusedX = true;
+            });
+
+            this._inputElementX.addEventListener('blur', () => {
+                this._isInputFocusedX = false;
+            });
+
+            this._inputElementX.addEventListener('input', (e) => {
+                const value = parseFloat(e.target.value);
+                if (!isNaN(value)) {
+                    this.updateFromInput('x', value);
+                }
+            });
+        }
+
+        // Создаем поле ввода для оси Z
+        if (!this._inputContainerZ) {
+            this._inputContainerZ = document.createElement('div');
+            this._inputContainerZ.className = 'drag-input-container-z';
+            this._inputContainerZ.style.cssText = `
+                border: 2px solid #4444FF;
+            `;
+
+
+            this._inputElementZ = document.createElement('input');
+            this._inputElementZ.type = 'number';
+            this._inputElementZ.step = '0.1';
+            this._inputElementZ.placeholder = 'ΔZ';
+
+
+
+            this._inputContainerZ.appendChild(this._inputElementZ);
+
+            document.body.appendChild(this._inputContainerZ);
+
+            this._inputElementZ.addEventListener('focus', () => {
+                this._isInputFocusedZ = true;
+            });
+
+            this._inputElementZ.addEventListener('blur', () => {
+                this._isInputFocusedZ = false;
+            });
+
+
+
+            this._inputElementZ.addEventListener('input', (e) => {
+                const value = parseFloat(e.target.value);
+                if (!isNaN(value)) {
+                    this.updateFromInput('z', value);
+                }
+            });
+        }
+    }
+
+
+
+    updateFromInput(axis, value) {
+        if (this.draggedObjects.length === 0) return;
+
+        const mainObj = this.draggedObjects[0];
+        const startPos = this.dragStartPositions[0];
+
+        if (axis === 'x') {
+            const newX = startPos.x + value;
+            mainObj.position.x = newX;
+
+            for (let i = 1; i < this.draggedObjects.length; i++) {
+                this.draggedObjects[i].position.x = newX + this.dragOffsets[i].x;
+            }
+        } else if (axis === 'z') {
+            const newZ = startPos.z + value;
+            mainObj.position.z = newZ;
+
+            for (let i = 1; i < this.draggedObjects.length; i++) {
+                this.draggedObjects[i].position.z = newZ + this.dragOffsets[i].z;
+            }
+        }
+
+        // Обновляем линии
+        this.updateMoveLines();
+    }
+
+    addHistoryAction() {
+        if (this.draggedObjects.length === 0) return;
+
+        const positions = this.draggedObjects.map((obj, i) => ({
+            uuid: obj.uuid,
+            previousPosition: this.dragStartPositions[i].toArray(),
+            position: obj.position.toArray()
+        }));
+
+        this.editor.history.addAction({
+            type: 'modify_position_multiple',
+            objects: positions
+        });
+    }
+
     updateMoveLines() {
-        if (!this.showMoveLines || !this.isDragging) return;
+        if (!this.showMoveLines || !this._linesInitialized) return;
 
         const now = performance.now();
-        if (now - this._lastUpdateTime < this._updateInterval) {
-            this._needsUpdate = true;
+        if (now - this._lastUpdateTime < this._updateInterval && this.isDragging) {
             return;
         }
 
         this._lastUpdateTime = now;
-        this._needsUpdate = false;
 
         for (let i = 0; i < this.draggedObjects.length; i++) {
             const obj = this.draggedObjects[i];
             const startPos = this.dragStartPositions[i];
             const currentPos = obj.position;
 
-            // Обновляем линию по оси X
             const lineX = this.moveLinesX[i];
-            if (lineX && lineX.visible) {
+            if (lineX) {
                 const lineXData = this.updateAxisLine(lineX, startPos, currentPos, 'x');
                 const deltaX = currentPos.x - startPos.x;
-                const textKeyX = `x_${i}_${deltaX.toFixed(1)}`;
 
-                if (Math.abs(deltaX) > 0.1) {
-                    // Проверяем, изменилось ли значение
-                //    if (this._lastTextValues.get(textKeyX) !== textKeyX) {
-                        this.updateDistanceText(
-                            this.distanceTextsX[i],
-                            lineXData.midPoint,
-                            lineXData.distance,
-                            lineXData.direction,
-                            `ΔX: ${deltaX.toFixed(1)} мм`,
-                            0xCC2222
-                        );
-                        this._lastTextValues.set(textKeyX, textKeyX);
-                  //  }
-                    this.distanceTextsX[i].visible = true;
+                if (lineXData && Math.abs(deltaX) > 0.1) {
+                    lineX.visible = true;
+
+                    // Обновляем поле ввода для оси X (только для главного объекта)
+                    if (i === 0 && !this._isInputFocusedX && this._inputContainerX) {
+                        this._lastInputX = deltaX;
+                        this._inputElementX.value = deltaX.toFixed(1);
+                        this._inputContainerX.style.display = 'block';
+                        this.updateInputPosition('x', lineXData.midPoint);
+                    }
                 } else {
-                    this.distanceTextsX[i].visible = false;
+                    lineX.visible = false;
+                    if (i === 0 && this._inputContainerX) {
+                        this._inputContainerX.style.display = 'none';
+                    }
                 }
             }
 
-            // Обновляем линию по оси Z
             const lineZ = this.moveLinesZ[i];
-            if (lineZ && lineZ.visible) {
+            if (lineZ) {
                 const lineZData = this.updateAxisLine(lineZ, startPos, currentPos, 'z');
                 const deltaZ = currentPos.z - startPos.z;
-                const textKeyZ = `z_${i}_${deltaZ.toFixed(1)}`;
 
-                if (Math.abs(deltaZ) > 0.1) {
-                    // Проверяем, изменилось ли значение
-                   // if (this._lastTextValues.get(textKeyZ) !== textKeyZ) {
-                        this.updateDistanceText(
-                            this.distanceTextsZ[i],
-                            lineZData.midPoint,
-                            lineZData.distance,
-                            lineZData.direction,
-                            `ΔZ: ${deltaZ.toFixed(1)} мм`,
-                            0x2222CC
-                        );
-                        this._lastTextValues.set(textKeyZ, textKeyZ);
-                  //  }
-                    this.distanceTextsZ[i].visible = true;
+                if (lineZData && Math.abs(deltaZ) > 0.1) {
+                    lineZ.visible = true;
+
+                    // Обновляем поле ввода для оси Z (только для главного объекта)
+                    if (i === 0 && !this._isInputFocusedZ && this._inputContainerZ) {
+                        this._lastInputZ = deltaZ;
+                        this._inputElementZ.value = deltaZ.toFixed(1);
+                        this._inputContainerZ.style.display = 'block';
+                        this.updateInputPosition('z', lineZData.midPoint);
+                    }
                 } else {
-                    this.distanceTextsZ[i].visible = false;
+                    lineZ.visible = false;
+                    if (i === 0 && this._inputContainerZ) {
+                        this._inputContainerZ.style.display = 'none';
+                    }
                 }
             }
         }
     }
 
-    // Обновление текста расстояния (с кэшированием)
-    updateDistanceText(textGroup, position, distance, direction, text, color) {
-        if (!textGroup) return;
+    updateInputPosition(axis, position) {
+        if (!this.editor.camera || !this.editor.renderer) return;
 
-        // Используем кэшированный canvas или создаем новый
-        let canvas, context, texture, sprite;
+        const screenPos = this.worldToScreen(position, this.editor.camera, this.editor.renderer);
 
-        if (textGroup.children.length > 0) {
-            // Используем существующий спрайт
-            sprite = textGroup.children[0];
-            texture = sprite.material.map;
-            canvas = texture.image;
-            context = canvas.getContext('2d');
-        } else {
-            // Создаем новый canvas
-            canvas = document.createElement('canvas');
-            context = canvas.getContext('2d');
-
-            // Создаем текстуру
-            texture = new THREE.CanvasTexture(canvas);
-            texture.minFilter = THREE.LinearFilter;
-            texture.magFilter = THREE.LinearFilter;
-            texture.premultiplyAlpha = true;
-
-            // Создаем материал спрайта
-            const spriteMaterial = new THREE.SpriteMaterial({
-                map: texture,
-                transparent: true,
-                opacity: 0.9,
-                depthTest: false
-            });
-
-            // Создаем спрайт
-            sprite = new THREE.Sprite(spriteMaterial);
-            textGroup.add(sprite);
-
-            // Сохраняем ссылки
-            textGroup.userData.canvas = canvas;
-            textGroup.userData.texture = texture;
+        if (axis === 'x' && this._inputContainerX) {
+            this._inputContainerX.style.left = `${screenPos.x - 60}px`;
+            this._inputContainerX.style.top = `${screenPos.y - 30}px`;
+        } else if (axis === 'z' && this._inputContainerZ) {
+            this._inputContainerZ.style.left = `${screenPos.x - 60}px`;
+            this._inputContainerZ.style.top = `${screenPos.y - 30}px`;
         }
-
-        // Настройки текста
-        const fontSize = 46; // Уменьшенный размер шрифта
-        const padding = 6;
-
-        // Измеряем текст
-        context.font = `bold ${fontSize}px Arial`;
-        const textWidth = context.measureText(text).width;
-        const textHeight = fontSize;
-
-        // Проверяем, нужно ли изменять размер канвы
-        if (canvas.width < textWidth + padding * 2 || canvas.height < textHeight + padding * 2) {
-            canvas.width = Math.max(canvas.width, textWidth + padding * 2);
-            canvas.height = Math.max(canvas.height, textHeight + padding * 2);
-            texture.needsUpdate = true;
-        }
-
-        // Очищаем канву
-        context.clearRect(0, 0, canvas.width, canvas.height);
-
-        // Рисуем текст
-        context.font = `${fontSize}px Arial`;
-        context.textAlign = 'center';
-        context.textBaseline = 'middle';
-
-        // Черная обводка
-        context.strokeStyle = 'rgba(0, 0, 0, 0.8)';
-        context.lineWidth = 2;
-        context.strokeText(text, canvas.width / 2, canvas.height / 2);
-
-        // Цветной текст
-        const hexColor = color.toString(16).padStart(6, '0');
-        context.fillStyle = `#${hexColor}`;
-        context.fillText(text, canvas.width / 2, canvas.height / 2);
-
-        // Обновляем текстуру
-        texture.needsUpdate = true;
-
-        // Масштабируем спрайт
-        const cameraDistance = this.editor.camera.position.distanceTo(position);
-        const scaleFactor = 0.055 * cameraDistance; // Уменьшенный масштаб
-        const aspectRatio = canvas.width / canvas.height;
-        sprite.scale.set(aspectRatio * scaleFactor, scaleFactor, 1);
-
-        // Позиционируем спрайт
-        let perpDirection;
-        if (Math.abs(direction.y) > 0.9) {
-            perpDirection = new THREE.Vector3(1, 0, 0);
-        } else {
-            perpDirection = new THREE.Vector3(0, 1, 0).cross(direction).normalize();
-        }
-
-        const offset = perpDirection.multiplyScalar(1.5 + cameraDistance * 0.006);
-        sprite.position.copy(offset);
-
-        // Позиционируем группу
-        textGroup.position.copy(position);
-        textGroup.lookAt(this.editor.camera.position);
-        textGroup.rotateY(Math.PI);
-
-        textGroup.visible = true;
     }
 
-    // Удаление линий перемещения
-    removeMoveLines() {
-        // Удаляем линии по оси X
-        for (const line of this.moveLinesX) {
-            if (line && line.parent) {
-                line.parent.remove(line);
-            }
-            // Не удаляем геометрию и материал - они общие
-        }
-        this.moveLinesX = [];
+    worldToScreen(position, camera, renderer) {
+        const vector = position.clone();
+        vector.project(camera);
 
-        // Удаляем линии по оси Z
-        for (const line of this.moveLinesZ) {
-            if (line && line.parent) {
-                line.parent.remove(line);
-            }
-        }
-        this.moveLinesZ = [];
+        const x = (vector.x * 0.5 + 0.5) * renderer.domElement.clientWidth;
+        const y = (vector.y * -0.5 + 0.5) * renderer.domElement.clientHeight;
 
-        // Удаляем тексты по оси X
-        for (const textGroup of this.distanceTextsX) {
-            if (textGroup) {
-                // Освобождаем ресурсы
-                if (textGroup.userData.texture) {
-                    textGroup.userData.texture.dispose();
-                }
-
-                while (textGroup.children.length > 0) {
-                    const child = textGroup.children[0];
-                    if (child.material) {
-                        child.material.dispose();
-                        if (child.material.map) {
-                            child.material.map.dispose();
-                        }
-                    }
-                    textGroup.remove(child);
-                }
-
-                if (textGroup.parent) {
-                    textGroup.parent.remove(textGroup);
-                }
-            }
-        }
-        this.distanceTextsX = [];
-
-        // Удаляем тексты по оси Z
-        for (const textGroup of this.distanceTextsZ) {
-            if (textGroup) {
-                // Освобождаем ресурсы
-                if (textGroup.userData.texture) {
-                    textGroup.userData.texture.dispose();
-                }
-
-                while (textGroup.children.length > 0) {
-                    const child = textGroup.children[0];
-                    if (child.material) {
-                        child.material.dispose();
-                        if (child.material.map) {
-                            child.material.map.dispose();
-                        }
-                    }
-                    textGroup.remove(child);
-                }
-
-                if (textGroup.parent) {
-                    textGroup.parent.remove(textGroup);
-                }
-            }
-        }
-        this.distanceTextsZ = [];
-
-        // Очищаем кэш
-        this._lastTextValues.clear();
+        return { x, y };
     }
 
     onMouseMove(e) {
@@ -473,14 +412,12 @@ class DragManager {
         const newPosition = this.getDragPosition(e);
 
         if (newPosition) {
-            // Применяем снэппинг к сетке
             let finalPosition = newPosition.clone();
             if (this.snapToGrid) {
                 finalPosition.x = Math.round(newPosition.x / this.gridSize) * this.gridSize;
                 finalPosition.z = Math.round(newPosition.z / this.gridSize) * this.gridSize;
             }
 
-            // Перемещаем объекты
             if (this.draggedObjects.length === 1) {
                 const obj = this.draggedObjects[0];
                 obj.position.x = finalPosition.x;
@@ -500,19 +437,15 @@ class DragManager {
                 }
             }
 
-            // Обновляем линии с регулировкой частоты
             if (this.showMoveLines) {
+                if (!this._linesInitialized) {
+                    this.initMoveLines();
+                }
                 this.updateMoveLines();
             }
 
-            // Обновляем координаты
             this.updateCoordinates(finalPosition);
             document.body.style.cursor = 'grabbing';
-        }
-
-        // Если есть отложенное обновление, выполняем его
-        if (this._needsUpdate) {
-            this.updateMoveLines();
         }
     }
 
@@ -544,9 +477,31 @@ class DragManager {
     finishDrag() {
         if (this.draggedObjects.length === 0) return;
 
-        this.removeMoveLines();
+        // Не скрываем линии и поля ввода после завершения перетаскивания
+        this.isDragging = false;
+        this.dragStartMouse = null;
+        this.dragPlane = null;
+        this.dragIntersection = null;
+        document.body.style.cursor = 'default';
 
-        // Показываем TransformControls если нужно
+        // Обновляем поля ввода с конечными значениями
+        if (this.draggedObjects.length > 0) {
+            const mainObj = this.draggedObjects[0];
+            const startPos = this.dragStartPositions[0];
+            const deltaX = mainObj.position.x - startPos.x;
+            const deltaZ = mainObj.position.z - startPos.z;
+
+            if (Math.abs(deltaX) > 0.1 && this._inputContainerX && !this._isInputFocusedX) {
+                this._lastInputX = deltaX;
+                this._inputElementX.value = deltaX.toFixed(1);
+            }
+
+            if (Math.abs(deltaZ) > 0.1 && this._inputContainerZ && !this._isInputFocusedZ) {
+                this._lastInputZ = deltaZ;
+                this._inputElementZ.value = deltaZ.toFixed(1);
+            }
+        }
+
         if (this.editor.transformControls && this.editor.selectedObjects.length === 1) {
             const selectedObj = this.editor.selectedObjects[0];
             if (this.draggedObjects.includes(selectedObj)) {
@@ -554,7 +509,6 @@ class DragManager {
             }
         }
 
-        // Проверяем, изменилась ли позиция
         let positionChanged = false;
         for (let i = 0; i < this.draggedObjects.length; i++) {
             if (!this.dragStartPositions[i].equals(this.draggedObjects[i].position)) {
@@ -564,36 +518,22 @@ class DragManager {
         }
 
         if (positionChanged) {
-            const positions = this.draggedObjects.map((obj, i) => ({
-                uuid: obj.uuid,
-                previousPosition: this.dragStartPositions[i].toArray(),
-                position: obj.position.toArray()
-            }));
-
-            this.editor.history.addAction({
-                type: 'modify_position_multiple',
-                objects: positions
-            });
-
+            this.addHistoryAction();
             this.editor.showStatus(
                 `Перемещено ${this.draggedObjects.length} объект(ов) по горизонтали`,
                 'success'
             );
         }
-
-        this.resetDrag();
     }
 
     cancelDrag() {
         if (this.draggedObjects.length > 0) {
-            // Возвращаем объекты на исходные позиции
             for (let i = 0; i < this.draggedObjects.length; i++) {
                 this.draggedObjects[i].position.copy(this.dragStartPositions[i]);
             }
 
-            this.removeMoveLines();
+            this.clearLinesAndInputs();
 
-            // Показываем TransformControls если нужно
             if (this.editor.transformControls && this.editor.selectedObjects.length === 1) {
                 const selectedObj = this.editor.selectedObjects[0];
                 if (this.draggedObjects.includes(selectedObj)) {
@@ -607,6 +547,50 @@ class DragManager {
         this.resetDrag();
     }
 
+    removeMoveLines() {
+        for (const line of this.moveLinesX) {
+            if (line && line.parent) {
+                line.parent.remove(line);
+            }
+            if (line && line.geometry) {
+                line.geometry.dispose();
+            }
+            if (line && line.material) {
+                line.material.dispose();
+            }
+        }
+        this.moveLinesX = [];
+
+        for (const line of this.moveLinesZ) {
+            if (line && line.parent) {
+                line.parent.remove(line);
+            }
+            if (line && line.geometry) {
+                line.geometry.dispose();
+            }
+            if (line && line.material) {
+                line.material.dispose();
+            }
+        }
+        this.moveLinesZ = [];
+
+        this._linesInitialized = false;
+    }
+
+    clearLinesAndInputs() {
+        this.removeMoveLines();
+        this.hideInputElements();
+    }
+
+    hideInputElements() {
+        if (this._inputContainerX) {
+            this._inputContainerX.style.display = 'none';
+        }
+        if (this._inputContainerZ) {
+            this._inputContainerZ.style.display = 'none';
+        }
+    }
+
     resetDrag() {
         this.isDragging = false;
         this.draggedObjects = [];
@@ -616,7 +600,8 @@ class DragManager {
         this.dragPlane = null;
         this.dragIntersection = null;
         this.mainObjectIndex = 0;
-        this._lastTextValues.clear();
+        this._linesInitialized = false;
+        this.clearLinesAndInputs();
         document.body.style.cursor = 'default';
     }
 
@@ -631,12 +616,10 @@ class DragManager {
         this.editor.showStatus(`Размер сетки: ${this.gridSize} мм`, 'info');
     }
 
-    // Метод для переключения отображения линий
     toggleMoveLines() {
         this.showMoveLines = !this.showMoveLines;
         this.editor.showStatus(`Линии перемещения: ${this.showMoveLines ? 'ВКЛ' : 'ВЫКЛ'}`, 'info');
 
-        // Применяем изменение к существующим линиям
         for (const line of this.moveLinesX) {
             if (line) {
                 line.visible = this.showMoveLines;
@@ -648,6 +631,30 @@ class DragManager {
             }
         }
 
+        if (!this.showMoveLines) {
+            this.hideInputElements();
+        }
+
         return this.showMoveLines;
+    }
+
+    destroy() {
+        this.removeMoveLines();
+        this.hideInputElements();
+
+        // Удаляем поля ввода из DOM
+        if (this._inputContainerX && this._inputContainerX.parentElement) {
+            document.body.removeChild(this._inputContainerX);
+            this._inputContainerX = null;
+            this._inputElementX = null;
+            this._inputValueX = null;
+        }
+
+        if (this._inputContainerZ && this._inputContainerZ.parentElement) {
+            document.body.removeChild(this._inputContainerZ);
+            this._inputContainerZ = null;
+            this._inputElementZ = null;
+            this._inputValueZ = null;
+        }
     }
 }

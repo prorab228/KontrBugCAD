@@ -2,7 +2,7 @@
 class CADEditor {
     constructor() {
         // Константы версии
-        this.APP_VERSION = '0.7.0';
+        this.APP_VERSION = '0.7.0 Beta';
         this.APP_NAME = 'КонтрБагCAD';
         this.APP_AUTHOR = 'Лунев Валерий Константинович ';
 

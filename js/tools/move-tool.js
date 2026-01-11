@@ -7,12 +7,7 @@ class MoveTool extends TransformToolBase {
         this.moveLine = null;
         this.moveLineGeometry = null;
         this.moveLineMaterial = null;
-        this.distanceText = null;
-        this.distanceTextCanvas = null;
-        this.distanceTextContext = null;
-        this.distanceTexture = null;
-        this.distanceSprite = null;
-        this.distanceSpriteMaterial = null;
+        this.distanceInput = null;
 
         this.startWorldPosition = new THREE.Vector3();
         this.showMoveLine = true;
@@ -41,7 +36,6 @@ class MoveTool extends TransformToolBase {
 
         // Для оптимизации
         this.lastDistance = 0;
-        this.lastDistanceText = '';
         this.lastDragAxis = null;
         this.frameCount = 0;
         this.updateInterval = 3;
@@ -55,14 +49,21 @@ class MoveTool extends TransformToolBase {
             objectCenter: new THREE.Vector3()
         };
 
-        this.initGizmo();
+        // DOM элементы для ввода
+        this._inputContainer = null;
+        this._inputElement = null;
+        this._inputValue = null;
+        this._isInputFocused = false;
+        this._lastInputDistance = 0;
+        this._isDragging = false;
+        this._currentDragAxis = null;
+        this._currentDragPositive = null;
 
-        // Флаг для отслеживания состояния линий
+        this.initGizmo();
         this._moveLinesInitialized = false;
     }
 
     initGizmo() {
-        // Очищаем предыдущий gizmo
         while (this.gizmoGroup.children.length > 0) {
             const child = this.gizmoGroup.children[0];
             if (child.geometry) child.geometry.dispose();
@@ -72,16 +73,12 @@ class MoveTool extends TransformToolBase {
 
         this.createTranslateGizmo();
         this.gizmoGroup.visible = false;
-
-        // Инициализируем линию перемещения
         this.initMoveLine();
     }
 
     initMoveLine() {
-        // Если линии уже инициализированы, не создаем заново
         if (this._moveLinesInitialized) return;
 
-        // Создаем геометрию для линии один раз
         this.moveLineGeometry = new THREE.CylinderBufferGeometry(
             this.lineThickness / 2,
             this.lineThickness / 2,
@@ -91,7 +88,6 @@ class MoveTool extends TransformToolBase {
             false
         );
 
-        // Создаем материал для линии
         this.moveLineMaterial = new THREE.MeshBasicMaterial({
             color: 0x00ff00,
             transparent: true,
@@ -101,63 +97,86 @@ class MoveTool extends TransformToolBase {
             depthWrite: true
         });
 
-        // Создаем меш линии
         this.moveLine = new THREE.Mesh(this.moveLineGeometry, this.moveLineMaterial);
         this.moveLine.name = 'move_tool_line';
         this.moveLine.visible = false;
         this.moveLine.renderOrder = 999;
-        this.moveLine.userData.isMoveToolLine = true; // Маркер для идентификации
+        this.moveLine.userData.isMoveToolLine = true;
 
-        // Добавляем в сцену
         this.editor.scene.add(this.moveLine);
 
-        // Инициализируем текст расстояния
-        this.initDistanceText();
+        // Инициализируем поле ввода
+        this.initDistanceInput();
 
         this._moveLinesInitialized = true;
     }
 
-    initDistanceText() {
-        // Создаем группу для текста
-        this.distanceText = new THREE.Group();
-        this.distanceText.name = 'move_tool_distance_text';
-        this.distanceText.visible = false;
-        this.distanceText.userData.isMoveToolText = true;
+    initDistanceInput() {
+        // Создаем контейнер для поля ввода
+        this._inputContainer = document.createElement('div');
+        this._inputContainer.className = 'distance-input-container';
 
-        // Создаем Canvas один раз
-        this.distanceTextCanvas = document.createElement('canvas');
-        this.distanceTextContext = this.distanceTextCanvas.getContext('2d');
+        // Создаем поле ввода
+        this._inputElement = document.createElement('input');
+        this._inputElement.type = 'number';
+        this._inputElement.step = '0.1';
+        this._inputContainer.appendChild(this._inputElement);
+        document.body.appendChild(this._inputContainer);
 
-        // Оптимальный размер для текста
-        this.distanceTextCanvas.width = 256;
-        this.distanceTextCanvas.height = 64;
-
-        // Создаем текстуру один раз
-        this.distanceTexture = new THREE.CanvasTexture(this.distanceTextCanvas);
-        this.distanceTexture.minFilter = THREE.LinearFilter;
-        this.distanceTexture.magFilter = THREE.LinearFilter;
-        this.distanceTexture.premultiplyAlpha = true;
-        this.distanceTexture.generateMipmaps = false;
-
-        // Создаем материал спрайта один раз
-        this.distanceSpriteMaterial = new THREE.SpriteMaterial({
-            map: this.distanceTexture,
-            transparent: true,
-            opacity: 0.9,
-            depthTest: false
+        // Обработчики событий
+        this._inputElement.addEventListener('focus', () => {
+            this._isInputFocused = true;
         });
 
-        // Создаем спрайт один раз
-        this.distanceSprite = new THREE.Sprite(this.distanceSpriteMaterial);
-        this.distanceSprite.scale.set(15, 3.5, 1);
-        this.distanceText.add(this.distanceSprite);
+        this._inputElement.addEventListener('blur', () => {
+            this._isInputFocused = false;
+        });
 
-        // Добавляем в сцену
-        this.editor.scene.add(this.distanceText);
+
+        this._inputElement.addEventListener('input', (e) => {
+            // Динамическое обновление при вводе
+            const value = parseFloat(e.target.value);
+            if (!isNaN(value)) {
+                this.updateFromInput(value);
+            }
+        });
+    }
+
+
+    updateFromInput(value) {
+        if (!this.attachedObject || !this._currentDragAxis || !this._currentDragPositive) return;
+
+        // Сохраняем начальное состояние для истории
+        if (!this.attachedObject.userData.transformStartState) {
+            this.attachedObject.userData.transformStartState = {
+                position: this.attachedObject.position.clone(),
+                rotation: this.attachedObject.rotation.clone(),
+                scale: this.attachedObject.scale.clone()
+            };
+        }
+
+        // ВАЖНО: Учитываем направление перемещения
+        const direction = this._currentDragPositive ? 1 : -1;
+        const signedValue = value * direction;
+
+        // Вычисляем вектор перемещения с учетом направления
+        const axisVector = this.getAxisVector(this._currentDragAxis, true); // Всегда получаем положительный вектор
+        const moveVector = axisVector.clone().multiplyScalar(signedValue);
+
+        // Применяем перемещение
+        this.attachedObject.position.copy(this.startPosition).add(moveVector);
+
+        // Обновляем визуализацию
+        this.moveDelta.copy(moveVector);
+        this.updateGizmoPosition();
+
+        // Обновляем линию
+        if (this.moveLine && this.moveLine.visible) {
+            this.updateLineTransform(this.startWorldPosition, this.attachedObject.getWorldPosition(new THREE.Vector3()));
+        }
     }
 
     createTranslateGizmo() {
-        // Сбрасываем ссылки на стрелки
         this.axisArrows = {
             x: { line: null, cone: null, group: null, axis: 'x', positive: true },
             y: { line: null, cone: null, group: null, axis: 'y', positive: true },
@@ -167,12 +186,10 @@ class MoveTool extends TransformToolBase {
             nz: { line: null, cone: null, group: null, axis: 'z', positive: false }
         };
 
-        // Создаем стрелки для положительных направлений
         this.createAxisArrow('x', true);
         this.createAxisArrow('y', true);
         this.createAxisArrow('z', true);
 
-        // Создаем стрелки для отрицательных направлений
         this.createAxisArrow('x', false);
         this.createAxisArrow('y', false);
         this.createAxisArrow('z', false);
@@ -190,10 +207,8 @@ class MoveTool extends TransformToolBase {
         axisGroup.userData.positive = positive;
         axisGroup.userData.key = key;
 
-        // Сохраняем ссылку на группу
         this.axisArrows[key].group = axisGroup;
 
-        // Линия оси
         const lineGeometry = new THREE.CylinderBufferGeometry(
             this.lineBaseRadius,
             this.lineBaseRadius,
@@ -210,11 +225,8 @@ class MoveTool extends TransformToolBase {
         line.userData.axis = axis;
         line.userData.positive = positive;
         line.userData.key = key;
-
-        // Сохраняем ссылку на линию
         this.axisArrows[key].line = line;
 
-        // Конус стрелки
         const coneGeometry = new THREE.ConeBufferGeometry(
             this.arrowHeadBaseRadius,
             this.arrowHeadBaseLength,
@@ -230,11 +242,8 @@ class MoveTool extends TransformToolBase {
         cone.userData.axis = axis;
         cone.userData.positive = positive;
         cone.userData.key = key;
-
-        // Сохраняем ссылку на конус
         this.axisArrows[key].cone = cone;
 
-        // Позиционирование
         if (axis === 'x') {
             line.rotation.z = -Math.PI / 2;
             line.position.x = sign * this.arrowBaseLength / 2;
@@ -279,21 +288,20 @@ class MoveTool extends TransformToolBase {
     onActivate() {
         super.onActivate();
 
-        // Убедимся, что линии перемещения инициализированы
         if (!this._moveLinesInitialized) {
             this.initMoveLine();
         }
 
-        // Убедимся, что drag-manager не оставил свои линии
         this.ensureCleanScene();
+
+        // Если есть выделенный объект, показываем gizmo
+        if (this.editor.selectedObjects.length === 1) {
+            this.attachToObject(this.editor.selectedObjects[0]);
+        }
     }
 
-    // Новый метод: очистка сцены от чужих линий
     ensureCleanScene() {
-        // Удаляем любые оставшиеся линии от drag-manager
         const scene = this.editor.scene;
-
-        // Находим и удаляем линии drag-manager по их именам
         const dragLines = [];
         scene.traverse((child) => {
             if (child.name && (child.name.includes('drag_line') ||
@@ -436,9 +444,16 @@ class MoveTool extends TransformToolBase {
         if (this.moveLine) {
             this.moveLine.visible = false;
         }
-        if (this.distanceText) {
-            this.distanceText.visible = false;
+        if (this._inputContainer) {
+            this._inputContainer.style.display = 'none';
         }
+    }
+
+    clearMoveLine() {
+        this.hideMoveLine();
+        this._currentDragAxis = null;
+        this._currentDragPositive = null;
+        this._isDragging = false;
     }
 
     onPositionChange(axis, e) {
@@ -501,7 +516,6 @@ class MoveTool extends TransformToolBase {
         this.lastMousePosition.copy(this.editor.mouse);
         this.editor.raycaster.setFromCamera(this.editor.mouse, this.editor.camera);
 
-        // Проверяем, кликнули ли на gizmo
         const gizmoMeshes = [];
         this.gizmoGroup.traverse((child) => {
             if (child instanceof THREE.Mesh) {
@@ -516,7 +530,6 @@ class MoveTool extends TransformToolBase {
             let axis = null;
             let positive = true;
 
-            // Ищем данные оси
             let current = object;
             while (current && !axis) {
                 if (current.userData && current.userData.axis) {
@@ -534,7 +547,6 @@ class MoveTool extends TransformToolBase {
             }
         }
 
-        // Если кликнули не на gizmo, пытаемся выбрать объект
         const sceneIntersects = this.editor.raycaster.intersectObjects(
             this.editor.objectsGroup.children,
             true
@@ -544,6 +556,9 @@ class MoveTool extends TransformToolBase {
             const object = this.editor.objectsManager.findTopParent(sceneIntersects[0].object);
 
             if (this.canTransformObject(object)) {
+                // Скрываем предыдущие линии при выборе нового объекта
+                this.clearMoveLine();
+
                 this.editor.selectSingleObject(object);
                 this.attachToObject(object);
                 return true;
@@ -558,7 +573,6 @@ class MoveTool extends TransformToolBase {
 
         if (this.isDragging) return;
 
-        // Обработка наведения на оси
         this.editor.updateMousePosition(e);
         this.editor.raycaster.setFromCamera(this.editor.mouse, this.editor.camera);
 
@@ -571,12 +585,10 @@ class MoveTool extends TransformToolBase {
 
         const intersects = this.editor.raycaster.intersectObjects(gizmoMeshes, true);
 
-        // Сбрасываем подсветку
         if (this.hoveredAxis) {
             this.hoveredAxis = null;
         }
 
-        // Подсвечиваем новую ось
         if (intersects.length > 0) {
             const object = intersects[0].object;
             this.hoveredAxis = object.userData.key;
@@ -589,9 +601,9 @@ class MoveTool extends TransformToolBase {
         super.startDragging(axisKey, e);
 
         if (this.attachedObject) {
+            this._isDragging = true;
             this.moveDelta.set(0, 0, 0);
 
-            // Определяем ось и направление
             let axis, positive;
             if (axisKey.startsWith('n')) {
                 axis = axisKey.substring(1);
@@ -601,9 +613,11 @@ class MoveTool extends TransformToolBase {
                 positive = true;
             }
 
+            this._currentDragAxis = axis;
+            this._currentDragPositive = positive;
+
             this.currentAxisVector = this.getAxisVector(axis, positive);
 
-            // Создаем плоскость для перемещения
             const cameraDirection = this.editor.camera.getWorldDirection(new THREE.Vector3());
             let planeNormal;
 
@@ -616,15 +630,12 @@ class MoveTool extends TransformToolBase {
                 this.dragPlane.setFromNormalAndCoplanarPoint(planeNormal, this.gizmoGroup.position);
             }
 
-            // Сохраняем начальную позицию
             this.attachedObject.getWorldPosition(this.startWorldPosition);
 
-            // Сохраняем информацию об оси
             this.dragAxis = axis;
             this.dragPositive = positive;
             this.lastDragAxis = `${axis}${positive ? '+' : '-'}`;
 
-            // Настраиваем линию перемещения
             this.setupMoveLine();
         }
     }
@@ -632,22 +643,27 @@ class MoveTool extends TransformToolBase {
     setupMoveLine() {
         if (!this.moveLine || !this.showMoveLine) return;
 
-        // Показываем линию
         this.moveLine.visible = true;
 
-        // Настраиваем цвет линии
         if (this.dragAxis === 'x') {
             this.moveLineMaterial.color.setHex(0xff4444);
+            this._inputContainer.style.borderColor = '#ff4444';
         } else if (this.dragAxis === 'y') {
             this.moveLineMaterial.color.setHex(0x44ff44);
+            this._inputContainer.style.borderColor = '#44ff44';
         } else if (this.dragAxis === 'z') {
             this.moveLineMaterial.color.setHex(0x4444ff);
+            this._inputContainer.style.borderColor = '#4444ff';
         }
 
-        // Сбрасываем счетчик кадров
         this.frameCount = 0;
         this.lastDistance = 0;
-        this.lastDistanceText = '';
+        this._lastInputDistance = 0;
+
+        // Сбрасываем значение в поле ввода
+        if (this._inputElement) {
+            this._inputElement.value = '0.0';
+        }
     }
 
     updateLineTransform(startPos, endPos) {
@@ -655,18 +671,13 @@ class MoveTool extends TransformToolBase {
 
         const { midPoint, direction } = this.cachedVectors;
 
-        // Вычисляем середину
         midPoint.addVectors(startPos, endPos).multiplyScalar(0.5);
-
-        // Вычисляем длину и направление
         const distance = startPos.distanceTo(endPos);
         direction.subVectors(endPos, startPos).normalize();
 
-        // Устанавливаем позицию и масштаб
         this.moveLine.position.copy(midPoint);
         this.moveLine.scale.set(1, distance, 1);
 
-        // Поворачиваем линию
         if (direction.length() > 0) {
             this.moveLine.quaternion.setFromUnitVectors(
                 new THREE.Vector3(0, 1, 0),
@@ -674,125 +685,90 @@ class MoveTool extends TransformToolBase {
             );
         }
 
-        // Обновляем текст расстояния (с оптимизацией)
-        this.updateDistanceTextOptimized(midPoint, distance, direction);
+        this.updateDistanceInput(midPoint, distance, direction);
     }
 
-    updateDistanceTextOptimized(position, distance, direction) {
-        if (!this.distanceText || !this.distanceTextCanvas) return;
+    updateDistanceInput(position, distance, direction) {
+        if (!this._inputContainer || this._isInputFocused) return;
 
-        // Показываем текст только если есть значительное расстояние
-        if (distance < 0.5) {
-            this.distanceText.visible = false;
+        if (distance < 0.1) {
+            this._inputContainer.style.display = 'none';
             return;
         }
 
         this.frameCount++;
 
-        // Оптимизация: обновляем не каждый кадр
-        const shouldUpdateText = this.frameCount % this.updateInterval === 0 ||
-            Math.abs(distance - this.lastDistance) > this.minDistanceChange ||
+        // ВАЖНО: Вычисляем знаковое расстояние с учетом направления
+        let signedDistance = distance;
+
+        // Проверяем направление перемещения относительно начальной позиции
+        if (this.attachedObject && this._currentDragAxis) {
+            const currentWorldPos = this.attachedObject.getWorldPosition(new THREE.Vector3());
+            const startPos = this.startWorldPosition;
+
+            if (this._currentDragAxis === 'x') {
+                signedDistance = currentWorldPos.x - startPos.x;
+            } else if (this._currentDragAxis === 'y') {
+                signedDistance = currentWorldPos.y - startPos.y;
+            } else if (this._currentDragAxis === 'z') {
+                signedDistance = currentWorldPos.z - startPos.z;
+            }
+        }
+
+        const shouldUpdate = this.frameCount % this.updateInterval === 0 ||
+            Math.abs(signedDistance - this.lastDistance) > this.minDistanceChange ||
             this.dragAxis !== this.lastDragAxis;
 
-        if (shouldUpdateText) {
-            // Определяем цвет текста
-            let textColor;
-            if (this.dragAxis === 'x') {
-                textColor = '#CC2222';
-            } else if (this.dragAxis === 'y') {
-                textColor = '#22CC22';
-            } else if (this.dragAxis === 'z') {
-                textColor = '#2222CC';
-            } else {
-                textColor = '#AAAAAA';
-            }
-
-            const text = `${distance.toFixed(1)} мм`;
-
-            // Если текст не изменился значительно, пропускаем перерисовку
-            if (text === this.lastDistanceText && this.dragAxis === this.lastDragAxis) {
-                this.lastDistance = distance;
-                this.updateDistancePosition(position, direction);
-                return;
-            }
-
-            this.lastDistance = distance;
-            this.lastDistanceText = text;
+        if (shouldUpdate) {
+            this.lastDistance = signedDistance;
             this.lastDragAxis = this.dragAxis;
+            this._lastInputDistance = signedDistance;
 
-            // Очищаем canvas
-            this.distanceTextContext.clearRect(0, 0,
-                this.distanceTextCanvas.width,
-                this.distanceTextCanvas.height);
+            // Показываем знаковое значение
+            this._inputElement.value = signedDistance.toFixed(1);
+            this._inputContainer.style.display = 'block';
 
-            // Настройки текста
-            const fontSize = 62;
-            this.distanceTextContext.font = `bold ${fontSize}px Arial`;
-            this.distanceTextContext.textAlign = 'center';
-            this.distanceTextContext.textBaseline = 'middle';
-
-            const centerX = this.distanceTextCanvas.width / 2;
-            const centerY = this.distanceTextCanvas.height / 2;
-
-            // Черная обводка
-            this.distanceTextContext.strokeStyle = 'rgba(0, 0, 0, 0.8)';
-            this.distanceTextContext.lineWidth = 2;
-            this.distanceTextContext.strokeText(text, centerX, centerY);
-
-            // Цветной текст
-            this.distanceTextContext.fillStyle = textColor;
-            this.distanceTextContext.fillText(text, centerX, centerY);
-
-            // Обновляем текстуру
-            this.distanceTexture.needsUpdate = true;
+            // Обновляем цвет рамки в зависимости от знака
+            const isNegative = signedDistance < 0;
+            if (this.dragAxis === 'x') {
+                this._inputContainer.style.borderColor = isNegative ? '#ff8888' : '#ff4444';
+            } else if (this.dragAxis === 'y') {
+                this._inputContainer.style.borderColor = isNegative ? '#88ff88' : '#44ff44';
+            } else if (this.dragAxis === 'z') {
+                this._inputContainer.style.borderColor = isNegative ? '#8888ff' : '#4444ff';
+            }
         }
 
-        // Всегда обновляем позицию
-        this.updateDistancePosition(position, direction);
-        this.distanceText.visible = true;
+        this.updateInputPosition(position, direction);
     }
 
-    updateDistancePosition(position, direction) {
-        if (!this.distanceText || !this.distanceSprite) return;
+    updateInputPosition(position, direction) {
+        if (!this._inputContainer) return;
 
-        // Позиционируем группу
-        this.distanceText.position.copy(position);
+        const screenPos = this.worldToScreen(position, this.editor.camera, this.editor.renderer);
 
-        const { perpDirection, cameraDirection } = this.cachedVectors;
+        // Позиционируем контейнер рядом с линией
+        this._inputContainer.style.left = `${screenPos.x - 60}px`;
+        this._inputContainer.style.top = `${screenPos.y - 30}px`;
+    }
 
-        // Вычисляем перпендикулярное направление
-        if (Math.abs(direction.y) > 0.9) {
-            perpDirection.set(1, 0, 0);
-        } else {
-            perpDirection.crossVectors(new THREE.Vector3(0, 1, 0), direction).normalize();
-        }
+    worldToScreen(position, camera, renderer) {
+        const vector = position.clone();
+        vector.project(camera);
 
-        // Смещаем спрайт
-        const cameraDistance = this.editor.camera.position.distanceTo(position);
-        const offset = perpDirection.multiplyScalar(1.5 + cameraDistance * 0.005);
-        this.distanceSprite.position.copy(offset);
+        const x = (vector.x * 0.5 + 0.5) * renderer.domElement.clientWidth;
+        const y = (vector.y * -0.5 + 0.5) * renderer.domElement.clientHeight;
 
-        // Ориентируем текст к камере
-        cameraDirection.subVectors(this.editor.camera.position, position).normalize();
-        this.distanceText.lookAt(
-            position.x + cameraDirection.x,
-            position.y + cameraDirection.y,
-            position.z + cameraDirection.z
-        );
+        return { x, y };
     }
 
     updateMoveLine() {
         if (!this.moveLine || !this.attachedObject || !this.moveLine.visible || !this.showMoveLine) return;
 
         const { currentWorldPos } = this.cachedVectors;
-
-        // Получаем текущую позицию
         this.attachedObject.getWorldPosition(currentWorldPos);
-
-        // Обновляем линию
         this.updateLineTransform(this.startWorldPosition, currentWorldPos);
 
-        // Обновляем tooltip (реже)
         if (this.frameCount % 5 === 0 && this.tooltip) {
             const distance = this.startWorldPosition.distanceTo(currentWorldPos);
             this.updateTooltipWithDistance(distance);
@@ -833,15 +809,12 @@ class MoveTool extends TransformToolBase {
         const currentMouseX = this.startMouse.x + deltaX;
         const currentMouseY = this.startMouse.y + deltaY;
 
-        // Нормализованные координаты
         const x = ((currentMouseX - rect.left) / rect.width) * 2 - 1;
         const y = -((currentMouseY - rect.top) / rect.height) * 2 + 1;
 
-        // Создаем луч
         const ray = new THREE.Raycaster();
         ray.setFromCamera(new THREE.Vector2(x, y), this.editor.camera);
 
-        // Находим пересечение
         const intersection = new THREE.Vector3();
         if (ray.ray.intersectPlane(this.dragPlane, intersection)) {
             const startX = ((this.startMouse.x - rect.left) / rect.width) * 2 - 1;
@@ -932,7 +905,6 @@ class MoveTool extends TransformToolBase {
                     cone.position.z = sign * desiredTotalLength;
                 }
 
-                // Подсветка при наведении
                 const isHovered = (this.hoveredAxis === key);
                 const targetColor = isHovered ? 0xFFFF00 : this.axisColors[axis];
                 const targetOpacity = isHovered ? 1.0 : 0.8;
@@ -964,23 +936,64 @@ class MoveTool extends TransformToolBase {
 
     onMouseUp(e) {
         super.onMouseUp(e);
-        this.hideMoveLine();
+
+        // Не скрываем линии при завершении перетаскивания
+        this._isDragging = false;
         this.hoveredAxis = null;
         this.updateGizmoPosition();
+
+        // Обновляем позицию поля ввода после завершения перетаскивания
+        if (this.moveLine && this.moveLine.visible && this.attachedObject) {
+            const currentWorldPos = this.attachedObject.getWorldPosition(new THREE.Vector3());
+
+            // Вычисляем знаковое расстояние
+            let signedDistance = 0;
+            if (this._currentDragAxis === 'x') {
+                signedDistance = currentWorldPos.x - this.startWorldPosition.x;
+            } else if (this._currentDragAxis === 'y') {
+                signedDistance = currentWorldPos.y - this.startWorldPosition.y;
+            } else if (this._currentDragAxis === 'z') {
+                signedDistance = currentWorldPos.z - this.startWorldPosition.z;
+            }
+
+            const distance = Math.abs(signedDistance);
+
+            if (distance > 0.1 && this._inputContainer) {
+                this._lastInputDistance = signedDistance;
+                this._inputElement.value = signedDistance.toFixed(1);
+
+                // Обновляем цвет рамки
+                const isNegative = signedDistance < 0;
+                if (this.dragAxis === 'x') {
+                    this._inputContainer.style.borderColor = isNegative ? '#ff8888' : '#ff4444';
+                } else if (this.dragAxis === 'y') {
+                    this._inputContainer.style.borderColor = isNegative ? '#88ff88' : '#44ff44';
+                } else if (this.dragAxis === 'z') {
+                    this._inputContainer.style.borderColor = isNegative ? '#8888ff' : '#4444ff';
+                }
+
+                const { midPoint, direction } = this.cachedVectors;
+                midPoint.addVectors(this.startWorldPosition, currentWorldPos).multiplyScalar(0.5);
+                direction.subVectors(currentWorldPos, this.startWorldPosition).normalize();
+
+                this.updateInputPosition(midPoint, direction);
+                this._inputContainer.style.display = 'block';
+            }
+        }
     }
 
     detach() {
-        this.hideMoveLine();
+        // Скрываем линии и поля ввода при откреплении объекта
+        this.clearMoveLine();
         this.hoveredAxis = null;
         super.detach();
     }
 
     onDeactivate() {
-        // Скрываем линию, но не удаляем ресурсы
-        this.hideMoveLine();
+        // Скрываем линии при деактивации инструмента
+        this.clearMoveLine();
         this.hoveredAxis = null;
 
-        // Не освобождаем ресурсы, чтобы можно было повторно использовать
         super.onDeactivate();
     }
 

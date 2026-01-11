@@ -32,6 +32,9 @@ class SelectTool extends Tool {
         if (this.isDragging) {
             this.endDrag();
         }
+        if (this.dragManager) {
+            this.dragManager.clearLinesAndInputs();
+        }
     }
 
     onMouseDown(e) {
@@ -57,6 +60,7 @@ class SelectTool extends Tool {
             if (this.canDragObject(object)) {
                 // Подготавливаем перетаскивание (но еще не начинаем)
                 this.prepareDrag(object, intersects[0].point);
+
                 return true;
             } else {
                 // Если нельзя перетаскивать, просто выделяем
@@ -153,6 +157,20 @@ class SelectTool extends Tool {
         if (intersects.length > 0) {
             const object = this.editor.objectsManager.findTopParent(intersects[0].object);
             this.handleSelection(e, object);
+        } else {
+            // Клик в пустоту - сбрасываем выделение
+            this.editor.clearSelection();
+
+            // Очищаем линии drag-manager при снятии выделения
+            if (this.dragManager) {
+                this.dragManager.resetDrag();
+            }
+
+            // Очищаем линии move-tool, если он активен
+            const activeTool = this.editor.toolManager.activeTool;
+            if (activeTool && activeTool.name === 'move' && activeTool.clearMoveLine) {
+                activeTool.clearMoveLine();
+            }
         }
     }
 

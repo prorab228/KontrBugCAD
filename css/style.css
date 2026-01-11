@@ -1972,3 +1972,30 @@ input:checked + .toggle-slider:before {
     object-fit: contain;
 }
 
+.distance-input-container,
+.drag-input-container-x,
+.drag-input-container-z
+{
+    position: absolute;
+    z-index: 10000;
+    background: var(--bg-surface);
+    border-radius: 4px;
+    padding: 4px;
+    display: none;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+    border: 2px solid #00ff00;
+}
+
+.distance-input-container input,
+.drag-input-container-x input,
+.drag-input-container-z input
+{
+    width: 80px;
+
+    border: none;
+    color: var(--text-primary);
+    background: var(--bg-surface);
+    font-size: 14px;
+    text-align: center;
+    outline: none;
+}

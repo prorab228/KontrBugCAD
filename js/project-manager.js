@@ -777,6 +777,8 @@ class ProjectManager {
             this.editor.objectsManager.updateSceneStats();
             this.editor.objectsManager.updateSceneList();
         }
+
+
     }
 
     // ЗАГРУЗКА ПРОЕКТА
@@ -821,7 +823,12 @@ class ProjectManager {
             project.scene.objects.forEach(objData => {
                 try {
                     // Пропускаем элементы скетча - они загружаются отдельно
-                    if (objData.userData?.type === 'sketch_element') {
+                    const userData = objData.userData || {};
+                    if (userData.type === 'sketch_element' ||
+                        userData.type === 'sketch_plane' ||
+                        userData.type === 'work_plane' ||
+                        userData.elementType) {
+                        console.log('Skipping sketch-related object:', userData.type);
                         return;
                     }
 
@@ -829,12 +836,6 @@ class ProjectManager {
                     if (obj) {
                         this.editor.objectsGroup.add(obj);
                         this.editor.objects.push(obj);
-
-                        if (obj.userData.type === 'sketch_plane') {
-                            this.editor.sketchPlanes.push(obj);
-                        } else if (obj.userData.type === 'work_plane') {
-                            this.editor.workPlanes.push(obj);
-                        }
 
                         loadedCount++;
                     }
