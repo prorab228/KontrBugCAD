@@ -93,6 +93,14 @@ body {
     letter-spacing: 0.5px;
 }
 
+/* Добавить в style.css */
+.dropdown-divider {
+    height: 1px;
+    background: var(--border-primary);
+    margin: 5px 0;
+    width: 100%;
+}
+
 .theme-options {
     display: flex;
     flex-direction: column;
@@ -693,7 +701,7 @@ body.dark-theme {
 .modal-select,
 .form-control,
 .search-input {
-    background: var(--hover-overlay);
+    background: var(--bg-primary);
     border: 1px solid var(--border-primary);
     color: var(--text-primary);
     border-radius: 4px;
