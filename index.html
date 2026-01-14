@@ -232,7 +232,7 @@
                         <button class="tool-btn sketch-tool-btn" style="display:none" data-sketch-tool="curve" title="Кривая безье">
                             <span class="cad-icon icon-bezier"></span>
                         </button>
-                        <button class="tool-btn sketch-tool-btn" style="display:none" data-sketch-tool="text" title="Текст">
+                        <button class="tool-btn sketch-tool-btn"  data-sketch-tool="text" title="Текст">
                             <span class="cad-icon icon-text"></span>
                         </button>
                         <button class="tool-btn sketch-tool-btn" data-sketch-tool="oval" title="Овал">
@@ -247,6 +247,21 @@
                         <button class="tool-btn sketch-tool-btn" style="display:none" data-sketch-tool="mirror" title="Симметрия">
                             <span class="cad-icon icon-mirror"></span>
                         </button>
+
+                        <div class="divider"></div>
+
+                        <button class="tool-btn sketch-tool-btn" data-sketch-tool="ruler" title="Линейка (R)">
+                            <i class="fas fa-ruler"></i>
+                        </button>
+                        <button class="tool-btn sketch-tool-btn" data-sketch-tool="dimension" title="Размеры (D)">
+                            <i class="fas fa-ruler-combined"></i>
+                        </button>
+                        <button class="tool-btn sketch-tool-btn"  data-sketch-tool="dashedline" title="Пунктирная линия">
+                            <i class="fas fa-grip-lines"></i>
+                        </button>
+
+                        <div class="divider"></div>
+
                         <button class="tool-btn" id="sketchDeleteBtn" title="Удалить элемент скетча">
                             <span class="cad-icon icon-delete"></span>
                         </button>
@@ -259,6 +274,10 @@
                         <button class="tool-btn" id="exitSketchBtn" title="Выйти из режима скетча">
                             <span class="cad-icon icon-exit"></span>
                         </button>
+
+
+
+
                     </div>
                     <div class="divider"></div>
                 </div>
@@ -596,6 +615,8 @@
         console.log('Библиотека THREE_BVH_CSG загружена через модуль и назначена на window', window.THREE_BVH_CSG);
     </script>
 
+
+
     <script src="js/history.js"></script>
     <script src="js/operations.js"></script>
     <script src="js/storage.js"></script>
@@ -644,6 +665,10 @@
     <script src="js/tools/sketch/sketch-tools/oval-tool.js"></script>
     <script src="js/tools/sketch/sketch-tools/stadium-tool.js"></script>
     <script src="js/tools/sketch/sketch-tools/arc-tool.js"></script>
+    <script src="js/tools/sketch/sketch-tools/ruler-tool.js"></script>
+    <script src="js/tools/sketch/sketch-tools/dimension-tool.js"></script>
+    <script src="js/tools/sketch/sketch-tools/dashed-line-tool.js"></script>
+
     <script src="js/tools/sketch/sketch-tools/import-tool.js"></script>
     <script src="js/tools/sketch/sketch-tools/export-tool.js"></script>
     <script src="js/tools/sketch/sketch-manager.js"></script>
