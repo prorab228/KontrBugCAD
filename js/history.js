@@ -1,1 +1,1274 @@
-class HistoryManager{constructor(t,e=50){this.editor=t,this.history=[],this.currentIndex=-1,this.maxSize=e}addAction(t){console.log("=== History addAction ===",t.type,t),this.currentIndex<this.history.length-1&&(this.history=this.history.slice(0,this.currentIndex+1));const e={...this.enhanceActionData(t),id:"act_"+Date.now()+"_"+Math.random().toString(36).substr(2,9),timestamp:(new Date).toISOString()};return this.history.push(e),this.history.length>this.maxSize?this.history.shift():this.currentIndex=this.history.length-1,console.log("History state:",{index:this.currentIndex,total:this.history.length,lastAction:e.type}),this.updateHistoryUI(),e}enhanceActionData(t){switch(t.type){case"create":return this.enhanceCreateAction(t);case"delete":return this.enhanceDeleteAction(t);case"boolean":return this.enhanceBooleanAction(t);case"modify_position":case"modify_scale":case"modify_rotation":case"modify_size":return this.enhanceModifyAction(t);case"modify_position_multiple":return this.enhanceMultipleModifyAction(t);case"import":return this.enhanceImportAction(t);case"group":return this.enhanceGroupAction(t);case"ungroup":return this.enhanceUngroupAction(t);case"sketch_add":case"sketch_delete":return this.enhanceSketchAction(t);default:return t}}enhanceSketchAction(t){if(t.sketchPlaneId&&this.editor.objectsManager){const e=this.editor.findObjectByUuid(t.sketchPlaneId);e&&e.userData&&(e.userData.hasSketch||"sketch_plane"===e.userData.type)&&(t.sketchData=this.serializeSketchState(e))}return t.elements&&Array.isArray(t.elements)&&this.editor.projectManager&&(t.elements=t.elements.map(t=>{if(t.data)return t;const e=this.editor.findObjectByUuid(t.uuid);return e?{uuid:e.uuid,data:this.editor.projectManager.serializeObjectForHistory(e)}:t})),t}serializeSketchState(t){const e={planeId:t.uuid,planeData:this.editor.projectManager.serializeObject(t),elements:[]};return t.children.forEach(t=>{if(t.userData&&"sketch_element"===t.userData.type){const r=this.editor.projectManager.serializeObjectForHistory(t);r&&e.elements.push({uuid:t.uuid,data:r})}}),e}enhanceMultipleModifyAction(t){if(!t.objects||!Array.isArray(t.objects))return t;const e=t.objects.map(t=>{const e=this.editor.findObjectByUuid(t.uuid);if(!e)return t;const r={...t};return r.previousPosition||(r.previousPosition=e.position.toArray()),r});return{...t,objects:e}}enhanceCreateAction(t){const e=this.editor.findObjectByUuid(t.object);return e&&this.editor.projectManager?{...t,data:this.editor.projectManager.serializeObjectForHistory(e)}:t}enhanceDeleteAction(t){if(!t.objects||!Array.isArray(t.objects))return t;const e=t.objects.map(t=>{const e=this.editor.findObjectByUuid(t.uuid);return e&&this.editor.projectManager?{uuid:e.uuid,data:this.editor.projectManager.serializeObjectForHistory(e)}:t});return{...t,objects:e}}enhanceBooleanAction(t){if(console.log("=== Enhancing boolean action ==="),t.sourceObjects&&!t.originalObjects&&(t.originalObjects=t.sourceObjects.map(t=>{const e=this.editor.findObjectByUuid(t);if(e&&this.editor.projectManager){console.log("Saving original object:",e.uuid,e.userData?.type);const t=this.editor.projectManager.serializeObjectForHistory(e);return{uuid:e.uuid,data:t}}return null}).filter(t=>null!==t)),!t.resultData&&t.result){const e=this.editor.findObjectByUuid(t.result);e&&this.editor.projectManager&&(t.resultData=this.editor.projectManager.serializeObjectForHistory(e))}return t}enhanceModifyAction(t){const e=this.editor.findObjectByUuid(t.object);if(!e)return t;if(t.data.previousPosition||"modify_position"!==t.type||(t.data.previousPosition=e.position.toArray()),t.data.previousScale||"modify_scale"!==t.type||(t.data.previousScale=e.scale.toArray()),!t.data.previousRotation&&"modify_rotation"===t.type){const r=(new THREE.Euler).setFromQuaternion(e.quaternion,"XYZ");t.data.previousRotation=[r.x,r.y,r.z]}if(!t.data.previousDimensions&&"modify_size"===t.type){const r=this.editor.objectsManager.getObjectDimensions(e);t.data.previousDimensions={x:r.x,y:r.y,z:r.z}}return t}enhanceImportAction(t){const e=this.editor.findObjectByUuid(t.object);return e&&this.editor.projectManager?{...t,data:this.editor.projectManager.serializeObjectForHistory(e)}:t}enhanceGroupAction(t){const e=this.editor.findObjectByUuid(t.groupUuid);return e&&this.editor.projectManager?{...t,groupData:this.editor.projectManager.serializeObjectForHistory(e)}:t}enhanceUngroupAction(t){if(t.ungroupedObjects&&Array.isArray(t.ungroupedObjects)){const e=t.ungroupedObjects.map(t=>{const e=this.editor.findObjectByUuid(t.uuid);return e&&this.editor.projectManager?{...t,data:this.editor.projectManager.serializeObjectForHistory(e)}:t});return{...t,ungroupedObjects:e}}return t}undo(){if(this.currentIndex<0)return!1;const t=this.history[this.currentIndex];console.log("=== History undo ===",t.type);try{return this.applyAction(t,!0),this.currentIndex--,this.updateHistoryUI(),!0}catch(t){return console.error("Undo failed:",t),!1}}redo(){if(this.currentIndex>=this.history.length-1)return!1;this.currentIndex++;const t=this.history[this.currentIndex];console.log("=== History redo ===",t.type);try{return this.applyAction(t,!1),this.updateHistoryUI(),!0}catch(t){return console.error("Redo failed:",t),this.currentIndex--,!1}}applyAction(t,e){switch(console.log("Applying action:",{type:t.type,isUndo:e}),t.type){case"create":return e?this.undoCreate(t):this.redoCreate(t);case"delete":return e?this.undoDelete(t):this.redoDelete(t);case"boolean":return e?this.undoBoolean(t):this.redoBoolean(t);case"modify_position":return this.applyModifyPosition(t,e);case"modify_scale":return this.applyModifyScale(t,e);case"modify_rotation":return this.applyModifyRotation(t,e);case"modify_size":return this.applyModifySize(t,e);case"modify_color":return this.applyModifyColor(t,e);case"modify_opacity":return this.applyModifyOpacity(t,e);case"modify_position_multiple":return this.applyModifyPositionMultiple(t,e);case"import":return e?this.undoImport(t):this.redoImport(t);case"group":return e?this.undoGroup(t):this.redoGroup(t);case"ungroup":return e?this.undoUngroup(t):this.redoUngroup(t);case"sketch_add":return e?this.undoSketchAdd(t):this.redoSketchAdd(t);case"sketch_delete":return e?this.undoSketchDelete(t):this.redoSketchDelete(t);default:return console.warn("Unknown action type:",t.type),!1}}undoSketchAdd(t){if(console.log("Undoing sketch add action"),t.elements&&Array.isArray(t.elements)&&t.elements.forEach(t=>{const e=this.editor.findObjectByUuid(t.uuid);e&&this.removeSketchElement(e)}),t.previousSketchState&&this.restoreSketchState(t.previousSketchState),t.sketchPlaneId&&this.editor.sketchManager){const e=this.editor.findObjectByUuid(t.sketchPlaneId);e&&this.editor.sketchManager.detectContoursInSketch(e)}return!0}redoSketchAdd(t){if(console.log("Redoing sketch add action"),t.elements&&Array.isArray(t.elements)){let e=0;if(t.elements.forEach(r=>{if(r.data&&this.editor.projectManager){const i=this.editor.projectManager.deserializeObjectOptimized(r.data);if(i&&t.sketchPlaneId){const r=this.editor.findObjectByUuid(t.sketchPlaneId);r&&(r.add(i),e++)}}}),t.sketchPlaneId&&this.editor.sketchManager&&e>0){const e=this.editor.findObjectByUuid(t.sketchPlaneId);e&&this.editor.sketchManager.detectContoursInSketch(e)}return e>0}return!1}undoSketchDelete(t){if(console.log("Undoing sketch delete action"),t.elements&&Array.isArray(t.elements)){let e=0;if(t.elements.forEach(r=>{if(r.data&&this.editor.projectManager){const i=this.editor.projectManager.deserializeObjectOptimized(r.data);if(i&&t.sketchPlaneId){const r=this.editor.findObjectByUuid(t.sketchPlaneId);r&&(r.add(i),e++)}}}),t.sketchPlaneId&&this.editor.sketchManager&&e>0){const e=this.editor.findObjectByUuid(t.sketchPlaneId);e&&this.editor.sketchManager.detectContoursInSketch(e)}return e>0}return!1}redoSketchDelete(t){if(console.log("Redoing sketch delete action"),t.elements&&Array.isArray(t.elements)){let e=0;if(t.elements.forEach(t=>{const r=this.editor.findObjectByUuid(t.uuid);r&&(this.removeSketchElement(r),e++)}),t.sketchPlaneId&&this.editor.sketchManager&&e>0){const e=this.editor.findObjectByUuid(t.sketchPlaneId);e&&this.editor.sketchManager.detectContoursInSketch(e)}return e>0}return!1}removeSketchElement(t){t.parent&&t.parent.remove(t),t.geometry&&t.geometry.dispose(),t.material&&t.material.dispose()}restoreSketchState(t){if(!t||!t.planeId)return!1;const e=this.editor.findObjectByUuid(t.planeId);if(!e)return!1;for(let t=e.children.length-1;t>=0;t--){const r=e.children[t];r.userData&&"sketch_element"===r.userData.type&&(e.remove(r),r.geometry&&r.geometry.dispose(),r.material&&r.material.dispose())}return t.elements&&Array.isArray(t.elements)&&t.elements.forEach(t=>{if(t.data&&this.editor.projectManager){const r=this.editor.projectManager.deserializeObjectOptimized(t.data);r&&e.add(r)}}),!0}applyModifyPositionMultiple(t,e){if(!t.objects||!Array.isArray(t.objects))return!1;let r=0;return t.objects.forEach(t=>{const i=this.editor.findObjectByUuid(t.uuid);i&&(e?i.position.fromArray(t.previousPosition||[0,0,0]):i.position.fromArray(t.position||[0,0,0]),r++)}),this.editor.updatePropertiesPanel(),r>0}undoCreate(t){const e=this.editor.findObjectByUuid(t.object);return!!e&&(this.removeObjectFromScene(e),!0)}redoCreate(t){if(!t.data||!this.editor.projectManager)return!1;const e=this.editor.projectManager.deserializeObject(t.data);return!!e&&(this.addObjectToScene(e,!0),!0)}undoDelete(t){if(!t.objects||!Array.isArray(t.objects))return!1;let e=0;return t.objects.forEach(t=>{if(!t.data||!this.editor.projectManager)return;const r=this.editor.projectManager.deserializeObject(t.data);r&&(this.addObjectToScene(r,!1),e++)}),e>0}redoDelete(t){if(!t.objects||!Array.isArray(t.objects))return!1;let e=0;return t.objects.forEach(t=>{const r=this.editor.findObjectByUuid(t.uuid);r&&(this.removeObjectFromScene(r),e++)}),e>0}undoBoolean(t){console.log("Undoing boolean operation:",t.operation);const e=this.editor.findObjectByUuid(t.result);return e&&this.removeObjectFromScene(e),t.originalObjects&&Array.isArray(t.originalObjects)&&t.originalObjects.forEach(t=>{if(!t.data||!this.editor.projectManager)return;const e=this.editor.projectManager.deserializeObject(t.data);e&&this.addObjectToScene(e,!1)}),!0}redoBoolean(t){if(console.log("Redoing boolean operation:",t.operation),t.sourceObjects&&Array.isArray(t.sourceObjects)&&t.sourceObjects.forEach(t=>{const e=this.editor.findObjectByUuid(t);e&&this.removeObjectFromScene(e)}),t.resultData&&this.editor.projectManager){const e=this.editor.projectManager.deserializeObject(t.resultData);if(e)return this.addObjectToScene(e,!0),this.editor.selectObject(e),!0}return!1}applyModifyPosition(t,e){const r=this.editor.findObjectByUuid(t.object);return!!r&&(e?r.position.fromArray(t.data.previousPosition):r.position.fromArray(t.data.position),this.editor.updatePropertiesPanel(),!0)}applyModifyScale(t,e){const r=this.editor.findObjectByUuid(t.object);return!!r&&(e?r.scale.fromArray(t.data.previousScale):r.scale.fromArray(t.data.scale),this.editor.updatePropertiesPanel(),!0)}applyModifyRotation(t,e){const r=this.editor.findObjectByUuid(t.object);return!!r&&(e?r.rotation.fromArray(t.data.previousRotation):r.rotation.fromArray(t.data.rotation),this.editor.updatePropertiesPanel(),!0)}applyModifySize(t,e){const r=this.editor.findObjectByUuid(t.object);return!!r&&(this.editor.transformControls&&(e?this.editor.transformControls.updateObjectSizeDirect(r,t.data.previousDimensions):this.editor.transformControls.updateObjectSizeDirect(r,t.data.dimensions)),this.editor.updatePropertiesPanel(),this.editor.objectsManager.updateSceneStats(),!0)}applyModifyColor(t,e){const r=this.editor.findObjectByUuid(t.object);return!(!r||!r.material)&&(e?this.editor.setObjectColor(r,t.data.previousColor):this.editor.setObjectColor(r,t.data.color),this.editor.updatePropertiesPanel(),!0)}applyModifyOpacity(t,e){const r=this.editor.findObjectByUuid(t.object);return!(!r||!r.material)&&(e?this.editor.setObjectOpacity(r,t.data.previousOpacity):this.editor.setObjectOpacity(r,t.data.opacity),this.editor.updatePropertiesPanel(),!0)}undoImport(t){const e=this.editor.findObjectByUuid(t.object);return!!e&&(this.removeObjectFromScene(e),!0)}redoImport(t){if(!t.data||!this.editor.projectManager)return!1;const e=this.editor.projectManager.deserializeObject(t.data);return!!e&&(this.addObjectToScene(e,!0),this.editor.selectObject(e),!0)}undoGroup(t){const e=this.editor.findObjectByUuid(t.groupUuid);e&&this.removeGroupFromScene(e);let r=0;return t.originalObjects&&Array.isArray(t.originalObjects)&&t.originalObjects.forEach(t=>{if(t.data&&this.editor.projectManager){const e=this.editor.projectManager.deserializeObject(t.data);if(e){if(t.parentUuid){const r=this.editor.findObjectByUuid(t.parentUuid);r?r.add(e):this.editor.objectsGroup.add(e)}else this.editor.objectsGroup.add(e);this.editor.objects.push(e),r++}}}),this.editor.objectsManager.updateSceneStats(),this.editor.objectsManager.updateSceneList(),this.editor.updatePropertiesPanel(),r>0}redoGroup(t){if(t.originalObjects&&Array.isArray(t.originalObjects)&&t.originalObjects.forEach(t=>{const e=this.editor.findObjectByUuid(t.uuid);e&&this.removeObjectFromScene(e)}),t.groupData&&this.editor.projectManager){const e=this.editor.projectManager.deserializeObject(t.groupData);if(e)return this.addGroupToScene(e),!0}return!1}undoUngroup(t){t.ungroupedObjects&&Array.isArray(t.ungroupedObjects)&&t.ungroupedObjects.forEach(t=>{const e=this.editor.findObjectByUuid(t.uuid);e&&this.removeObjectFromScene(e)});let e=!1;if(t.groupData&&this.editor.projectManager){const r=this.editor.projectManager.deserializeObject(t.groupData);r&&(this.addGroupToScene(r),r.traverse(t=>{t!==r&&t instanceof THREE.Object3D&&t.updateMatrixWorld(!0)}),e=!0)}return this.editor.objectsManager.updateSceneStats(),this.editor.objectsManager.updateSceneList(),this.editor.updatePropertiesPanel(),e}redoUngroup(t){const e=this.editor.findObjectByUuid(t.groupUuid);e&&this.removeGroupFromScene(e);let r=0;return t.ungroupedObjects&&Array.isArray(t.ungroupedObjects)&&t.ungroupedObjects.forEach(t=>{if(t.data&&this.editor.projectManager){const e=this.editor.projectManager.deserializeObject(t.data);e&&(this.addObjectToScene(e,!1),r++)}}),this.editor.objectsManager.updateSceneStats(),this.editor.objectsManager.updateSceneList(),this.editor.updatePropertiesPanel(),r>0}addGroupToScene(t){this.editor.objectsGroup.add(t),this.editor.objects.push(t),this.editor.groups||(this.editor.groups=[]),this.editor.groups.push(t),this.editor.objectsManager.updateSceneStats(),this.editor.objectsManager.updateSceneList(),this.editor.updatePropertiesPanel()}removeGroupFromScene(t){t.parent&&t.parent.remove(t);const e=this.editor.objects.indexOf(t);if(e>-1&&this.editor.objects.splice(e,1),this.editor.groups){const e=this.editor.groups.indexOf(t);e>-1&&this.editor.groups.splice(e,1)}const r=this.editor.selectedObjects.indexOf(t);r>-1&&this.editor.selectedObjects.splice(r,1),this.editor.transformControls&&this.editor.transformControls.attachedObject===t&&this.editor.transformControls.detach(),this.editor.objectsManager.updateSceneStats(),this.editor.objectsManager.updateSceneList(),this.editor.updatePropertiesPanel()}addObjectToScene(t,e=!1){this.editor.objectsGroup.add(t),this.editor.objects.push(t),"sketch_plane"===t.userData.type?this.editor.sketchPlanes.push(t):"work_plane"===t.userData.type?this.editor.workPlanes.push(t):"group"===t.userData.type&&(this.editor.groups||(this.editor.groups=[]),this.editor.groups.push(t)),e&&this.editor.selectObject(t),this.editor.objectsManager.updateSceneStats(),this.editor.objectsManager.updateSceneList(),this.editor.updatePropertiesPanel()}removeObjectFromScene(t){t.parent&&t.parent.remove(t);const e=this.editor.objects.indexOf(t);e>-1&&this.editor.objects.splice(e,1);const r=this.editor.selectedObjects.indexOf(t);if(r>-1&&this.editor.selectedObjects.splice(r,1),"sketch_plane"===t.userData.type){const e=this.editor.sketchPlanes.indexOf(t);e>-1&&this.editor.sketchPlanes.splice(e,1)}else if("work_plane"===t.userData.type){const e=this.editor.workPlanes.indexOf(t);e>-1&&this.editor.workPlanes.splice(e,1)}else if("group"===t.userData.type&&this.editor.groups){const e=this.editor.groups.indexOf(t);e>-1&&this.editor.groups.splice(e,1)}"group"===t.userData.type||t.isGroup?t.traverse(e=>{e!==t&&e.isMesh&&this.safeDisposeObject(e)}):this.safeDisposeObject(t),this.editor.transformControls&&this.editor.transformControls.attachedObject===t&&this.editor.transformControls.detach(),this.editor.objectsManager.updateSceneStats(),this.editor.objectsManager.updateSceneList(),this.editor.updatePropertiesPanel()}safeDisposeObject(t){if(t)try{t.geometry&&"function"==typeof t.geometry.dispose&&t.geometry.dispose(),t.material&&(Array.isArray(t.material)?t.material.forEach(t=>{t&&"function"==typeof t.dispose&&t.dispose()}):"function"==typeof t.material.dispose&&t.material.dispose())}catch(t){console.warn("Error disposing object:",t)}}updateHistoryUI(){const t=document.getElementById("historyList");t&&(t.innerHTML="",this.history.forEach((e,r)=>{const i=this.createHistoryItem(e,r);t.appendChild(i)}),t.scrollTop=t.scrollHeight,this.updateUndoRedoButtons())}createHistoryItem(t,e){const r=document.createElement("div");r.className="history-item",r.dataset.index=e,e===this.currentIndex&&r.classList.add("active");const{icon:i,text:o,color:s}=this.getActionInfo(t),n=new Date(t.timestamp).toLocaleTimeString();return r.innerHTML=`\n            <div class="history-item-icon" style="color: ${s};">\n                <i class="${i}"></i>\n            </div>\n            <div class="history-item-content">\n                <div class="history-item-title">${o}</div>\n                <div class="history-item-time">${n}</div>\n            </div>\n        `,r.addEventListener("click",()=>{this.jumpToHistory(e)}),r}getActionInfo(t){return{create:{icon:"fas fa-plus-circle",text:"Создание объекта",color:"#4CAF50"},delete:{icon:"fas fa-trash",text:`Удалено объектов: ${t.objects?.length||1}`,color:"#F44336"},boolean:{icon:"fas fa-shapes",text:`Булева операция: ${t.operation}`,color:"#2196F3"},import:{icon:"fas fa-file-import",text:`Импорт: ${t.data?.userData?.filename||"файл"}`,color:"#FF9800"},modify_position:{icon:"fas fa-arrows-alt",text:"Перемещение",color:"#9C27B0"},modify_scale:{icon:"fas fa-expand-alt",text:"Масштабирование",color:"#3F51B5"},modify_rotation:{icon:"fas fa-sync-alt",text:"Вращение",color:"#00BCD4"},modify_size:{icon:"fas fa-ruler",text:"Изменение размеров",color:"#8BC34A"},modify_position_multiple:{icon:"fas fa-arrows-alt",text:`Перемещение (${t.objects?.length||0} объектов)`,color:"#9C27B0"},modify_color:{icon:"fas fa-palette",text:"Изменение цвета",color:"#E91E63"},modify_opacity:{icon:"fas fa-adjust",text:"Изменение прозрачности",color:"#795548"},sketch_add:{icon:"fas fa-drafting-compass",text:"Добавлен элемент скетча",color:"#FF9800"},sketch_delete:{icon:"fas fa-drafting-compass",text:`Удалено элементов скетча: ${t.elements?.length||1}`,color:"#F44336"}}[t.type]||{icon:"fas fa-history",text:t.type,color:"#757575"}}jumpToHistory(t){if(t!==this.currentIndex)if(console.log("Jumping to history index:",t),t<this.currentIndex)for(;this.currentIndex>t&&this.undo(););else for(;this.currentIndex<t&&this.redo(););}updateUndoRedoButtons(){const t=document.getElementById("undo"),e=document.getElementById("redo");t&&(t.disabled=this.currentIndex<0,t.title=this.currentIndex<0?"Нечего отменять":"Отменить"),e&&(e.disabled=this.currentIndex>=this.history.length-1,e.title=this.currentIndex>=this.history.length-1?"Нечего повторять":"Повторить")}clear(){this.history=[],this.currentIndex=-1,this.updateHistoryUI()}getStats(){return{totalActions:this.history.length,currentIndex:this.currentIndex,canUndo:this.currentIndex>=0,canRedo:this.currentIndex<this.history.length-1}}exportHistory(){return{history:this.history,currentIndex:this.currentIndex}}importHistory(t){return!(!t||!Array.isArray(t.history))&&(this.history=t.history,this.currentIndex=Math.min(t.currentIndex,this.history.length-1),this.updateHistoryUI(),!0)}}
+class HistoryManager {
+    constructor(cadEditor, maxSize = 50) {
+        this.editor = cadEditor;
+        this.history = [];
+        this.currentIndex = -1;
+        this.maxSize = maxSize;
+    }
+
+    // ДОБАВЛЕНИЕ ДЕЙСТВИЯ
+    addAction(action) {
+        console.log('=== History addAction ===', action.type, action);
+
+        // Удаляем действия после текущего индекса
+        if (this.currentIndex < this.history.length - 1) {
+            this.history = this.history.slice(0, this.currentIndex + 1);
+        }
+
+        // Улучшаем данные действия
+        const enhancedAction = this.enhanceActionData(action);
+
+        // Добавляем с уникальным ID
+        const newAction = {
+            ...enhancedAction,
+            id: 'act_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+            timestamp: new Date().toISOString()
+        };
+
+        this.history.push(newAction);
+
+        // Ограничиваем размер
+        if (this.history.length > this.maxSize) {
+            this.history.shift();
+        } else {
+            this.currentIndex = this.history.length - 1;
+        }
+
+        console.log('History state:', {
+            index: this.currentIndex,
+            total: this.history.length,
+            lastAction: newAction.type
+        });
+
+        this.updateHistoryUI();
+        return newAction;
+    }
+
+    // УЛУЧШЕНИЕ ДАННЫХ ДЕЙСТВИЯ
+    enhanceActionData(action) {
+        switch (action.type) {
+            case 'create':
+                return this.enhanceCreateAction(action);
+            case 'delete':
+                return this.enhanceDeleteAction(action);
+            case 'boolean':
+                return this.enhanceBooleanAction(action);
+            case 'modify_position':
+            case 'modify_scale':
+            case 'modify_rotation':
+            case 'modify_size':
+                return this.enhanceModifyAction(action);
+            case 'modify_position_multiple':
+                return this.enhanceMultipleModifyAction(action);
+            case 'import':
+                return this.enhanceImportAction(action);
+            case 'group':
+                return this.enhanceGroupAction(action);
+            case 'ungroup':
+                return this.enhanceUngroupAction(action);
+            // ДОБАВЛЯЕМ ДЛЯ СКЕТЧА
+            case 'sketch_add':
+            case 'sketch_delete':
+                return this.enhanceSketchAction(action);
+            default:
+                return action;
+        }
+    }
+
+    // Улучшение данных для скетча
+    enhanceSketchAction(action) {
+        // Если есть sketchPlaneId, получаем данные скетча с плоскости
+        if (action.sketchPlaneId && this.editor.objectsManager) {
+            const plane = this.editor.findObjectByUuid(action.sketchPlaneId);
+            if (plane && plane.userData && (plane.userData.hasSketch || plane.userData.type === 'sketch_plane')) {
+                // Сохраняем полное состояние скетча с этой плоскости
+                action.sketchData = this.serializeSketchState(plane);
+            }
+        }
+
+        // Если есть элементы, сериализуем их
+        if (action.elements && Array.isArray(action.elements) && this.editor.projectManager) {
+            action.elements = action.elements.map(elementData => {
+                // Если элемент уже сериализован, возвращаем как есть
+                if (elementData.data) return elementData;
+
+                // Иначе сериализуем
+                const element = this.editor.findObjectByUuid(elementData.uuid);
+                if (element) {
+                    return {
+                        uuid: element.uuid,
+                        data: this.editor.projectManager.serializeObjectForHistory(element)
+                    };
+                }
+                return elementData;
+            });
+        }
+
+        return action;
+    }
+
+    // Сериализация состояния скетча
+    serializeSketchState(plane) {
+        const sketchData = {
+            planeId: plane.uuid,
+            planeData: this.editor.projectManager.serializeObject(plane),
+            elements: []
+        };
+
+        // Собираем все элементы скетча с этой плоскости
+        plane.children.forEach(child => {
+            if (child.userData && child.userData.type === 'sketch_element') {
+                const elementData = this.editor.projectManager.serializeObjectForHistory(child);
+                if (elementData) {
+                    sketchData.elements.push({
+                        uuid: child.uuid,
+                        data: elementData
+                    });
+                }
+            }
+        });
+
+        return sketchData;
+    }
+
+    enhanceMultipleModifyAction(action) {
+        if (!action.objects || !Array.isArray(action.objects)) {
+            return action;
+        }
+
+        // Сохраняем предыдущие состояния всех объектов
+        const enhancedObjects = action.objects.map(objData => {
+            const obj = this.editor.findObjectByUuid(objData.uuid);
+            if (!obj) return objData;
+
+            const enhancedData = { ...objData };
+            // Сохраняем предыдущее состояние в зависимости от типа операции
+
+            if (!enhancedData.previousPosition) {
+                enhancedData.previousPosition = obj.position.toArray();
+            }
+
+            return enhancedData;
+        });
+
+        return {
+            ...action,
+            objects: enhancedObjects
+        };
+    }
+
+    enhanceCreateAction(action) {
+        const obj = this.editor.findObjectByUuid(action.object);
+        if (obj && this.editor.projectManager) {
+            return {
+                ...action,
+                data: this.editor.projectManager.serializeObjectForHistory(obj)
+            };
+        }
+        return action;
+    }
+
+    enhanceDeleteAction(action) {
+        if (!action.objects || !Array.isArray(action.objects)) return action;
+
+        const enhancedObjects = action.objects.map(objData => {
+            const obj = this.editor.findObjectByUuid(objData.uuid);
+            if (obj && this.editor.projectManager) {
+                return {
+                    uuid: obj.uuid,
+                    data: this.editor.projectManager.serializeObjectForHistory(obj)
+                };
+            }
+            return objData;
+        });
+
+        return { ...action, objects: enhancedObjects };
+    }
+
+    enhanceBooleanAction(action) {
+        console.log('=== Enhancing boolean action ===');
+
+        // Сохраняем полные данные исходных объектов
+        if (action.sourceObjects && !action.originalObjects) {
+            action.originalObjects = action.sourceObjects.map(uuid => {
+                const obj = this.editor.findObjectByUuid(uuid);
+                if (obj && this.editor.projectManager) {
+                    console.log('Saving original object:', obj.uuid, obj.userData?.type);
+                    const data = this.editor.projectManager.serializeObjectForHistory(obj);
+                    return { uuid: obj.uuid, data: data };
+                }
+                return null;
+            }).filter(obj => obj !== null);
+        }
+
+        // Сохраняем результат операции
+        if (!action.resultData && action.result) {
+            const resultObj = this.editor.findObjectByUuid(action.result);
+            if (resultObj && this.editor.projectManager) {
+                action.resultData = this.editor.projectManager.serializeObjectForHistory(resultObj);
+            }
+        }
+
+        return action;
+    }
+
+    enhanceModifyAction(action) {
+        const obj = this.editor.findObjectByUuid(action.object);
+        if (!obj) return action;
+
+        // Сохраняем предыдущее состояние
+        if (!action.data.previousPosition && action.type === 'modify_position') {
+            action.data.previousPosition = obj.position.toArray();
+        }
+        if (!action.data.previousScale && action.type === 'modify_scale') {
+            action.data.previousScale = obj.scale.toArray();
+        }
+        if (!action.data.previousRotation && action.type === 'modify_rotation') {
+            const euler = new THREE.Euler().setFromQuaternion(obj.quaternion, 'XYZ');
+            action.data.previousRotation = [euler.x, euler.y, euler.z];
+        }
+        if (!action.data.previousDimensions && action.type === 'modify_size') {
+            const dimensions = this.editor.objectsManager.getObjectDimensions(obj);
+            action.data.previousDimensions = {
+                x: dimensions.x,
+                y: dimensions.y,
+                z: dimensions.z
+            };
+        }
+
+        return action;
+    }
+
+    enhanceImportAction(action) {
+        const obj = this.editor.findObjectByUuid(action.object);
+        if (obj && this.editor.projectManager) {
+            return {
+                ...action,
+                data: this.editor.projectManager.serializeObjectForHistory(obj)
+            };
+        }
+        return action;
+    }
+
+    enhanceGroupAction(action) {
+        // Улучшаем данные группы
+        const group = this.editor.findObjectByUuid(action.groupUuid);
+        if (group && this.editor.projectManager) {
+            return {
+                ...action,
+                groupData: this.editor.projectManager.serializeObjectForHistory(group)
+            };
+        }
+        return action;
+    }
+
+    enhanceUngroupAction(action) {
+        // Улучшаем данные разгруппированных объектов
+        if (action.ungroupedObjects && Array.isArray(action.ungroupedObjects)) {
+            const enhancedObjects = action.ungroupedObjects.map(objData => {
+                const obj = this.editor.findObjectByUuid(objData.uuid);
+                if (obj && this.editor.projectManager) {
+                    return {
+                        ...objData,
+                        data: this.editor.projectManager.serializeObjectForHistory(obj)
+                    };
+                }
+                return objData;
+            });
+
+            return {
+                ...action,
+                ungroupedObjects: enhancedObjects
+            };
+        }
+        return action;
+    }
+
+    // ОТМЕНА И ПОВТОР
+    undo() {
+        if (this.currentIndex < 0) return false;
+
+        const action = this.history[this.currentIndex];
+        console.log('=== History undo ===', action.type);
+
+        try {
+            this.applyAction(action, true);
+            this.currentIndex--;
+            this.updateHistoryUI();
+            return true;
+        } catch (error) {
+            console.error('Undo failed:', error);
+            return false;
+        }
+    }
+
+    redo() {
+        if (this.currentIndex >= this.history.length - 1) return false;
+
+        this.currentIndex++;
+        const action = this.history[this.currentIndex];
+        console.log('=== History redo ===', action.type);
+
+        try {
+            this.applyAction(action, false);
+            this.updateHistoryUI();
+            return true;
+        } catch (error) {
+            console.error('Redo failed:', error);
+            this.currentIndex--;
+            return false;
+        }
+    }
+
+    // ПРИМЕНЕНИЕ ДЕЙСТВИЯ
+    applyAction(action, isUndo) {
+        console.log('Applying action:', { type: action.type, isUndo });
+
+        switch (action.type) {
+            case 'create':
+                return isUndo ? this.undoCreate(action) : this.redoCreate(action);
+            case 'delete':
+                return isUndo ? this.undoDelete(action) : this.redoDelete(action);
+            case 'boolean':
+                return isUndo ? this.undoBoolean(action) : this.redoBoolean(action);
+            case 'modify_position':
+                return this.applyModifyPosition(action, isUndo);
+            case 'modify_scale':
+                return this.applyModifyScale(action, isUndo);
+            case 'modify_rotation':
+                return this.applyModifyRotation(action, isUndo);
+            case 'modify_size':
+                return this.applyModifySize(action, isUndo);
+            case 'modify_color':
+                return this.applyModifyColor(action, isUndo);
+            case 'modify_opacity':
+                return this.applyModifyOpacity(action, isUndo);
+            case 'modify_position_multiple':
+                return this.applyModifyPositionMultiple(action, isUndo);
+            case 'import':
+                return isUndo ? this.undoImport(action) : this.redoImport(action);
+            case 'group':
+                return isUndo ? this.undoGroup(action) : this.redoGroup(action);
+            case 'ungroup':
+                return isUndo ? this.undoUngroup(action) : this.redoUngroup(action);
+            // ДОБАВЛЯЕМ ДЛЯ СКЕТЧА
+            case 'sketch_add':
+                return isUndo ? this.undoSketchAdd(action) : this.redoSketchAdd(action);
+            case 'sketch_delete':
+                return isUndo ? this.undoSketchDelete(action) : this.redoSketchDelete(action);
+            default:
+                console.warn('Unknown action type:', action.type);
+                return false;
+        }
+    }
+
+    // МЕТОДЫ ДЛЯ СКЕТЧА
+    // В методе undoSketchAdd
+    undoSketchAdd(action) {
+        console.log('Undoing sketch add action');
+
+        // Удаляем добавленные элементы
+        if (action.elements && Array.isArray(action.elements)) {
+            action.elements.forEach(elementData => {
+                const element = this.editor.findObjectByUuid(elementData.uuid);
+                if (element) {
+                    // Удаляем из менеджера элементов
+                    if (this.editor.sketchManager &&
+                        this.editor.sketchManager.elementManager) {
+                        this.editor.sketchManager.elementManager.removeElementFromArrays(element);
+                    }
+
+                    this.removeSketchElement(element);
+                }
+            });
+        }
+
+        // Восстанавливаем предыдущее состояние скетча, если есть
+        if (action.previousSketchState) {
+            this.restoreSketchState(action.previousSketchState);
+        }
+
+        // Обновляем состояние менеджера элементов
+        if (action.sketchPlaneId && this.editor.sketchManager) {
+            const plane = this.editor.findObjectByUuid(action.sketchPlaneId);
+            if (plane) {
+                this.editor.sketchManager.elementManager.updateElementsFromPlane();
+                this.editor.sketchManager.elementManager.clearSelection();
+            }
+        }
+
+        // Обновляем контуры после отмены
+        if (action.sketchPlaneId && this.editor.sketchManager) {
+            const plane = this.editor.findObjectByUuid(action.sketchPlaneId);
+            if (plane) {
+                this.editor.sketchManager.contourManager.detectContoursInSketch(plane);
+            }
+        }
+
+        return true;
+    }
+
+    // В методе redoSketchAdd
+    redoSketchAdd(action) {
+        console.log('Redoing sketch add action');
+
+        // Добавляем элементы обратно
+        if (action.elements && Array.isArray(action.elements)) {
+            let addedCount = 0;
+            action.elements.forEach(elementData => {
+                if (elementData.data && this.editor.projectManager) {
+                    const element = this.editor.projectManager.deserializeObjectOptimized(elementData.data);
+                    if (element && action.sketchPlaneId) {
+                        const plane = this.editor.findObjectByUuid(action.sketchPlaneId);
+                        if (plane) {
+                            plane.add(element);
+
+                            // Добавляем в менеджер элементов
+                            if (this.editor.sketchManager &&
+                                this.editor.sketchManager.elementManager) {
+                                const elementObj = {
+                                    type: element.userData.elementType,
+                                    mesh: element,
+                                    originalColor: element.userData.originalColor,
+                                    color: element.userData.originalColor,
+                                    localPoints: element.userData.localPoints,
+                                    localPosition: element.userData.localPosition,
+                                    isClosed: element.userData.isClosed,
+                                    sketchPlaneId: element.userData.sketchPlaneId,
+                                    userData: element.userData
+                                };
+                                this.editor.sketchManager.elementManager.elements.push(elementObj);
+                            }
+
+                            addedCount++;
+                        }
+                    }
+                }
+            });
+
+            // Обновляем контуры после повтора
+            if (action.sketchPlaneId && this.editor.sketchManager && addedCount > 0) {
+                const plane = this.editor.findObjectByUuid(action.sketchPlaneId);
+                if (plane) {
+                    this.editor.sketchManager.contourManager.detectContoursInSketch(plane);
+                }
+            }
+
+            return addedCount > 0;
+        }
+        return false;
+    }
+
+    // В методе undoSketchDelete
+    undoSketchDelete(action) {
+        console.log('Undoing sketch delete action');
+
+        // Восстанавливаем удаленные элементы
+        if (action.elements && Array.isArray(action.elements)) {
+            let restoredCount = 0;
+            action.elements.forEach(elementData => {
+                if (elementData.data && this.editor.projectManager) {
+                    const element = this.editor.projectManager.deserializeObjectOptimized(elementData.data);
+                    if (element && action.sketchPlaneId) {
+                        const plane = this.editor.findObjectByUuid(action.sketchPlaneId);
+                        if (plane) {
+                            plane.add(element);
+
+                            // Добавляем в менеджер элементов
+                            if (this.editor.sketchManager &&
+                                this.editor.sketchManager.elementManager) {
+                                const elementObj = {
+                                    type: element.userData.elementType,
+                                    mesh: element,
+                                    originalColor: element.userData.originalColor,
+                                    color: element.userData.originalColor,
+                                    localPoints: element.userData.localPoints,
+                                    localPosition: element.userData.localPosition,
+                                    isClosed: element.userData.isClosed,
+                                    sketchPlaneId: element.userData.sketchPlaneId,
+                                    userData: element.userData
+                                };
+                                this.editor.sketchManager.elementManager.elements.push(elementObj);
+                            }
+
+                            restoredCount++;
+                        }
+                    }
+                }
+            });
+
+            // Обновляем контуры после отмены удаления
+            if (action.sketchPlaneId && this.editor.sketchManager && restoredCount > 0) {
+                const plane = this.editor.findObjectByUuid(action.sketchPlaneId);
+                if (plane) {
+                    this.editor.sketchManager.contourManager.detectContoursInSketch(plane);
+                }
+            }
+
+            return restoredCount > 0;
+        }
+        return false;
+    }
+
+    // В методе redoSketchDelete
+    redoSketchDelete(action) {
+        console.log('Redoing sketch delete action');
+
+        // Удаляем элементы снова
+        if (action.elements && Array.isArray(action.elements)) {
+            let deletedCount = 0;
+            action.elements.forEach(elementData => {
+                const element = this.editor.findObjectByUuid(elementData.uuid);
+                if (element) {
+                    // Удаляем из менеджера элементов
+                    if (this.editor.sketchManager &&
+                        this.editor.sketchManager.elementManager) {
+                        this.editor.sketchManager.elementManager.removeElementFromArrays(element);
+                    }
+
+                    this.removeSketchElement(element);
+                    deletedCount++;
+                }
+            });
+
+            // Обновляем контуры после повтора удаления
+            if (action.sketchPlaneId && this.editor.sketchManager && deletedCount > 0) {
+                const plane = this.editor.findObjectByUuid(action.sketchPlaneId);
+                if (plane) {
+                    this.editor.sketchManager.contourManager.detectContoursInSketch(plane);
+                }
+            }
+
+            return deletedCount > 0;
+        }
+        return false;
+    }
+
+    // Вспомогательный метод для удаления элемента скетча
+    removeSketchElement(element) {
+        if (element.parent) {
+            element.parent.remove(element);
+        }
+
+        // Освобождаем ресурсы
+        if (element.geometry) element.geometry.dispose();
+        if (element.material) element.material.dispose();
+    }
+
+    // Восстановление состояния скетча
+    restoreSketchState(sketchState) {
+        if (!sketchState || !sketchState.planeId) return false;
+
+        const plane = this.editor.findObjectByUuid(sketchState.planeId);
+        if (!plane) return false;
+
+        // Удаляем текущие элементы
+        for (let i = plane.children.length - 1; i >= 0; i--) {
+            const child = plane.children[i];
+            if (child.userData && child.userData.type === 'sketch_element') {
+                plane.remove(child);
+                if (child.geometry) child.geometry.dispose();
+                if (child.material) child.material.dispose();
+            }
+        }
+
+        // Восстанавливаем элементы
+        if (sketchState.elements && Array.isArray(sketchState.elements)) {
+            sketchState.elements.forEach(elementData => {
+                if (elementData.data && this.editor.projectManager) {
+                    const element = this.editor.projectManager.deserializeObjectOptimized(elementData.data);
+                    if (element) {
+                        plane.add(element);
+                    }
+                }
+            });
+        }
+
+        return true;
+    }
+
+    applyModifyPositionMultiple(action, isUndo) {
+        if (!action.objects || !Array.isArray(action.objects)) {
+            return false;
+        }
+
+        let successCount = 0;
+        action.objects.forEach(objData => {
+            const obj = this.editor.findObjectByUuid(objData.uuid);
+            if (obj) {
+                if (isUndo) {
+                    obj.position.fromArray(objData.previousPosition || [0, 0, 0]);
+                } else {
+                    obj.position.fromArray(objData.position || [0, 0, 0]);
+                }
+                successCount++;
+            }
+        });
+
+        this.editor.updatePropertiesPanel();
+        return successCount > 0;
+    }
+
+    // ОПЕРАЦИИ СОЗДАНИЯ
+    undoCreate(action) {
+        const obj = this.editor.findObjectByUuid(action.object);
+        if (!obj) return false;
+
+        this.removeObjectFromScene(obj);
+        return true;
+    }
+
+    redoCreate(action) {
+        if (!action.data || !this.editor.projectManager) return false;
+
+        const obj = this.editor.projectManager.deserializeObject(action.data);
+        if (!obj) return false;
+
+        this.addObjectToScene(obj, true);
+        return true;
+    }
+
+    // ОПЕРАЦИИ УДАЛЕНИЯ
+    undoDelete(action) {
+        if (!action.objects || !Array.isArray(action.objects)) return false;
+
+        let restoredCount = 0;
+        action.objects.forEach(objData => {
+            if (!objData.data || !this.editor.projectManager) return;
+
+            const obj = this.editor.projectManager.deserializeObject(objData.data);
+            if (obj) {
+                this.addObjectToScene(obj, false);
+                restoredCount++;
+            }
+        });
+
+        return restoredCount > 0;
+    }
+
+    redoDelete(action) {
+        if (!action.objects || !Array.isArray(action.objects)) return false;
+
+        let deletedCount = 0;
+        action.objects.forEach(objData => {
+            const obj = this.editor.findObjectByUuid(objData.uuid);
+            if (obj) {
+                this.removeObjectFromScene(obj);
+                deletedCount++;
+            }
+        });
+
+        return deletedCount > 0;
+    }
+
+    // БУЛЕВЫ ОПЕРАЦИИ
+    undoBoolean(action) {
+        console.log('Undoing boolean operation:', action.operation);
+
+        // Удаляем результат
+        const resultObj = this.editor.findObjectByUuid(action.result);
+        if (resultObj) {
+            this.removeObjectFromScene(resultObj);
+        }
+
+        // Восстанавливаем исходные объекты
+        if (action.originalObjects && Array.isArray(action.originalObjects)) {
+            action.originalObjects.forEach(objData => {
+                if (!objData.data || !this.editor.projectManager) return;
+
+                const obj = this.editor.projectManager.deserializeObject(objData.data);
+                if (obj) {
+                    this.addObjectToScene(obj, false);
+                }
+            });
+        }
+
+        return true;
+    }
+
+    redoBoolean(action) {
+        console.log('Redoing boolean operation:', action.operation);
+
+        // Удаляем исходные объекты
+        if (action.sourceObjects && Array.isArray(action.sourceObjects)) {
+            action.sourceObjects.forEach(uuid => {
+                const obj = this.editor.findObjectByUuid(uuid);
+                if (obj) {
+                    this.removeObjectFromScene(obj);
+                }
+            });
+        }
+
+        // Создаем результат
+        if (action.resultData && this.editor.projectManager) {
+            const resultObj = this.editor.projectManager.deserializeObject(action.resultData);
+            if (resultObj) {
+                this.addObjectToScene(resultObj, true);
+                this.editor.selectObject(resultObj);
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    // ИЗМЕНЕНИЯ СВОЙСТВ
+    applyModifyPosition(action, isUndo) {
+        const obj = this.editor.findObjectByUuid(action.object);
+        if (!obj) return false;
+
+        if (isUndo) {
+            obj.position.fromArray(action.data.previousPosition);
+        } else {
+            obj.position.fromArray(action.data.position);
+        }
+
+        this.editor.updatePropertiesPanel();
+        return true;
+    }
+
+    applyModifyScale(action, isUndo) {
+        const obj = this.editor.findObjectByUuid(action.object);
+        if (!obj) return false;
+
+        if (isUndo) {
+            obj.scale.fromArray(action.data.previousScale);
+        } else {
+            obj.scale.fromArray(action.data.scale);
+        }
+
+        this.editor.updatePropertiesPanel();
+        return true;
+    }
+
+    applyModifyRotation(action, isUndo) {
+        const obj = this.editor.findObjectByUuid(action.object);
+        if (!obj) return false;
+
+        if (isUndo) {
+            obj.rotation.fromArray(action.data.previousRotation);
+        } else {
+            obj.rotation.fromArray(action.data.rotation);
+        }
+
+        this.editor.updatePropertiesPanel();
+        return true;
+    }
+
+    applyModifySize(action, isUndo) {
+        const obj = this.editor.findObjectByUuid(action.object);
+        if (!obj) return false;
+
+        if (this.editor.transformControls) {
+            if (isUndo) {
+                this.editor.transformControls.updateObjectSizeDirect(
+                    obj,
+                    action.data.previousDimensions
+                );
+            } else {
+                this.editor.transformControls.updateObjectSizeDirect(
+                    obj,
+                    action.data.dimensions
+                );
+            }
+        }
+
+        this.editor.updatePropertiesPanel();
+        this.editor.objectsManager.updateSceneStats();
+        return true;
+    }
+
+    applyModifyColor(action, isUndo) {
+        const obj = this.editor.findObjectByUuid(action.object);
+        if (!obj || !obj.material) return false;
+
+        if (isUndo) {
+            this.editor.setObjectColor(obj, action.data.previousColor);
+        } else {
+            this.editor.setObjectColor(obj, action.data.color);
+        }
+
+        this.editor.updatePropertiesPanel();
+        return true;
+    }
+
+    applyModifyOpacity(action, isUndo) {
+        const obj = this.editor.findObjectByUuid(action.object);
+        if (!obj || !obj.material) return false;
+
+        if (isUndo) {
+            this.editor.setObjectOpacity(obj, action.data.previousOpacity);
+        } else {
+            this.editor.setObjectOpacity(obj, action.data.opacity);
+        }
+
+        this.editor.updatePropertiesPanel();
+        return true;
+    }
+
+    // ИМПОРТ
+    undoImport(action) {
+        const obj = this.editor.findObjectByUuid(action.object);
+        if (!obj) return false;
+
+        this.removeObjectFromScene(obj);
+        return true;
+    }
+
+    redoImport(action) {
+        if (!action.data || !this.editor.projectManager) return false;
+
+        const obj = this.editor.projectManager.deserializeObject(action.data);
+        if (!obj) return false;
+
+        this.addObjectToScene(obj, true);
+        this.editor.selectObject(obj);
+        return true;
+    }
+
+    // ГРУППИРОВКА
+    undoGroup(action) {
+        // Удаляем группу
+        const group = this.editor.findObjectByUuid(action.groupUuid);
+        if (group) {
+            this.removeGroupFromScene(group);
+        }
+
+        // Восстанавливаем исходные объекты
+        let restoredCount = 0;
+        if (action.originalObjects && Array.isArray(action.originalObjects)) {
+            action.originalObjects.forEach(objData => {
+                if (objData.data && this.editor.projectManager) {
+                    const obj = this.editor.projectManager.deserializeObject(objData.data);
+                    if (obj) {
+                        // Восстанавливаем родителя если нужно
+                        if (objData.parentUuid) {
+                            const parent = this.editor.findObjectByUuid(objData.parentUuid);
+                            if (parent) {
+                                parent.add(obj);
+                            } else {
+                                this.editor.objectsGroup.add(obj);
+                            }
+                        } else {
+                            this.editor.objectsGroup.add(obj);
+                        }
+
+                        // Добавляем в массив объектов
+                        this.editor.objects.push(obj);
+                        restoredCount++;
+                    }
+                }
+            });
+        }
+
+        // Обновляем UI
+        this.editor.objectsManager.updateSceneStats();
+        this.editor.objectsManager.updateSceneList();
+        this.editor.updatePropertiesPanel();
+
+        return restoredCount > 0;
+    }
+
+    redoGroup(action) {
+        // Удаляем исходные объекты
+        if (action.originalObjects && Array.isArray(action.originalObjects)) {
+            action.originalObjects.forEach(objData => {
+                const obj = this.editor.findObjectByUuid(objData.uuid);
+                if (obj) {
+                    this.removeObjectFromScene(obj);
+                }
+            });
+        }
+
+        // Восстанавливаем группу
+        if (action.groupData && this.editor.projectManager) {
+            const group = this.editor.projectManager.deserializeObject(action.groupData);
+            if (group) {
+                this.addGroupToScene(group);
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    undoUngroup(action) {
+        // Удаляем разгруппированные объекты
+        if (action.ungroupedObjects && Array.isArray(action.ungroupedObjects)) {
+            action.ungroupedObjects.forEach(objData => {
+                const obj = this.editor.findObjectByUuid(objData.uuid);
+                if (obj) {
+                    this.removeObjectFromScene(obj);
+                }
+            });
+        }
+
+        // Восстанавливаем группу
+        let restored = false;
+        if (action.groupData && this.editor.projectManager) {
+            const group = this.editor.projectManager.deserializeObject(action.groupData);
+            if (group) {
+                this.addGroupToScene(group);
+
+                // Восстанавливаем дочерние объекты в группе
+                group.traverse((child) => {
+                    if (child !== group && child instanceof THREE.Object3D) {
+                        // Объекты уже в группе после десериализации
+                        // Обновляем их мировые матрицы
+                        child.updateMatrixWorld(true);
+                    }
+                });
+
+                restored = true;
+            }
+        }
+
+        // Обновляем UI
+        this.editor.objectsManager.updateSceneStats();
+        this.editor.objectsManager.updateSceneList();
+        this.editor.updatePropertiesPanel();
+
+        return restored;
+    }
+
+    redoUngroup(action) {
+        // Удаляем группу
+        const group = this.editor.findObjectByUuid(action.groupUuid);
+        if (group) {
+            this.removeGroupFromScene(group);
+        }
+
+        // Восстанавливаем разгруппированные объекты
+        let restoredCount = 0;
+        if (action.ungroupedObjects && Array.isArray(action.ungroupedObjects)) {
+            action.ungroupedObjects.forEach(objData => {
+                if (objData.data && this.editor.projectManager) {
+                    const obj = this.editor.projectManager.deserializeObject(objData.data);
+                    if (obj) {
+                        this.addObjectToScene(obj, false);
+                        restoredCount++;
+                    }
+                }
+            });
+        }
+
+        // Обновляем UI
+        this.editor.objectsManager.updateSceneStats();
+        this.editor.objectsManager.updateSceneList();
+        this.editor.updatePropertiesPanel();
+
+        return restoredCount > 0;
+    }
+
+    addGroupToScene(group) {
+        this.editor.objectsGroup.add(group);
+        this.editor.objects.push(group);
+
+        // Добавляем в массив групп
+        if (!this.editor.groups) {
+            this.editor.groups = [];
+        }
+        this.editor.groups.push(group);
+
+        // Обновляем UI
+        this.editor.objectsManager.updateSceneStats();
+        this.editor.objectsManager.updateSceneList();
+        this.editor.updatePropertiesPanel();
+    }
+
+    removeGroupFromScene(group) {
+        // Удаляем группу из сцены
+        if (group.parent) {
+            group.parent.remove(group);
+        }
+
+        // Удаляем из массива объектов
+        const objIndex = this.editor.objects.indexOf(group);
+        if (objIndex > -1) {
+            this.editor.objects.splice(objIndex, 1);
+        }
+
+        // Удаляем из массива групп
+        if (this.editor.groups) {
+            const groupIndex = this.editor.groups.indexOf(group);
+            if (groupIndex > -1) {
+                this.editor.groups.splice(groupIndex, 1);
+            }
+        }
+
+        // Удаляем из выделения
+        const selectedIndex = this.editor.selectedObjects.indexOf(group);
+        if (selectedIndex > -1) {
+            this.editor.selectedObjects.splice(selectedIndex, 1);
+        }
+
+        // Очищаем трансформации
+        if (this.editor.transformControls &&
+            this.editor.transformControls.attachedObject === group) {
+            this.editor.transformControls.detach();
+        }
+
+        // Обновляем UI
+        this.editor.objectsManager.updateSceneStats();
+        this.editor.objectsManager.updateSceneList();
+        this.editor.updatePropertiesPanel();
+    }
+
+    // ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ
+    addObjectToScene(obj, selectObject = false) {
+        this.editor.objectsGroup.add(obj);
+        this.editor.objects.push(obj);
+
+        // Добавляем в специальные массивы
+        if (obj.userData.type === 'sketch_plane') {
+            this.editor.sketchPlanes.push(obj);
+        } else if (obj.userData.type === 'work_plane') {
+            this.editor.workPlanes.push(obj);
+        } else if (obj.userData.type === 'group') {
+            // Добавляем в массив групп
+            if (!this.editor.groups) {
+                this.editor.groups = [];
+            }
+            this.editor.groups.push(obj);
+        }
+
+        // Выделяем объект если нужно
+        if (selectObject) {
+            this.editor.selectObject(obj);
+        }
+
+        // Обновляем UI
+        this.editor.objectsManager.updateSceneStats();
+        this.editor.objectsManager.updateSceneList();
+        this.editor.updatePropertiesPanel();
+    }
+
+    removeObjectFromScene(obj) {
+        // Удаляем из сцены
+        if (obj.parent) {
+            obj.parent.remove(obj);
+        }
+
+        // Удаляем из массива объектов
+        const objIndex = this.editor.objects.indexOf(obj);
+        if (objIndex > -1) {
+            this.editor.objects.splice(objIndex, 1);
+        }
+
+        // Удаляем из выделения
+        const selectedIndex = this.editor.selectedObjects.indexOf(obj);
+        if (selectedIndex > -1) {
+            this.editor.selectedObjects.splice(selectedIndex, 1);
+        }
+
+        // Удаляем из специальных массивов
+        if (obj.userData.type === 'sketch_plane') {
+            const planeIndex = this.editor.sketchPlanes.indexOf(obj);
+            if (planeIndex > -1) {
+                this.editor.sketchPlanes.splice(planeIndex, 1);
+            }
+        } else if (obj.userData.type === 'work_plane') {
+            const planeIndex = this.editor.workPlanes.indexOf(obj);
+            if (planeIndex > -1) {
+                this.editor.workPlanes.splice(planeIndex, 1);
+            }
+        } else if (obj.userData.type === 'group') {
+            // Удаляем из массива групп
+            if (this.editor.groups) {
+                const groupIndex = this.editor.groups.indexOf(obj);
+                if (groupIndex > -1) {
+                    this.editor.groups.splice(groupIndex, 1);
+                }
+            }
+        }
+
+        // Для групп рекурсивно освобождаем ресурсы дочерних объектов
+        if (obj.userData.type === 'group' || obj.isGroup) {
+            obj.traverse(child => {
+                if (child !== obj && child.isMesh) {
+                    this.safeDisposeObject(child);
+                }
+            });
+        } else {
+            // Освобождаем ресурсы
+            this.safeDisposeObject(obj);
+        }
+
+        // Очищаем трансформации если нужно
+        if (this.editor.transformControls &&
+            this.editor.transformControls.attachedObject === obj) {
+            this.editor.transformControls.detach();
+        }
+
+        // Обновляем UI
+        this.editor.objectsManager.updateSceneStats();
+        this.editor.objectsManager.updateSceneList();
+        this.editor.updatePropertiesPanel();
+    }
+
+    safeDisposeObject(obj) {
+        if (!obj) return;
+
+        try {
+            if (obj.geometry && typeof obj.geometry.dispose === 'function') {
+                obj.geometry.dispose();
+            }
+
+            if (obj.material) {
+                if (Array.isArray(obj.material)) {
+                    obj.material.forEach(material => {
+                        if (material && typeof material.dispose === 'function') {
+                            material.dispose();
+                        }
+                    });
+                } else if (typeof obj.material.dispose === 'function') {
+                    obj.material.dispose();
+                }
+            }
+        } catch (error) {
+            console.warn('Error disposing object:', error);
+        }
+    }
+
+    // UI
+    updateHistoryUI() {
+        const container = document.getElementById('historyList');
+        if (!container) return;
+
+        container.innerHTML = '';
+
+        this.history.forEach((action, index) => {
+            const item = this.createHistoryItem(action, index);
+            container.appendChild(item);
+        });
+
+        // Прокручиваем к последнему элементу
+        container.scrollTop = container.scrollHeight;
+
+        // Обновляем состояние кнопок
+        this.updateUndoRedoButtons();
+    }
+
+    createHistoryItem(action, index) {
+        const div = document.createElement('div');
+        div.className = 'history-item';
+        div.dataset.index = index;
+
+        if (index === this.currentIndex) {
+            div.classList.add('active');
+        }
+
+        const { icon, text, color } = this.getActionInfo(action);
+        const time = new Date(action.timestamp).toLocaleTimeString();
+
+        div.innerHTML = `
+            <div class="history-item-icon" style="color: ${color};">
+                <i class="${icon}"></i>
+            </div>
+            <div class="history-item-content">
+                <div class="history-item-title">${text}</div>
+                <div class="history-item-time">${time}</div>
+            </div>
+        `;
+
+        // Добавляем обработчик клика
+        div.addEventListener('click', () => {
+            this.jumpToHistory(index);
+        });
+
+        return div;
+    }
+
+    getActionInfo(action) {
+        const actions = {
+            'create': { icon: 'fas fa-plus-circle', text: 'Создание объекта', color: '#4CAF50' },
+            'delete': { icon: 'fas fa-trash', text: `Удалено объектов: ${action.objects?.length || 1}`, color: '#F44336' },
+            'boolean': { icon: 'fas fa-shapes', text: `Булева операция: ${action.operation}`, color: '#2196F3' },
+            'import': { icon: 'fas fa-file-import', text: `Импорт: ${action.data?.userData?.filename || 'файл'}`, color: '#FF9800' },
+            'modify_position': { icon: 'fas fa-arrows-alt', text: 'Перемещение', color: '#9C27B0' },
+            'modify_scale': { icon: 'fas fa-expand-alt', text: 'Масштабирование', color: '#3F51B5' },
+            'modify_rotation': { icon: 'fas fa-sync-alt', text: 'Вращение', color: '#00BCD4' },
+            'modify_size': { icon: 'fas fa-ruler', text: 'Изменение размеров', color: '#8BC34A' },
+            'modify_position_multiple': {
+                icon: 'fas fa-arrows-alt',
+                text: `Перемещение (${action.objects?.length || 0} объектов)`,
+                color: '#9C27B0'
+            },
+            'modify_color': { icon: 'fas fa-palette', text: 'Изменение цвета', color: '#E91E63' },
+            'modify_opacity': { icon: 'fas fa-adjust', text: 'Изменение прозрачности', color: '#795548' },
+            // ДОБАВЛЯЕМ ДЛЯ СКЕТЧА
+            'sketch_add': { icon: 'fas fa-drafting-compass', text: 'Добавлен элемент скетча', color: '#FF9800' },
+            'sketch_delete': { icon: 'fas fa-drafting-compass', text: `Удалено элементов скетча: ${action.elements?.length || 1}`, color: '#F44336' }
+        };
+
+        return actions[action.type] || { icon: 'fas fa-history', text: action.type, color: '#757575' };
+    }
+
+    jumpToHistory(targetIndex) {
+        if (targetIndex === this.currentIndex) return;
+
+        console.log('Jumping to history index:', targetIndex);
+
+        // Определяем направление
+        if (targetIndex < this.currentIndex) {
+            // Нужно отменять действия
+            while (this.currentIndex > targetIndex) {
+                if (!this.undo()) break;
+            }
+        } else {
+            // Нужно повторять действия
+            while (this.currentIndex < targetIndex) {
+                if (!this.redo()) break;
+            }
+        }
+    }
+
+    updateUndoRedoButtons() {
+        const undoBtn = document.getElementById('undo');
+        const redoBtn = document.getElementById('redo');
+
+        if (undoBtn) {
+            undoBtn.disabled = this.currentIndex < 0;
+            undoBtn.title = this.currentIndex < 0 ? 'Нечего отменять' : 'Отменить';
+        }
+
+        if (redoBtn) {
+            redoBtn.disabled = this.currentIndex >= this.history.length - 1;
+            redoBtn.title = this.currentIndex >= this.history.length - 1 ? 'Нечего повторять' : 'Повторить';
+        }
+    }
+
+    // ОЧИСТКА
+    clear() {
+        this.history = [];
+        this.currentIndex = -1;
+        this.updateHistoryUI();
+    }
+
+    // СТАТИСТИКА
+    getStats() {
+        return {
+            totalActions: this.history.length,
+            currentIndex: this.currentIndex,
+            canUndo: this.currentIndex >= 0,
+            canRedo: this.currentIndex < this.history.length - 1
+        };
+    }
+
+    // ЭКСПОРТ/ИМПОРТ ИСТОРИИ
+    exportHistory() {
+        return {
+            history: this.history,
+            currentIndex: this.currentIndex
+        };
+    }
+
+    importHistory(data) {
+        if (!data || !Array.isArray(data.history)) return false;
+
+        this.history = data.history;
+        this.currentIndex = Math.min(data.currentIndex, this.history.length - 1);
+        this.updateHistoryUI();
+        return true;
+    }
+}

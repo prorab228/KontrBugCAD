@@ -1,1 +1,337 @@
-class RectangleSketchTool extends SketchToolBase{constructor(e){super(e,"rectangle","fa-vector-square"),this.width=10,this.height=10,this.directionX=1,this.directionY=1,this.dimensionFields=[{label:"Ширина",type:"number",value:this.width,unit:"мм",min:1,step:1},{label:"Высота",type:"number",value:this.height,unit:"мм",min:1,step:1}]}onMouseDown(e){if(this.sketchManager.isInputActive)return this.sketchManager.applyDimensionInput(),!0;const t=this.getPointOnPlane(e);return!!t&&(this.isDrawing=!0,this.tempElement={type:"rectangle",start:t.clone(),end:t.clone(),width:0,height:0,points:this.calculateRectanglePoints(t,t),color:this.sketchManager.sketchColor},this.directionX=1,this.directionY=1,this.createTempGeometry(),!0)}onMouseMove(e){if(!this.isDrawing||!this.tempElement)return;const t=this.getPointOnPlane(e);if(!t)return;this.tempElement.end=t.clone();const n=this.sketchManager.currentPlane.worldToLocal(this.tempElement.start.clone()),i=this.sketchManager.currentPlane.worldToLocal(t.clone()),s=i.x-n.x,a=i.y-n.y;this.directionX=s>=0?1:-1,this.directionY=a>=0?1:-1,this.tempElement.width=Math.abs(s),this.tempElement.height=Math.abs(a),this.tempElement.points=this.calculateRectanglePoints(this.tempElement.start,t),this.updateTempGeometry(),this.updateRectangleDimensions(),this.sketchManager.isInputActive&&this.updateInputFields()}onMouseUp(e){if(!this.isDrawing)return;this.getPointOnPlane(e)&&this.tempElement&&this.finishDrawing(e),this.isDrawing=!1}onKeyDown(e){return!("Escape"!==e.key||!this.isDrawing)&&(this.onCancel(),!0)}onCancel(){this.isDrawing=!1,this.clearTempGeometry(),this.tempElement=null,this.sketchManager.clearDimensionObjects(),this.sketchManager.hideDimensionInput()}finishDrawing(e){if(!this.tempElement)return void this.onCancel();const t=this.getDimensionConfig();t.fields[0].value=this.tempElement.width.toFixed(1),t.fields[1].value=this.tempElement.height.toFixed(1),this.sketchManager.showDimensionInput(e,t)}updateInputFields(){this.sketchManager.isInputActive&&this.tempElement&&(this.sketchManager.inputField1&&(this.sketchManager.inputField1.value=this.tempElement.width.toFixed(1)),this.sketchManager.inputField2&&(this.sketchManager.inputField2.value=this.tempElement.height.toFixed(1)))}applyDimensions(e){if(!this.tempElement)return;e.value1&&e.value1>0&&(this.tempElement.width=e.value1),e.value2&&e.value2>0&&(this.tempElement.height=e.value2);const t=this.sketchManager.currentPlane.worldToLocal(this.tempElement.start.clone()),n=new THREE.Vector3(t.x+this.tempElement.width*this.directionX,t.y+this.tempElement.height*this.directionY,0);this.tempElement.end=this.sketchManager.currentPlane.localToWorld(n),this.tempElement.points=this.calculateRectanglePoints(this.tempElement.start,this.tempElement.end),this.sketchManager.addElement(this.tempElement),this.clearTempGeometry(),this.sketchManager.clearDimensionObjects(),this.tempElement=null}updateRectangleDimensions(){this.tempElement&&(this.sketchManager.clearDimensionObjects(),this.createRectangleDimensions(this.tempElement.start,this.tempElement.end))}calculateRectanglePoints(e,t){if(!this.sketchManager.currentPlane)return[];const n=this.sketchManager.currentPlane.worldToLocal(e.clone()),i=this.sketchManager.currentPlane.worldToLocal(t.clone()),s=Math.min(n.x,i.x),a=Math.max(n.x,i.x),r=Math.min(n.y,i.y),o=Math.max(n.y,i.y);return[new THREE.Vector3(s,r,0),new THREE.Vector3(a,r,0),new THREE.Vector3(a,o,0),new THREE.Vector3(s,o,0),new THREE.Vector3(s,r,0)].map(e=>this.sketchManager.currentPlane.localToWorld(e))}createRectangleDimensions(e,t){if(!this.sketchManager.currentPlane)return;const n=this.sketchManager.currentPlane.worldToLocal(e.clone()),i=this.sketchManager.currentPlane.worldToLocal(t.clone()),s=Math.min(n.x,i.x),a=Math.max(n.x,i.x),r=Math.min(n.y,i.y),o=Math.max(n.y,i.y),h=a-s,c=o-r,l=new THREE.Vector3(s,r-10,.1),m=new THREE.Vector3(a,r-10,.1),E=(new THREE.BufferGeometry).setFromPoints([l,m]),u=new THREE.LineBasicMaterial({color:this.sketchManager.dimensionColor,linewidth:2}),d=new THREE.Line(E,u),p=new THREE.Line((new THREE.BufferGeometry).setFromPoints([new THREE.Vector3(s,r,.1),new THREE.Vector3(s,r-10,.1)]),new THREE.LineBasicMaterial({color:this.sketchManager.dimensionColor,linewidth:1})),w=new THREE.Line((new THREE.BufferGeometry).setFromPoints([new THREE.Vector3(a,r,.1),new THREE.Vector3(a,r-10,.1)]),new THREE.LineBasicMaterial({color:this.sketchManager.dimensionColor,linewidth:1})),g=new THREE.Vector3(s+h/2,r-15,.1);this.createDimensionText(g,`${h.toFixed(1)} мм`);const T=new THREE.Vector3(a+10,r,.1),M=new THREE.Vector3(a+10,o,.1),R=(new THREE.BufferGeometry).setFromPoints([T,M]),H=new THREE.LineBasicMaterial({color:this.sketchManager.dimensionColor,linewidth:2}),k=new THREE.Line(R,H),f=new THREE.Line((new THREE.BufferGeometry).setFromPoints([new THREE.Vector3(a,r,.1),new THREE.Vector3(a+10,r,.1)]),new THREE.LineBasicMaterial({color:this.sketchManager.dimensionColor,linewidth:1})),y=new THREE.Line((new THREE.BufferGeometry).setFromPoints([new THREE.Vector3(a,o,.1),new THREE.Vector3(a+10,o,.1)]),new THREE.LineBasicMaterial({color:this.sketchManager.dimensionColor,linewidth:1})),x=new THREE.Vector3(a+15,r+c/2,.1);this.createDimensionText(x,`${c.toFixed(1)} мм`),[d,p,w,k,f,y].forEach(e=>{e.userData.isDimension=!0,this.sketchManager.currentPlane.add(e),this.sketchManager.dimensionObjects.push(e)})}createDimensionText(e,t){const n=document.createElement("canvas"),i=n.getContext("2d");n.width=256,n.height=64,i.clearRect(0,0,n.width,n.height),i.font="bold 16px Arial",i.fillStyle="#00C853",i.textAlign="center",i.textBaseline="middle",i.fillText(t,n.width/2,n.height/2);const s=new THREE.CanvasTexture(n);s.minFilter=THREE.LinearFilter;const a=new THREE.SpriteMaterial({map:s,transparent:!0}),r=new THREE.Sprite(a);r.position.copy(e),r.scale.set(20,5,1),r.userData.isDimension=!0,this.sketchManager.currentPlane.add(r),this.sketchManager.dimensionObjects.push(r)}createGeometry(e){const t=[];e.points.forEach(e=>{const n=this.sketchManager.currentPlane.worldToLocal(e.clone());t.push(n.x,n.y,0)});const n=new THREE.BufferGeometry;return n.setAttribute("position",new THREE.Float32BufferAttribute(t,3)),new THREE.LineLoop(n,new THREE.LineBasicMaterial({color:e.color,linewidth:2}))}updateGeometry(e,t){const n=[];t.points.forEach(e=>{const t=this.sketchManager.currentPlane.worldToLocal(e.clone());n.push(t.x,t.y,0)}),e.geometry.setAttribute("position",new THREE.Float32BufferAttribute(n,3)),e.geometry.attributes.position.needsUpdate=!0}}
+class RectangleSketchTool extends SketchToolBase {
+    constructor(sketchManager) {
+        super(sketchManager, 'rectangle', 'fa-vector-square');
+        this.width = 10;
+        this.height = 10;
+        // Добавляем направление рисования
+        this.directionX = 1;
+        this.directionY = 1;
+
+        this.dimensionFields = [
+            { label: 'Ширина', type: 'number', value: this.width, unit: 'мм', min: 1, step: 1 },
+            { label: 'Высота', type: 'number', value: this.height, unit: 'мм', min: 1, step: 1 }
+        ];
+    }
+
+    onMouseDown(e) {
+        if (this.sketchManager.isInputActive) {
+            this.sketchManager.applyDimensionInput();
+            return true;
+        }
+
+        const point = this.getPointOnPlane(e);
+        if (!point) return false;
+
+        this.isDrawing = true;
+        this.tempElement = {
+            type: 'rectangle',
+            start: point.clone(),
+            end: point.clone(),
+            width: 0,
+            height: 0,
+            points: this.calculateRectanglePoints(point, point),
+            color: this.sketchManager.sketchColor
+        };
+
+        // Инициализируем направления
+        this.directionX = 1;
+        this.directionY = 1;
+
+        this.createTempGeometry();
+        return true;
+    }
+
+    onMouseMove(e) {
+        if (!this.isDrawing || !this.tempElement) return;
+
+        const point = this.getPointOnPlane(e);
+        if (!point) return;
+
+        this.tempElement.end = point.clone();
+
+        // Получаем точки в локальных координатах плоскости
+        const localStart = this.sketchManager.currentPlane.worldToLocal(this.tempElement.start.clone());
+        const localEnd = this.sketchManager.currentPlane.worldToLocal(point.clone());
+
+        // Вычисляем разницу в локальных координатах
+        const dx = localEnd.x - localStart.x;
+        const dy = localEnd.y - localStart.y;
+
+        this.directionX = dx >= 0 ? 1 : -1;
+        this.directionY = dy >= 0 ? 1 : -1;
+
+        // Обновляем абсолютные значения ширины и высоты
+        this.tempElement.width = Math.abs(dx);
+        this.tempElement.height = Math.abs(dy);
+
+        // Обновляем точки прямоугольника
+        this.tempElement.points = this.calculateRectanglePoints(
+            this.tempElement.start,
+            point
+        );
+
+        this.updateTempGeometry();
+        this.updateRectangleDimensions();
+
+        if (this.sketchManager.isInputActive) {
+            this.updateInputFields();
+        }
+    }
+
+    onMouseUp(e) {
+        if (!this.isDrawing) return;
+
+        const point = this.getPointOnPlane(e);
+        if (point && this.tempElement) {
+            this.finishDrawing(e);
+        }
+        this.isDrawing = false;
+    }
+
+    onKeyDown(e) {
+        if (e.key === 'Escape' && this.isDrawing) {
+            this.onCancel();
+            return true;
+        }
+        return false;
+    }
+
+    onCancel() {
+        this.isDrawing = false;
+        this.clearTempGeometry();
+        this.tempElement = null;
+        this.sketchManager.dimensionManager.clearDimensionObjects();
+        this.sketchManager.dimensionManager.hideDimensionInput();
+    }
+
+    finishDrawing(e) {
+        if (!this.tempElement) {
+            this.onCancel();
+            return;
+        }
+
+        const config = this.getDimensionConfig();
+        // Используем актуальные значения ширины и высоты
+        config.fields[0].value = this.tempElement.width.toFixed(1);
+        config.fields[1].value = this.tempElement.height.toFixed(1);
+
+        this.sketchManager.dimensionManager.showDimensionInput(e, config);
+    }
+
+    updateInputFields() {
+        if (!this.sketchManager.isInputActive || !this.tempElement) return;
+
+        if (this.sketchManager.inputField1) {
+            this.sketchManager.inputField1.value = this.tempElement.width.toFixed(1);
+        }
+        if (this.sketchManager.inputField2) {
+            this.sketchManager.inputField2.value = this.tempElement.height.toFixed(1);
+        }
+    }
+
+    applyDimensions(values) {
+        if (!this.tempElement) return;
+
+        // Применяем введенные значения
+        if (values.value1 && values.value1 > 0) {
+            this.tempElement.width = values.value1;
+        }
+        if (values.value2 && values.value2 > 0) {
+            this.tempElement.height = values.value2;
+        }
+
+        // Получаем начальную точку в локальных координатах
+        const localStart = this.sketchManager.currentPlane.worldToLocal(this.tempElement.start.clone());
+
+        // Вычисляем конечную точку в локальных координатах с учетом направлений
+        const localEnd = new THREE.Vector3(
+            localStart.x + (this.tempElement.width * this.directionX),
+            localStart.y + (this.tempElement.height * this.directionY),
+            0
+        );
+
+        // Преобразуем обратно в мировые координаты
+        this.tempElement.end = this.sketchManager.currentPlane.localToWorld(localEnd);
+
+        // Обновляем точки прямоугольника
+        this.tempElement.points = this.calculateRectanglePoints(
+            this.tempElement.start,
+            this.tempElement.end
+        );
+
+        // Добавляем финальный элемент
+        this.sketchManager.elementManager.addElement(this.tempElement);
+
+        // Очищаем временные данные
+        this.clearTempGeometry();
+        this.sketchManager.dimensionManager.clearDimensionObjects();
+        this.tempElement = null;
+    }
+
+    updateRectangleDimensions() {
+        if (!this.tempElement) return;
+
+        this.sketchManager.dimensionManager.clearDimensionObjects();
+        this.createRectangleDimensions(this.tempElement.start, this.tempElement.end);
+    }
+
+    calculateRectanglePoints(start, end) {
+        if (!this.sketchManager.currentPlane) return [];
+
+        const localStart = this.sketchManager.currentPlane.worldToLocal(start.clone());
+        const localEnd = this.sketchManager.currentPlane.worldToLocal(end.clone());
+
+        const minX = Math.min(localStart.x, localEnd.x);
+        const maxX = Math.max(localStart.x, localEnd.x);
+        const minY = Math.min(localStart.y, localEnd.y);
+        const maxY = Math.max(localStart.y, localEnd.y);
+
+        const points = [
+            new THREE.Vector3(minX, minY, 0),
+            new THREE.Vector3(maxX, minY, 0),
+            new THREE.Vector3(maxX, maxY, 0),
+            new THREE.Vector3(minX, maxY, 0),
+            new THREE.Vector3(minX, minY, 0)
+        ];
+
+        return points.map(p => this.sketchManager.currentPlane.localToWorld(p));
+    }
+
+    createRectangleDimensions(start, end) {
+        if (!this.sketchManager.currentPlane) return;
+
+        const localStart = this.sketchManager.currentPlane.worldToLocal(start.clone());
+        const localEnd = this.sketchManager.currentPlane.worldToLocal(end.clone());
+
+        const minX = Math.min(localStart.x, localEnd.x);
+        const maxX = Math.max(localStart.x, localEnd.x);
+        const minY = Math.min(localStart.y, localEnd.y);
+        const maxY = Math.max(localStart.y, localEnd.y);
+
+        const width = maxX - minX;
+        const height = maxY - minY;
+
+        // Ширина
+        const widthLineStart = new THREE.Vector3(minX, minY - 10, 0.1);
+        const widthLineEnd = new THREE.Vector3(maxX, minY - 10, 0.1);
+
+        const widthGeometry = new THREE.BufferGeometry().setFromPoints([widthLineStart, widthLineEnd]);
+        const widthMaterial = new THREE.LineBasicMaterial({
+            color: this.sketchManager.dimensionColor,
+            linewidth: 2
+        });
+        const widthLine = new THREE.Line(widthGeometry, widthMaterial);
+
+        const widthExt1 = new THREE.Line(
+            new THREE.BufferGeometry().setFromPoints([
+                new THREE.Vector3(minX, minY, 0.1),
+                new THREE.Vector3(minX, minY - 10, 0.1)
+            ]),
+            new THREE.LineBasicMaterial({ color: this.sketchManager.dimensionColor, linewidth: 1 })
+        );
+
+        const widthExt2 = new THREE.Line(
+            new THREE.BufferGeometry().setFromPoints([
+                new THREE.Vector3(maxX, minY, 0.1),
+                new THREE.Vector3(maxX, minY - 10, 0.1)
+            ]),
+            new THREE.LineBasicMaterial({ color: this.sketchManager.dimensionColor, linewidth: 1 })
+        );
+
+        const widthTextPos = new THREE.Vector3(minX + width / 2, minY - 15, 0.1);
+        this.createDimensionText(widthTextPos, `${width.toFixed(1)} мм`);
+
+        // Высота
+        const heightLineStart = new THREE.Vector3(maxX + 10, minY, 0.1);
+        const heightLineEnd = new THREE.Vector3(maxX + 10, maxY, 0.1);
+
+        const heightGeometry = new THREE.BufferGeometry().setFromPoints([heightLineStart, heightLineEnd]);
+        const heightMaterial = new THREE.LineBasicMaterial({
+            color: this.sketchManager.dimensionColor,
+            linewidth: 2
+        });
+        const heightLine = new THREE.Line(heightGeometry, heightMaterial);
+
+        const heightExt1 = new THREE.Line(
+            new THREE.BufferGeometry().setFromPoints([
+                new THREE.Vector3(maxX, minY, 0.1),
+                new THREE.Vector3(maxX + 10, minY, 0.1)
+            ]),
+            new THREE.LineBasicMaterial({ color: this.sketchManager.dimensionColor, linewidth: 1 })
+        );
+
+        const heightExt2 = new THREE.Line(
+            new THREE.BufferGeometry().setFromPoints([
+                new THREE.Vector3(maxX, maxY, 0.1),
+                new THREE.Vector3(maxX + 10, maxY, 0.1)
+            ]),
+            new THREE.LineBasicMaterial({ color: this.sketchManager.dimensionColor, linewidth: 1 })
+        );
+
+        const heightTextPos = new THREE.Vector3(maxX + 15, minY + height / 2, 0.1);
+        this.createDimensionText(heightTextPos, `${height.toFixed(1)} мм`);
+
+        [widthLine, widthExt1, widthExt2, heightLine, heightExt1, heightExt2].forEach(obj => {
+            obj.userData.isDimension = true;
+            this.sketchManager.currentPlane.add(obj);
+            this.sketchManager.dimensionObjects.push(obj);
+        });
+    }
+
+    createDimensionText(position, text) {
+        const canvas = document.createElement('canvas');
+        const context = canvas.getContext('2d');
+        canvas.width = 256;
+        canvas.height = 64;
+
+        context.clearRect(0, 0, canvas.width, canvas.height);
+        context.font = 'bold 16px Arial';
+        context.fillStyle = '#00C853';
+        context.textAlign = 'center';
+        context.textBaseline = 'middle';
+        context.fillText(text, canvas.width / 2, canvas.height / 2);
+
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.minFilter = THREE.LinearFilter;
+        const spriteMaterial = new THREE.SpriteMaterial({
+            map: texture,
+            transparent: true
+        });
+
+        const sprite = new THREE.Sprite(spriteMaterial);
+        sprite.position.copy(position);
+        sprite.scale.set(20, 5, 1);
+        sprite.userData.isDimension = true;
+
+        this.sketchManager.currentPlane.add(sprite);
+        this.sketchManager.dimensionObjects.push(sprite);
+    }
+
+    createGeometry(element) {
+        const vertices = [];
+        element.points.forEach(point => {
+            const localPoint = this.sketchManager.currentPlane.worldToLocal(point.clone());
+            vertices.push(localPoint.x, localPoint.y, 0);
+        });
+
+        const geometry = new THREE.BufferGeometry();
+        geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+
+        return new THREE.LineLoop(geometry, new THREE.LineBasicMaterial({
+            color: element.color,
+            linewidth: 2
+        }));
+    }
+
+    updateGeometry(mesh, element) {
+        const vertices = [];
+        element.points.forEach(point => {
+            const localPoint = this.sketchManager.currentPlane.worldToLocal(point.clone());
+            vertices.push(localPoint.x, localPoint.y, 0);
+        });
+
+        mesh.geometry.setAttribute('position',
+            new THREE.Float32BufferAttribute(vertices, 3));
+        mesh.geometry.attributes.position.needsUpdate = true;
+    }
+}

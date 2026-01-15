@@ -78,13 +78,13 @@
                             <span class="cad-icon icon-select"></span>
                         </button>
 
-                        <button class="tool-btn" id="createSketchPlane" title="Создать рабочую плоскость">
+                        <button class="tool-btn" data-tool="workplane" title="Создать рабочую плоскость">
                             <span class="cad-icon icon-plane"></span>
                         </button>
-                        <button class="tool-btn" id="openSketch" title="Чертеж (Скетч)">
+                        <button class="tool-btn" data-tool="sketch"   title="Чертеж (Скетч)">
                             <span class="cad-icon icon-sketch"></span>
                         </button>
-                        <button class="tool-btn" id="extrudeSketch" title="Вытянуть скетч">
+                        <button class="tool-btn" data-tool="extrude"   title="Вытянуть скетч">
                             <span class="cad-icon icon-extrude"></span>
                         </button>
                     </div>
@@ -649,10 +649,13 @@
     <script src="js/tools/mirror-tool.js"></script>
     <script src="js/tools/ungroup-tool.js"></script>
     <script src="js/tools/group-tool.js"></script>
-    <script src="js/tools/sketch/snap-helper.js"></script>
-    <script src="js/tools/sketch/contour-detector.js"></script>
-    <script src="js/tools/sketch/sketch-tool-base.js"></script>
-    <script src="js/tools/sketch/sketch-utils.js"></script>
+
+<!--    СКЕТЧ-->
+    <script src="js/tools/sketch/utils/snap-helper.js"></script>
+    <script src="js/tools/sketch/utils/contour-detector.js"></script>
+    <script src="js/tools/sketch/utils/sketch-utils.js"></script>
+
+    <script src="js/tools/sketch/sketch-tools/sketch-tool-base.js"></script>
     <script src="js/tools/sketch/sketch-tools/circle-tool.js"></script>
     <script src="js/tools/sketch/sketch-tools/line-tool.js"></script>
     <script src="js/tools/sketch/sketch-tools/curve-tool.js"></script>
@@ -671,6 +674,13 @@
 
     <script src="js/tools/sketch/sketch-tools/import-tool.js"></script>
     <script src="js/tools/sketch/sketch-tools/export-tool.js"></script>
+
+    <script src="js/tools/sketch/managers/sketch-tool-manager.js"></script>
+    <script src="js/tools/sketch/managers/sketch-element-manager.js"></script>
+    <script src="js/tools/sketch/managers/sketch-view-manager.js"></script>
+    <script src="js/tools/sketch/managers/sketch-dimension-manager.js"></script>
+    <script src="js/tools/sketch/managers/sketch-contour-manager.js"></script>
+
     <script src="js/tools/sketch/sketch-manager.js"></script>
     <script src="js/tools/sketch/sketch-tool.js"></script>
     <script src="js/app.js"></script>

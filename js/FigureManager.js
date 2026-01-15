@@ -1,1 +1,931 @@
-class FigureManager{constructor(e){this.editor=e,this.figureTree=new Map,this.rootNodes=[],this.elementToNodes=new Map,this.figureCacheTimestamp=0,this.autoContours=[],this.brokenElements=new Set,console.log("FigureManager: создан")}collectAllFigures(){console.log("=== FigureManager: начинаем сбор фигур ===");const e=Date.now();if(this.figureTree.size>0&&e-this.figureCacheTimestamp<200)return console.log("FigureManager: используем кэш, узлов:",this.figureTree.size),this.getAllFiguresFlat();const t=this.getAllSketchElements();console.log("FigureManager: найдено элементов:",t.length);const n=this.collectSimpleContours(t);console.log("FigureManager: простых контуров:",n.length);const o=this.collectLineContours(t,n);console.log("FigureManager: контуров из линий:",o.length);const r=this.getAutoContours();console.log("FigureManager: автоматических контуров:",r.length),this.updateBrokenElements(r);const s=this.filterBrokenContours(n);console.log("FigureManager: после фильтрации контуров:",s.length);const l=[...s,...o,...r];console.log("FigureManager: всего контуров:",l.length);const i=l.map(e=>new FigureNode(e));return console.log("FigureManager: создано узлов:",i.length),i.length>0?this.buildEnhancedNestingTree(i):this.rootNodes=[],this.rootNodes.length>0&&this.determineContourTypes(),this.updateDataStructures(i),this.figureCacheTimestamp=e,this.getAllFiguresFlat()}updateBrokenElements(e){this.brokenElements.clear(),e.forEach(e=>{e.elements&&e.elements.forEach(e=>{this.isSketchElementClosed(e)&&this.brokenElements.add(e)})}),console.log("Разбитых элементов:",this.brokenElements.size)}filterBrokenContours(e){if(0===this.brokenElements.size)return e;return e.filter(e=>{if(e.element&&this.brokenElements.has(e.element))return console.log("Исключаем разбитый контур:",e.type,"площадь:",e.area),!1;if(e.elements&&e.elements.length>0){if(e.elements.every(e=>this.brokenElements.has(e)))return console.log("Исключаем разбитый составной контур:",e.type,"площадь:",e.area),!1}return!0})}getAllSketchElements(){const e=[],t=[...this.editor.sketchPlanes||[],...this.editor.workPlanes||[]];return 0===t.length?this.editor.scene.traverse(t=>{t.userData&&"sketch_element"===t.userData.type&&e.push(t)}):t.forEach(t=>{t.traverse(t=>{t.userData&&"sketch_element"===t.userData.type&&e.push(t)})}),e}collectSimpleContours(e){const t=[];return e.forEach(e=>{if(!e.userData)return;const n=e.userData.elementType,o=this.getElementPoints(e);if("line"===n||"polyline"===n){if(o.length<2)return;const r=this.isSketchElementClosed(e);if(this.brokenElements.has(e))return void console.log("Пропускаем разбитый элемент при создании простого контура:",n);if(!r)return;const s=this.calculatePolygonArea(o);if(Math.abs(s)<.001)return;const l=this.calculateContourCenter(o),i=this.calculateBoundingBox(o),a=s<0,u=this.getElementPlane(e);if(!u)return;return void t.push({element:e,points:o,area:Math.abs(s),center:l,boundingBox:i,type:n,isClosed:!0,isClockwise:a,originalArea:s,planeId:u.uuid,plane:u})}if(o.length<3)return;if(!this.isSketchElementClosed(e))return;if(this.brokenElements.has(e))return void console.log("Пропускаем разбитый элемент при создании простого контура:",n);const r=this.calculatePolygonArea(o);if(Math.abs(r)<.001)return;const s=this.calculateContourCenter(o),l=this.calculateBoundingBox(o),i=r<0;t.push({element:e,points:o,area:Math.abs(r),center:s,boundingBox:l,type:n,isClosed:!0,isClockwise:i,originalArea:r})}),t}collectLineContours(e,t){console.log("=== FigureManager: поиск контуров из линий (группировка) ===");const n=new Set;t.forEach(e=>{e.element&&n.add(e.element.uuid)});const o=e.filter(e=>{const t=e.userData?.elementType;return"line"===t&&!n.has(e.uuid)});if(console.log(`Найдено отдельных линий: ${o.length}`),o.length<3)return[];const r=o.map(e=>{const t=this.getElementPoints(e);return{element:e,start:t[0],end:t[1],points:t}}),s=this.findClosedContoursFromLines(r);return console.log(`Найдено контуров из линий: ${s.length}`),s}findClosedContoursFromLines(e){if(e.length<3)return[];const t=[],n=new Set;for(let o=0;o<e.length;o++){if(n.has(o))continue;const r=this.buildContourFromLine(o,e,n);if(r&&r.points.length>=3){const e=this.calculatePolygonArea(r.points);if(Math.abs(e)>.01){const n=this.calculateContourCenter(r.points),o=this.calculateBoundingBox(r.points),s=r.elements[0],l=this.getElementPlane(s);t.push({elements:r.elements,points:r.points,area:Math.abs(e),center:n,boundingBox:o,type:"line_contour",isClosed:!0,isClockwise:e<0,planeId:l?l.uuid:null,plane:l})}}}return t}buildContourFromLine(e,t,n){const o=t[e],r=[o.element],s=[];let l=o.start,i=o.end;s.push(l.clone()),s.push(i.clone()),n.add(e);let a=!0,u=0;for(;a&&u<100;){a=!1,u++;for(let e=0;e<t.length;e++){if(n.has(e))continue;const o=t[e],l=this.getDistance(i,o.start),u=this.getDistance(i,o.end);if(l<.5){i=o.end,s.push(i.clone()),r.push(o.element),n.add(e),a=!0;break}if(u<.5){i=o.start,s.push(i.clone()),r.push(o.element),n.add(e),a=!0;break}}if(this.getDistance(i,o.start)<.5)return{elements:r,points:s}}return null}getDistance(e,t){return Math.sqrt(Math.pow(t.x-e.x,2)+Math.pow(t.y-e.y,2))}getAutoContours(){return this.autoContours||[]}updateWithAutoContours(e,t=null){console.log("=== FigureManager: обновление автоматическими контурами ==="),console.log("Получено контуров:",e.length),t&&e.forEach(e=>{e.planeId=t}),this.autoContours=e.filter(e=>e&&e.points&&e.points.length>=3&&e.area>.01),console.log("Валидных контуров:",this.autoContours.length),this.figureCacheTimestamp=0,this.collectAllFigures()}getElementPoints(e){if(!e.userData)return console.warn("Элемент не имеет userData"),[];if(e.userData.localPoints&&e.userData.localPoints.length>0)return console.log("Получаем точки из userData.localPoints для",e.userData.elementType,"количество точек:",e.userData.localPoints.length),e.userData.localPoints.map(e=>e instanceof THREE.Vector3||void 0!==e.x&&void 0!==e.y?new THREE.Vector2(e.x,e.y):new THREE.Vector2(0,0));if(e.geometry&&e.geometry.attributes.position){const t=e.geometry.attributes.position.array,n=[];for(let e=0;e<t.length;e+=3)n.push(new THREE.Vector2(t[e],t[e+1]));return console.log("Получаем точки из geometry для",e.userData.elementType,"количество точек:",n.length),n}return"text"===e.userData.elementType||console.warn("Не удалось получить точки для элемента:",e.userData.elementType),[]}isSketchElementClosed(e){if(!e.userData)return!1;const t=e.userData.elementType;return!!["rectangle","circle","polygon","oval","stadium","arc","polyline"].includes(t)}calculatePolygonArea(e){if(e.length<3)return 0;let t=0;const n=e.length;for(let o=0;o<n;o++){const r=(o+1)%n;t+=e[o].x*e[r].y,t-=e[r].x*e[o].y}return t/2}calculateContourCenter(e){if(0===e.length)return new THREE.Vector2(0,0);const t=new THREE.Vector2(0,0);return e.forEach(e=>{t.x+=e.x,t.y+=e.y}),t.x/=e.length,t.y/=e.length,t}calculateBoundingBox(e){if(0===e.length)return{min:new THREE.Vector2(0,0),max:new THREE.Vector2(0,0)};const t=new THREE.Vector2(1/0,1/0),n=new THREE.Vector2(-1/0,-1/0);return e.forEach(e=>{t.x=Math.min(t.x,e.x),t.y=Math.min(t.y,e.y),n.x=Math.max(n.x,e.x),n.y=Math.max(n.y,e.y)}),{min:t,max:n}}buildEnhancedNestingTree(e){console.log("=== FigureManager: строим дерево вложенности ==="),e.forEach(e=>{e.parent=null,e.children=[],e.depth=0});const t=[...e].sort((e,t)=>t.area-e.area);console.log(`Сортировка: ${t.length} узлов`);for(let e=0;e<t.length;e++){const n=t[e];let o=null,r=1/0;for(let s=0;s<e;s++){const e=t[s];this.isContourInside(n.contour,e.contour)&&e.area<r&&(o=e,r=e.area)}o&&o.addChild(n)}this.rootNodes=t.filter(e=>null===e.parent),this.updateDepthsRecursively(),console.log(`Построено дерево: ${this.rootNodes.length} корневых узлов`)}getContourPlane(e){if(e.planeId){return[...this.editor.sketchPlanes||[],...this.editor.workPlanes||[]].find(t=>t.uuid===e.planeId)||null}return e.element?this.getElementPlane(e.element):null}getElementPlane(e){if(!e)return null;let t=e.parent;for(;t;){if(t.userData&&("sketch_plane"===t.userData.type||"work_plane"===t.userData.type))return t;t=t.parent}const n=this.editor.sketchPlanes||[],o=this.editor.workPlanes||[];return n.length>0?n[0]:o.length>0?o[0]:null}areAllFiguresOnSamePlane(e){if(e.length<2)return!0;const t=e[0],n=this.getFigurePlane(t);if(!n)return console.log("У первой фигуры нет плоскости"),!1;for(let t=1;t<e.length;t++){const o=e[t],r=this.getFigurePlane(o);if(!r)return console.log(`У фигуры ${o.id} нет плоскости`),!1;if(r.uuid!==n.uuid)return console.log(`Разные плоскости: ${n.uuid} vs ${r.uuid}`),!1}return!0}isContourInside(e,t){const n=e.points||[],o=t.points||[];if(0===n.length||0===o.length)return!1;const r=this.getContourPlane(e),s=this.getContourPlane(t);if(!r||!s||r.uuid!==s.uuid)return!1;for(const e of n)if(!this.isPointInsidePolygon(e,o))return!1;return!0}isPointInsidePolygon(e,t){if(t.length<3)return!1;let n=!1;const o=e.x,r=e.y;for(let e=0,s=t.length-1;e<t.length;s=e++){const l=t[e].x,i=t[e].y,a=t[s].x,u=t[s].y;i>r!=u>r&&o<(a-l)*(r-i)/(u-i)+l&&(n=!n)}return n}updateDepthsRecursively(){const e=(t,n)=>{t.depth=n,t.children.forEach(t=>e(t,n+1))};this.rootNodes.forEach(t=>e(t,0))}determineContourTypes(){console.log("=== FigureManager: определяем типы контуров ===");const e=t=>{t.isHole=t.depth%2==1,t.isOuter=!t.isHole,t.children.forEach(e)};this.rootNodes.forEach(e)}updateDataStructures(e){this.figureTree.clear(),this.elementToNodes.clear(),e.forEach(e=>{this.figureTree.set(e.id,e),e.elementIds.forEach(t=>{this.elementToNodes.has(t)||this.elementToNodes.set(t,[]),this.elementToNodes.get(t).push(e)})})}getAllFiguresFlat(){const e=[],t=n=>{const o=n.getImmediateHoles().map(e=>e.contour),r={id:n.id,outer:n.contour,holes:o,area:n.area,selected:!1,parentId:n.parent?n.parent.id:null,childrenIds:n.children.map(e=>e.id),isStandalone:null===n.parent,canBeSelected:!0,isHole:n.isHole,isOuter:n.isOuter,depth:n.depth,elementIds:n.elementIds,element:n.element,boundingBox:n.boundingBox,center:n.center,type:n.type};e.push(r),n.children.forEach(e=>t(e))};return this.rootNodes.forEach(e=>t(e)),e.sort((e,t)=>e.depth-t.depth),e}getNodeById(e){return this.figureTree.get(e)}getFigureById(e){const t=this.getNodeById(e);return t?this.nodeToFigure(t):null}getFiguresByElement(e){const t=e.uuid,n=(this.elementToNodes.get(t)||[]).filter(e=>{if(e.element&&this.brokenElements.has(e.element))return!1;if(e.elementIds&&e.elementIds.size>0){const t=Array.from(e.elementIds).every(e=>{const t=this.findElementById(e);return t&&this.brokenElements.has(t)});if(t)return!1}return!0});return n.map(e=>this.nodeToFigure(e))}findElementById(e){let t=null;const n=o=>{if(o.uuid===e)return t=o,!0;if(o.children&&o.children.length>0)for(const e of o.children)if(n(e))return!0;return!1};return n(this.editor.scene),t}findNodeByContour(e){for(const t of this.figureTree.values())if(t.contour===e)return t;return null}nodeToFigure(e){const t=e.getImmediateHoles().map(e=>e.contour);return{id:e.id,outer:e.contour,holes:t,area:e.area,isHole:e.isHole,isOuter:e.isOuter,depth:e.depth,parentId:e.parent?e.parent.id:null,childrenIds:e.children.map(e=>e.id),elementIds:e.elementIds,element:e.element,boundingBox:e.boundingBox,center:e.center,type:e.type}}debugPrintTree(){if(console.log("\n=== ДЕРЕВО ФИГУР ==="),0===this.rootNodes.length)return void console.log("  Дерево пустое");const e=(t,n="")=>{const o=t.isHole?"○ ОТВЕРСТИЕ":"● ВНЕШНИЙ",r=t.area.toFixed(2),s=t.elementIds.size,l=t.children.length,i=t.depth;console.log(`${n}${o} [ID: ${t.id.substring(0,8)}...]`),console.log(`${n}  Глубина: ${i}, Площадь: ${r}, Элементов: ${s}, Детей: ${l}`),t.children.forEach(t=>e(t,n+"  "))};this.rootNodes.forEach((t,n)=>{console.log(`\nКорень ${n+1}:`),e(t)})}findFigureByHoleContour(e){const t=this.findNodeByContour(e);return t?this.nodeToFigure(t):null}getAllFigures(){return this.getAllFiguresFlat()}findNodeByHoleContour(e){return this.findNodeByContour(e)}}
+
+// FigureManager.js - исправленная версия
+class FigureManager {
+    constructor(cadEditor) {
+        this.editor = cadEditor;
+        this.figureTree = new Map();
+        this.rootNodes = [];
+        this.elementToNodes = new Map();
+        this.figureCacheTimestamp = 0;
+        this.autoContours = []; // Автоматически найденные контуры
+        this.brokenElements = new Set(); // Элементы, которые были разбиты на сегменты
+        console.log("FigureManager: создан");
+    }
+
+    // ========== ОСНОВНЫЕ МЕТОДЫ ==========
+
+    collectAllFigures() {
+        console.log("=== FigureManager: начинаем сбор фигур ===");
+        const now = Date.now();
+
+        // Кэширование на 200 мс
+        if (this.figureTree.size > 0 && now - this.figureCacheTimestamp < 200) {
+            console.log("FigureManager: используем кэш, узлов:", this.figureTree.size);
+            return this.getAllFiguresFlat();
+        }
+
+        // 1. Сбор всех элементов
+        const allElements = this.getAllSketchElements();
+        console.log("FigureManager: найдено элементов:", allElements.length);
+
+        // 2. Сбор простых контуров
+        const simpleContours = this.collectSimpleContours(allElements);
+        console.log("FigureManager: простых контуров:", simpleContours.length);
+
+        // 3. Сбор контуров из линий
+        const lineContours = this.collectLineContours(allElements, simpleContours);
+        console.log("FigureManager: контуров из линий:", lineContours.length);
+
+        // 4. Добавляем автоматически найденные контуры
+        const autoContours = this.getAutoContours();
+        console.log("FigureManager: автоматических контуров:", autoContours.length);
+
+        // 5. Обновляем список разбитых элементов на основе автоматических контуров
+        this.updateBrokenElements(autoContours);
+
+        // 6. Фильтруем контуры: исключаем простые контуры, которые были разбиты
+        const filteredContours = this.filterBrokenContours(simpleContours);
+        console.log("FigureManager: после фильтрации контуров:", filteredContours.length);
+
+        // 7. Объединение всех контуров
+        const allContours = [...filteredContours, ...lineContours, ...autoContours];
+        console.log("FigureManager: всего контуров:", allContours.length);
+
+        // 8. Создание узлов
+        const allNodes = allContours.map(contour => new FigureNode(contour));
+        console.log("FigureManager: создано узлов:", allNodes.length);
+
+        // 9. Построение дерева вложенности
+        if (allNodes.length > 0) {
+            this.buildEnhancedNestingTree(allNodes);
+        } else {
+            this.rootNodes = [];
+        }
+
+        // 10. Определение типов (отверстия/внешние)
+        if (this.rootNodes.length > 0) {
+            this.determineContourTypes();
+        }
+
+        // 11. Сохранение в структуры данных
+        this.updateDataStructures(allNodes);
+
+        this.figureCacheTimestamp = now;
+        return this.getAllFiguresFlat();
+    }
+
+    // Обновление списка разбитых элементов
+    updateBrokenElements(autoContours) {
+        this.brokenElements.clear();
+        
+        autoContours.forEach(contour => {
+            if (contour.elements) {
+                contour.elements.forEach(element => {
+                    // Проверяем, является ли элемент замкнутым контуром, который был разбит
+                    if (this.isSketchElementClosed(element)) {
+                        this.brokenElements.add(element);
+
+                    }
+                });
+            }
+        });
+        
+        console.log("Разбитых элементов:", this.brokenElements.size);
+    }
+
+
+
+    // Фильтрация разбитых контуров
+    filterBrokenContours(simpleContours) {
+        if (this.brokenElements.size === 0) return simpleContours;
+        
+        const filtered = simpleContours.filter(contour => {
+            // Если у контура есть элемент и он в списке разбитых - исключаем
+            if (contour.element && this.brokenElements.has(contour.element)) {
+                console.log("Исключаем разбитый контур:", contour.type, "площадь:", contour.area);
+                return false;
+            }
+            
+            // Если у контура несколько элементов и все они разбиты - исключаем
+            if (contour.elements && contour.elements.length > 0) {
+                const allElementsBroken = contour.elements.every(element => 
+                    this.brokenElements.has(element)
+                );
+                if (allElementsBroken) {
+                    console.log("Исключаем разбитый составной контур:", contour.type, "площадь:", contour.area);
+                    return false;
+                }
+            }
+            
+            return true;
+        });
+        
+        return filtered;
+    }
+
+    // Получение всех элементов скетча (исправленный метод)
+    getAllSketchElements() {
+        const elements = [];
+
+        // Получаем все плоскости скетча
+        const sketchPlanes = this.editor.sketchPlanes || [];
+        const workPlanes = this.editor.workPlanes || [];
+        const allPlanes = [...sketchPlanes, ...workPlanes];
+
+        if (allPlanes.length === 0) {
+            // Если нет плоскостей, ищем элементы в сцене
+            this.editor.scene.traverse((object) => {
+                if (object.userData && object.userData.type === 'sketch_element') {
+                    elements.push(object);
+                }
+            });
+        } else {
+            // Ищем элементы на плоскостях
+            allPlanes.forEach(plane => {
+                plane.traverse((object) => {
+                    if (object.userData && object.userData.type === 'sketch_element') {
+                        elements.push(object);
+                    }
+                });
+            });
+        }
+
+        return elements;
+    }
+
+    // Сбор простых контуров (упрощенный)
+    collectSimpleContours(elements) {
+        const contours = [];
+
+        elements.forEach(element => {
+            if (!element.userData) return;
+
+            const elementType = element.userData.elementType;
+            const points = this.getElementPoints(element);
+
+            // Для линий и полилиний - особый случай
+            if (elementType === 'line' || elementType === 'polyline') {
+                // Для линии и полилинии проверяем, достаточно ли точек
+                if (points.length < 2) return;
+
+                // Проверяем, замкнута ли полилиния
+                const isClosed = this.isSketchElementClosed(element);
+
+                // Если элемент уже помечен как разбитый, не создаем для него простой контур
+                if (this.brokenElements.has(element)) {
+                    console.log("Пропускаем разбитый элемент при создании простого контура:", elementType);
+                    return;
+                }
+
+                // Для незамкнутых линий/полилиний не создаем контуров
+                if (!isClosed) {
+                    return;
+                }
+
+                // Для замкнутых полилиний создаем контур
+                const area = this.calculatePolygonArea(points);
+                if (Math.abs(area) < 0.001) return; // Уменьшил порог для маленьких контуров
+
+                const center = this.calculateContourCenter(points);
+                const boundingBox = this.calculateBoundingBox(points);
+                const isClockwise = area < 0;
+
+                const elementPlane = this.getElementPlane(element);
+                if (!elementPlane) return; // Пропускаем если не нашли плоскость
+
+                contours.push({
+                    element: element,
+                    points: points,
+                    area: Math.abs(area),
+                    center: center,
+                    boundingBox: boundingBox,
+                    type: elementType,
+                    isClosed: true,
+                    isClockwise: isClockwise,
+                    originalArea: area,
+                    planeId: elementPlane.uuid, // Добавляем ID плоскости
+                    plane: elementPlane // И объект плоскости
+                   // isPolyline: true // Добавляем флаг
+                });
+
+                return; // Выходим, так как обработали линию/полилинию
+            }
+
+            // Оригинальная обработка для других типов элементов
+            if (points.length < 3) return;
+
+            // Проверяем, замкнут ли элемент
+            const isClosed = this.isSketchElementClosed(element);
+            if (!isClosed) return;
+
+            // Если элемент уже помечен как разбитый, не создаем для него простой контур
+            if (this.brokenElements.has(element)) {
+                console.log("Пропускаем разбитый элемент при создании простого контура:", elementType);
+                return;
+            }
+
+            const area = this.calculatePolygonArea(points);
+            if (Math.abs(area) < 0.001) return; // Уменьшил порог
+
+            const center = this.calculateContourCenter(points);
+            const boundingBox = this.calculateBoundingBox(points);
+            const isClockwise = area < 0;
+
+            contours.push({
+                element: element,
+                points: points,
+                area: Math.abs(area),
+                center: center,
+                boundingBox: boundingBox,
+                type: elementType,
+                isClosed: true,
+                isClockwise: isClockwise,
+                originalArea: area
+            });
+        });
+
+        return contours;
+    }
+
+    // Сбор контуров из линий (упрощенный)
+    collectLineContours(allElements, simpleContours) {
+        console.log("=== FigureManager: поиск контуров из линий (группировка) ===");
+
+        // Ищем линии, которые еще не включены в контуры
+        const usedElementIds = new Set();
+        simpleContours.forEach(contour => {
+            if (contour.element) {
+                usedElementIds.add(contour.element.uuid);
+            }
+        });
+
+        const lines = allElements.filter(element => {
+            const elementType = element.userData?.elementType;
+            return elementType === 'line' && !usedElementIds.has(element.uuid);
+        });
+
+        console.log(`Найдено отдельных линий: ${lines.length}`);
+
+        if (lines.length < 3) return [];
+
+        // Собираем все точки всех линий
+        const lineData = lines.map(line => {
+            const points = this.getElementPoints(line);
+            return {
+                element: line,
+                start: points[0],
+                end: points[1],
+                points: points
+            };
+        });
+
+        // Пытаемся найти замкнутые контуры
+        const contours = this.findClosedContoursFromLines(lineData);
+        console.log(`Найдено контуров из линий: ${contours.length}`);
+
+        return contours;
+    }
+
+    findClosedContoursFromLines(lineData) {
+        if (lineData.length < 3) return [];
+
+        const contours = [];
+        const visitedLines = new Set();
+
+        for (let i = 0; i < lineData.length; i++) {
+            if (visitedLines.has(i)) continue;
+
+            // Пытаемся построить контур, начиная с этой линии
+            const contour = this.buildContourFromLine(i, lineData, visitedLines);
+            if (contour && contour.points.length >= 3) {
+                const area = this.calculatePolygonArea(contour.points);
+                if (Math.abs(area) > 0.01) {
+                    const center = this.calculateContourCenter(contour.points);
+                    const boundingBox = this.calculateBoundingBox(contour.points);
+
+                    // Определяем общую плоскость для всех элементов контура
+                    const firstElement = contour.elements[0];
+                    const commonPlane = this.getElementPlane(firstElement);
+
+                    contours.push({
+                        elements: contour.elements,
+                        points: contour.points,
+                        area: Math.abs(area),
+                        center: center,
+                        boundingBox: boundingBox,
+                        type: 'line_contour',
+                        isClosed: true,
+                        isClockwise: area < 0,
+                        planeId: commonPlane ? commonPlane.uuid : null,
+                        plane: commonPlane
+                    });
+                }
+            }
+        }
+
+        return contours;
+    }
+
+    buildContourFromLine(startIndex, lineData, visitedLines) {
+        const startLine = lineData[startIndex];
+        const elements = [startLine.element];
+        const points = [];
+
+        // Начинаем с начальной точки первой линии
+        let currentPoint = startLine.start;
+        let nextPoint = startLine.end;
+        points.push(currentPoint.clone());
+        points.push(nextPoint.clone());
+
+        visitedLines.add(startIndex);
+
+        // Пытаемся найти следующую линию, которая соединяется с текущей конечной точкой
+        let foundNext = true;
+        let iterations = 0;
+        const maxIterations = 100; // Защита от бесконечного цикла
+
+        while (foundNext && iterations < maxIterations) {
+            foundNext = false;
+            iterations++;
+
+            // Ищем линию, которая начинается или заканчивается в nextPoint
+            for (let j = 0; j < lineData.length; j++) {
+                if (visitedLines.has(j)) continue;
+
+                const line = lineData[j];
+                const distanceToStart = this.getDistance(nextPoint, line.start);
+                const distanceToEnd = this.getDistance(nextPoint, line.end);
+
+                if (distanceToStart < 0.5) { // Допуск 0.5 мм
+                    // Линия начинается в nextPoint
+                    nextPoint = line.end;
+                    points.push(nextPoint.clone());
+                    elements.push(line.element);
+                    visitedLines.add(j);
+                    foundNext = true;
+                    break;
+                } else if (distanceToEnd < 0.5) {
+                    // Линия заканчивается в nextPoint
+                    nextPoint = line.start;
+                    points.push(nextPoint.clone());
+                    elements.push(line.element);
+                    visitedLines.add(j);
+                    foundNext = true;
+                    break;
+                }
+            }
+
+            // Проверяем, замкнулся ли контур
+            if (this.getDistance(nextPoint, startLine.start) < 0.5) {
+                // Контур замкнулся
+                return { elements, points };
+            }
+        }
+
+        // Контур не замкнулся
+        return null;
+    }
+
+    getDistance(p1, p2) {
+        return Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2));
+    }
+
+    // Получение автоматических контуров
+    getAutoContours() {
+        return this.autoContours || [];
+    }
+
+    // Обновление автоматическими контурами с фильтрацией по плоскости
+    updateWithAutoContours(contours, planeId = null) {
+        console.log("=== FigureManager: обновление автоматическими контурами ===");
+        console.log("Получено контуров:", contours.length);
+
+        // Если указана плоскость, сохраняем ее ID в контурах
+        if (planeId) {
+            contours.forEach(contour => {
+                contour.planeId = planeId;
+            });
+        }
+
+        // Фильтруем только валидные контуры
+        this.autoContours = contours.filter(contour =>
+            contour &&
+            contour.points &&
+            contour.points.length >= 3 &&
+            contour.area > 0.01
+        );
+
+        console.log("Валидных контуров:", this.autoContours.length);
+
+        // Сбрасываем кэш
+        this.figureCacheTimestamp = 0;
+
+        // Перестраиваем фигуры
+        this.collectAllFigures();
+    }
+
+    // ========== ГЕОМЕТРИЧЕСКИЕ МЕТОДЫ ==========
+
+    getElementPoints(element) {
+        if (!element.userData) {
+            console.warn("Элемент не имеет userData");
+            return [];
+        }
+
+        // 1. Пробуем получить точки из userData.localPoints
+        if (element.userData.localPoints && element.userData.localPoints.length > 0) {
+            console.log("Получаем точки из userData.localPoints для", element.userData.elementType,
+                       "количество точек:", element.userData.localPoints.length);
+            return element.userData.localPoints.map(p => {
+                if (p instanceof THREE.Vector3) {
+                    return new THREE.Vector2(p.x, p.y);
+                } else if (p.x !== undefined && p.y !== undefined) {
+                    return new THREE.Vector2(p.x, p.y);
+                }
+                return new THREE.Vector2(0, 0);
+            });
+        }
+
+        // 2. Пробуем получить точки из geometry
+        if (element.geometry && element.geometry.attributes.position) {
+            const positions = element.geometry.attributes.position.array;
+            const points = [];
+
+            for (let i = 0; i < positions.length; i += 3) {
+                points.push(new THREE.Vector2(positions[i], positions[i + 1]));
+            }
+
+            console.log("Получаем точки из geometry для", element.userData.elementType,
+                       "количество точек:", points.length);
+            return points;
+        }
+
+        // 3. Для текста возвращаем пустой массив
+        if (element.userData.elementType === 'text') {
+            return [];
+        }
+
+        console.warn("Не удалось получить точки для элемента:", element.userData.elementType);
+        return [];
+    }
+
+    isSketchElementClosed(element) {
+        if (!element.userData) return false;
+
+        const type = element.userData.elementType;
+
+        // Проверяем по типу элемента
+        const closedTypes = [
+            'rectangle', 'circle', 'polygon', 'oval',
+            'stadium', 'arc', 'polyline'
+        ];
+
+        if (closedTypes.includes(type)) {
+
+            return true;
+        }
+
+        // Для линии всегда возвращаем false (линия не может быть замкнутой)
+        if (type === 'line') {
+            return false;
+        }
+
+        return false;
+    }
+
+    calculatePolygonArea(points) {
+        if (points.length < 3) return 0;
+
+        let area = 0;
+        const n = points.length;
+
+        for (let i = 0; i < n; i++) {
+            const j = (i + 1) % n;
+            area += points[i].x * points[j].y;
+            area -= points[j].x * points[i].y;
+        }
+
+        return area / 2;
+    }
+
+    calculateContourCenter(points) {
+        if (points.length === 0) return new THREE.Vector2(0, 0);
+
+        const center = new THREE.Vector2(0, 0);
+        points.forEach(p => {
+            center.x += p.x;
+            center.y += p.y;
+        });
+
+        center.x /= points.length;
+        center.y /= points.length;
+
+        return center;
+    }
+
+    calculateBoundingBox(points) {
+        if (points.length === 0) {
+            return { min: new THREE.Vector2(0, 0), max: new THREE.Vector2(0, 0) };
+        }
+
+        const min = new THREE.Vector2(Infinity, Infinity);
+        const max = new THREE.Vector2(-Infinity, -Infinity);
+
+        points.forEach(p => {
+            min.x = Math.min(min.x, p.x);
+            min.y = Math.min(min.y, p.y);
+            max.x = Math.max(max.x, p.x);
+            max.y = Math.max(max.y, p.y);
+        });
+
+        return { min, max };
+    }
+
+    // ========== ДЕРЕВО ВЛОЖЕННОСТИ ==========
+
+    buildEnhancedNestingTree(nodes) {
+        console.log("=== FigureManager: строим дерево вложенности ===");
+
+        // Очищаем связи
+        nodes.forEach(node => {
+            node.parent = null;
+            node.children = [];
+            node.depth = 0;
+        });
+
+        // Сортируем по площади (от большей к меньшей)
+        const sortedNodes = [...nodes].sort((a, b) => b.area - a.area);
+        console.log(`Сортировка: ${sortedNodes.length} узлов`);
+
+        // Для каждого узла ищем родителя
+        for (let i = 0; i < sortedNodes.length; i++) {
+            const currentNode = sortedNodes[i];
+            let bestParent = null;
+            let bestParentArea = Infinity;
+
+            // Ищем родителя среди узлов с большей площадью
+            for (let j = 0; j < i; j++) {
+                const potentialParent = sortedNodes[j];
+
+                // Проверяем, находится ли текущий узел внутри потенциального родителя
+                if (this.isContourInside(currentNode.contour, potentialParent.contour)) {
+                    // Выбираем самого маленького родителя (ближайшего по площади)
+                    if (potentialParent.area < bestParentArea) {
+                        bestParent = potentialParent;
+                        bestParentArea = potentialParent.area;
+                    }
+                }
+            }
+
+            if (bestParent) {
+                bestParent.addChild(currentNode);
+            }
+        }
+
+        // Находим корневые узлы
+        this.rootNodes = sortedNodes.filter(node => node.parent === null);
+
+        // Обновляем глубины
+        this.updateDepthsRecursively();
+
+        console.log(`Построено дерево: ${this.rootNodes.length} корневых узлов`);
+    }
+
+    // В класс FigureManager добавьте:
+    getContourPlane(contour) {
+        if (contour.planeId) {
+            // Ищем плоскость по ID среди всех плоскостей
+            const allPlanes = [
+                ...(this.editor.sketchPlanes || []),
+                ...(this.editor.workPlanes || [])
+            ];
+            return allPlanes.find(p => p.uuid === contour.planeId) || null;
+        }
+
+        if (contour.element) {
+            // Получаем плоскость элемента
+            return this.getElementPlane(contour.element);
+        }
+
+        return null;
+    }
+
+    // В FigureManager добавьте метод:
+    getElementPlane(element) {
+        if (!element) return null;
+
+        // Поднимаемся по иерархии, пока не найдем плоскость
+        let parent = element.parent;
+        while (parent) {
+            if (parent.userData &&
+                (parent.userData.type === 'sketch_plane' ||
+                 parent.userData.type === 'work_plane')) {
+                return parent;
+            }
+            parent = parent.parent;
+        }
+
+        // Если не нашли, возвращаем первую доступную плоскость
+        const sketchPlanes = this.editor.sketchPlanes || [];
+        const workPlanes = this.editor.workPlanes || [];
+
+        if (sketchPlanes.length > 0) return sketchPlanes[0];
+        if (workPlanes.length > 0) return workPlanes[0];
+
+        return null;
+    }
+
+    areAllFiguresOnSamePlane(figures) {
+        if (figures.length < 2) return true;
+
+        const firstFigure = figures[0];
+        const firstPlane = this.getFigurePlane(firstFigure);
+
+        if (!firstPlane) {
+            console.log("У первой фигуры нет плоскости");
+            return false;
+        }
+
+        for (let i = 1; i < figures.length; i++) {
+            const figure = figures[i];
+            const plane = this.getFigurePlane(figure);
+
+            if (!plane) {
+                console.log(`У фигуры ${figure.id} нет плоскости`);
+                return false;
+            }
+
+            // Сравниваем ID плоскостей
+            if (plane.uuid !== firstPlane.uuid) {
+                console.log(`Разные плоскости: ${firstPlane.uuid} vs ${plane.uuid}`);
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+
+    isContourInside(innerContour, outerContour) {
+        const innerPoints = innerContour.points || [];
+        const outerPoints = outerContour.points || [];
+
+        if (innerPoints.length === 0 || outerPoints.length === 0) return false;
+
+        // ВАЖНО: Проверяем, что контуры на одной плоскости
+        const innerPlane = this.getContourPlane(innerContour);
+        const outerPlane = this.getContourPlane(outerContour);
+
+        // Если не можем определить плоскость или плоскости разные - не считаем вложенными
+        if (!innerPlane || !outerPlane || innerPlane.uuid !== outerPlane.uuid) {
+            return false;
+        }
+
+        // Проверяем все точки внутреннего контура
+        for (const point of innerPoints) {
+            if (!this.isPointInsidePolygon(point, outerPoints)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    isPointInsidePolygon(point, polygon) {
+        if (polygon.length < 3) return false;
+
+        let inside = false;
+        const x = point.x;
+        const y = point.y;
+
+        for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+            const xi = polygon[i].x;
+            const yi = polygon[i].y;
+            const xj = polygon[j].x;
+            const yj = polygon[j].y;
+
+            const intersect = ((yi > y) !== (yj > y)) &&
+                (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+
+            if (intersect) inside = !inside;
+        }
+
+        return inside;
+    }
+
+    updateDepthsRecursively() {
+        const updateDepth = (node, depth) => {
+            node.depth = depth;
+            node.children.forEach(child => updateDepth(child, depth + 1));
+        };
+
+        this.rootNodes.forEach(root => updateDepth(root, 0));
+    }
+
+    determineContourTypes() {
+        console.log("=== FigureManager: определяем типы контуров ===");
+
+        const determineNode = (node) => {
+            // Правило: четная глубина - внешний контур, нечетная - отверстие
+            node.isHole = (node.depth % 2 === 1);
+            node.isOuter = !node.isHole;
+
+            node.children.forEach(determineNode);
+        };
+
+        this.rootNodes.forEach(determineNode);
+    }
+
+    updateDataStructures(nodes) {
+        this.figureTree.clear();
+        this.elementToNodes.clear();
+
+        nodes.forEach(node => {
+            this.figureTree.set(node.id, node);
+
+            node.elementIds.forEach(elementId => {
+                if (!this.elementToNodes.has(elementId)) {
+                    this.elementToNodes.set(elementId, []);
+                }
+                this.elementToNodes.get(elementId).push(node);
+            });
+        });
+    }
+
+    // ========== ПОЛУЧЕНИЕ ДАННЫХ ==========
+
+    getAllFiguresFlat() {
+        const result = [];
+
+        const traverse = (node) => {
+            const immediateHoles = node.getImmediateHoles().map(child => child.contour);
+
+            const figure = {
+                id: node.id,
+                outer: node.contour,
+                holes: immediateHoles,
+                area: node.area,
+                selected: false,
+                parentId: node.parent ? node.parent.id : null,
+                childrenIds: node.children.map(child => child.id),
+                isStandalone: node.parent === null,
+                canBeSelected: true,
+                isHole: node.isHole,
+                isOuter: node.isOuter,
+                depth: node.depth,
+                elementIds: node.elementIds,
+                element: node.element,
+                boundingBox: node.boundingBox,
+                center: node.center,
+                type: node.type
+            };
+
+            result.push(figure);
+            node.children.forEach(child => traverse(child));
+        };
+
+        this.rootNodes.forEach(root => traverse(root));
+
+        result.sort((a, b) => a.depth - b.depth);
+
+        return result;
+    }
+
+    getNodeById(id) {
+        return this.figureTree.get(id);
+    }
+
+    getFigureById(id) {
+        const node = this.getNodeById(id);
+        if (!node) return null;
+
+        return this.nodeToFigure(node);
+    }
+
+    getFiguresByElement(element) {
+        const elementId = element.uuid;
+        const nodes = this.elementToNodes.get(elementId) || [];
+
+        // Фильтруем узлы, исключая те, которые созданы из разбитых элементов
+        const validNodes = nodes.filter(node => {
+            // Проверяем, не был ли элемент разбит
+            if (node.element && this.brokenElements.has(node.element)) {
+                return false;
+            }
+            
+            // Проверяем, не все ли элементы узла разбиты
+            if (node.elementIds && node.elementIds.size > 0) {
+                const allElementsBroken = Array.from(node.elementIds).every(id => {
+                    const element = this.findElementById(id);
+                    return element && this.brokenElements.has(element);
+                });
+                if (allElementsBroken) {
+                    return false;
+                }
+            }
+            
+            return true;
+        });
+
+        return validNodes.map(node => this.nodeToFigure(node));
+    }
+
+    findElementById(elementId) {
+        // Ищем элемент в сцене по UUID
+        let foundElement = null;
+        
+        const searchInObject = (object) => {
+            if (object.uuid === elementId) {
+                foundElement = object;
+                return true;
+            }
+            
+            if (object.children && object.children.length > 0) {
+                for (const child of object.children) {
+                    if (searchInObject(child)) {
+                        return true;
+                    }
+                }
+            }
+            
+            return false;
+        };
+        
+        searchInObject(this.editor.scene);
+        return foundElement;
+    }
+
+    findNodeByContour(contour) {
+        for (const node of this.figureTree.values()) {
+            if (node.contour === contour) {
+                return node;
+            }
+        }
+        return null;
+    }
+
+    nodeToFigure(node) {
+        const immediateHoles = node.getImmediateHoles().map(hole => hole.contour);
+
+        return {
+            id: node.id,
+            outer: node.contour,
+            holes: immediateHoles,
+            area: node.area,
+            isHole: node.isHole,
+            isOuter: node.isOuter,
+            depth: node.depth,
+            parentId: node.parent ? node.parent.id : null,
+            childrenIds: node.children.map(child => child.id),
+            elementIds: node.elementIds,
+            element: node.element,
+            boundingBox: node.boundingBox,
+            center: node.center,
+            type: node.type
+        };
+    }
+
+    // ========== ДЕБАГ ==========
+
+    debugPrintTree() {
+        console.log("\n=== ДЕРЕВО ФИГУР ===");
+
+        if (this.rootNodes.length === 0) {
+            console.log("  Дерево пустое");
+            return;
+        }
+
+        const printNode = (node, indent = "") => {
+            const type = node.isHole ? "○ ОТВЕРСТИЕ" : "● ВНЕШНИЙ";
+            const area = node.area.toFixed(2);
+            const elements = node.elementIds.size;
+            const children = node.children.length;
+            const depth = node.depth;
+
+            console.log(`${indent}${type} [ID: ${node.id.substring(0, 8)}...]`);
+            console.log(`${indent}  Глубина: ${depth}, Площадь: ${area}, Элементов: ${elements}, Детей: ${children}`);
+
+            node.children.forEach(child => printNode(child, indent + "  "));
+        };
+
+        this.rootNodes.forEach((root, i) => {
+            console.log(`\nКорень ${i + 1}:`);
+            printNode(root);
+        });
+    }
+
+    // ========== ОБРАТНАЯ СОВМЕСТИМОСТЬ ==========
+
+    findFigureByHoleContour(holeContour) {
+        const node = this.findNodeByContour(holeContour);
+        return node ? this.nodeToFigure(node) : null;
+    }
+
+    getAllFigures() {
+        return this.getAllFiguresFlat();
+    }
+
+    findNodeByHoleContour(holeContour) {
+        return this.findNodeByContour(holeContour);
+    }
+}

@@ -1,1 +1,423 @@
-class ObjectsManager{constructor(e){this.editor=e,this.figureManager=new FigureManager(e)}initializeFigureManager(){return this.figureManager||(this.figureManager=new FigureManager(this.editor)),this.figureManager}getFigureManager(){return this.figureManager||this.initializeFigureManager(),this.figureManager}getObjectDimensions(e){const t=(new THREE.Box3).setFromObject(e),i=new THREE.Vector3;return t.getSize(i),{x:i.x,y:i.y,z:i.z}}getObjectIconAndType(e,t){let i="fa-cube",a="Объект";return"work_plane"===e.userData.type?(i="fa-square",a="Рабочая плоскость"):"sketch_plane"===e.userData.type?(i="fa-drafting-compass",a="Плоскость скетча"):"sketch_element"===e.userData.type?(i="fa-pencil-alt",a="Элемент скетча"):"sketch"===e.userData.type?(i="fa-drafting-compass",a="Скетч"):"extrude"===e.userData.type?(i="fa-arrows-alt-v",a="Вытягивание"):"group"===e.userData.type?(i="fa-object-group",a=`Группа (${e.userData.childCount||e.children.length} объектов)`):e.userData.type&&(a=e.userData.type),{icon:i,typeText:a}}updateSceneStats(){let e=0,t=0;this.editor.objects.forEach(i=>{i.isGroup?i.traverse(i=>{i.isMesh&&i.geometry&&i.geometry.attributes&&i.geometry.attributes.position&&(e+=i.geometry.attributes.position.count||0,i.geometry.index?t+=i.geometry.index.count/3:i.geometry.attributes.position&&(t+=i.geometry.attributes.position.count/3))}):i.isMesh&&i.geometry&&i.geometry.attributes&&i.geometry.attributes.position&&(e+=i.geometry.attributes.position.count||0,i.geometry.index?t+=i.geometry.index.count/3:i.geometry.attributes.position&&(t+=i.geometry.attributes.position.count/3))}),document.getElementById("objectCount").textContent=this.editor.objects.length,document.getElementById("vertexCount").textContent=e.toLocaleString(),document.getElementById("faceCount").textContent=t.toLocaleString()}updateSceneList(){const e=document.getElementById("sceneList");e&&(e.innerHTML="",this.editor.objects.forEach((t,i)=>{const a=document.createElement("div");a.className="scene-item",this.editor.selectedObjects.includes(t)&&a.classList.add("selected");const{icon:s,typeText:r}=this.getObjectIconAndType(t,i);let o=`\n                <button class="scene-item-action" title="Скрыть/показать" data-action="toggle">\n                    <i class="fas fa-eye${t.visible?"":"-slash"}"></i>\n                </button>\n            `;"sketch_plane"===t.userData.type&&(o+='\n                    <button class="scene-item-action" title="Редактировать скетч" data-action="edit-sketch">\n                        <i class="fas fa-edit"></i>\n                    </button>\n                '),o+='\n                <button class="scene-item-action" title="Удалить" data-action="delete">\n                    <i class="fas fa-trash"></i>\n                </button>\n            ',a.innerHTML=`\n                <i class="fas ${s}"></i>\n                <div class="scene-item-info">\n                    <div class="scene-item-name">${t.userData.name||r+" "+(i+1)}</div>\n                    <div class="scene-item-type">${r}</div>\n                </div>\n                <div class="scene-item-actions">\n                    ${o}\n                </div>\n            `,a.addEventListener("dblclick",e=>{e.stopPropagation(),e.target.closest(".scene-item-action")||(this.editor.selectObject(t),this.focusCameraOnObject(t))}),a.querySelector('[data-action="toggle"]').addEventListener("click",e=>{e.stopPropagation(),t.visible=!t.visible;e.target.closest("button").querySelector("i").className=t.visible?"fas fa-eye":"fas fa-eye-slash"}),"sketch_plane"===t.userData.type&&a.querySelector('[data-action="edit-sketch"]').addEventListener("click",e=>{e.stopPropagation(),this.editor.selectObject(t),this.editor.toolManager.setCurrentTool("sketch")}),a.querySelector('[data-action="delete"]').addEventListener("click",e=>{e.stopPropagation(),this.editor.deleteObject(t)}),e.appendChild(a)}))}focusCameraOnObject(e){if(!e||!this.editor.camera)return;this.editor.selectedObjects.includes(e)||this.editor.selectObject(e);const t=(new THREE.Box3).setFromObject(e),i=new THREE.Vector3;t.getCenter(i);const a=new THREE.Vector3;t.getSize(a);const s=Math.max(a.x,a.y,a.z),r=s>0?2*s:100,o=new THREE.Vector3;this.editor.camera.getWorldDirection(o);const n=o.clone(),l=new THREE.Vector3;l.copy(i),l.add(n.multiplyScalar(-r));const c=this.editor.camera.position.clone(),h=this.editor.controls.target.clone(),d=Date.now(),g=()=>{const e=Date.now()-d,t=Math.min(e/800,1),a=1-Math.pow(1-t,3);this.editor.camera.position.lerpVectors(c,l,a),this.editor.controls.target.lerpVectors(h,i,a),this.editor.controls.update(),t<1?requestAnimationFrame(g):(this.editor.controls.target.copy(i),this.editor.controls.update(),this.editor.showStatus("Камера сфокусирована на объекте","info"))};g()}highlightObject(e){e.isGroup?e.traverse(e=>{e.isMesh&&e.material&&this.highlightSingleObject(e)}):e.isMesh&&e.material&&this.highlightSingleObject(e)}highlightSingleObject(e){if(e.material&&!e.userData.isHighlighted)if(e.userData.originalMaterial=e.material,e.userData.isHighlighted=!0,e.material.isMeshPhongMaterial||e.material.isMeshLambertMaterial){const t=e.material.clone();t.emissive=new THREE.Color(4473924),t.emissiveIntensity=.8;const i=t.color.clone().multiplyScalar(1.3);t.color.copy(i),e.material=t,e.material.needsUpdate=!0}else if(e.material.isMeshBasicMaterial){const t=e.material.clone(),i=t.color.clone().multiplyScalar(1.5);t.color.copy(i),t.transparent&&(t.opacity=Math.min(1.5*t.opacity,1)),e.material=t,e.material.needsUpdate=!0}}unhighlightObject(e){e.isGroup?e.traverse(e=>{e.isMesh&&e.userData.isHighlighted&&this.unhighlightSingleObject(e)}):e.isMesh&&e.userData.isHighlighted&&this.unhighlightSingleObject(e)}unhighlightSingleObject(e){e.userData.originalMaterial&&(e.material=e.userData.originalMaterial,e.material.needsUpdate=!0,delete e.userData.originalMaterial,delete e.userData.isHighlighted)}findTopParent(e){for(;e.parent&&e.parent!==this.editor.objectsGroup;)e=e.parent;return e}safeSetElementColor(e,t){if(e&&e.material)try{const i=e.material.clone();i.color.setHex(t),i.needsUpdate=!0,e.userData.originalMaterial||(e.userData.originalMaterial=e.material),e.material=i}catch(e){console.warn("Error setting element color:",e)}}getAllSketchElements(){const e=[],t=i=>{i.userData&&"sketch_element"===i.userData.type&&e.push(i),i.children.forEach(e=>t(e))};return this.editor.sketchPlanes.forEach(e=>t(e)),this.editor.workPlanes.forEach(e=>t(e)),t(this.editor.objectsGroup),e}getClosedSketchElements(){return this.getAllSketchElements().filter(e=>!(!e.userData||"sketch_element"===!e.userData.type)&&this.editor.extrudeManager.isSketchElementClosed(e))}highlightSketchElementsInGroup(e){e&&e.traverse(e=>{e.userData&&"sketch_element"===e.userData.type&&this.safeSetElementColor(e,2201331)})}isElementSelected(e){return this.editor.selectedObjects.includes(e)}toggleElementSelection(e){const t=this.editor.selectedObjects.indexOf(e);t>-1?(this.editor.selectedObjects.splice(t,1),this.safeRestoreElementColor(e)):(this.editor.selectedObjects.push(e),this.safeSetElementColor(e,16753920))}safeRestoreElementColor(e){if(e&&e.userData)try{if(e.userData.originalMaterial)e.material=e.userData.originalMaterial,delete e.userData.originalMaterial;else if(e.userData.originalColor){const t=e.material.clone();t.color.copy(e.userData.originalColor),t.needsUpdate=!0,e.material=t}}catch(e){console.warn("Error restoring element color:",e)}}}
+// objects-manager.js
+class ObjectsManager {
+    constructor(cadEditor) {
+        this.editor = cadEditor;
+        this.figureManager = new FigureManager(cadEditor); // Единый экземпляр
+    }
+
+    // Инициализация FigureManager
+    initializeFigureManager() {
+        if (!this.figureManager) {
+            this.figureManager = new FigureManager(this.editor);
+        }
+        return this.figureManager;
+    }
+
+    // Получение FigureManager
+    getFigureManager() {
+        if (!this.figureManager) {
+            this.initializeFigureManager();
+        }
+        return this.figureManager;
+    }
+
+    getObjectDimensions(object) {
+        const box = new THREE.Box3().setFromObject(object);
+        const size = new THREE.Vector3();
+        box.getSize(size);
+        return { x: size.x, y: size.y, z: size.z };
+    }
+
+    getObjectIconAndType(obj, index) {
+        let icon = 'fa-cube';
+        let typeText = 'Объект';
+
+        if (obj.userData.type === 'work_plane') {
+            icon = 'fa-square';
+            typeText = 'Рабочая плоскость';
+        } else if (obj.userData.type === 'sketch_plane') {
+            icon = 'fa-drafting-compass';
+            typeText = 'Плоскость скетча';
+        } else if (obj.userData.type === 'sketch_element') {
+            icon = 'fa-pencil-alt';
+            typeText = 'Элемент скетча';
+        } else if (obj.userData.type === 'sketch') {
+            icon = 'fa-drafting-compass';
+            typeText = 'Скетч';
+        } else if (obj.userData.type === 'extrude') {
+            icon = 'fa-arrows-alt-v';
+            typeText = 'Вытягивание';
+        } else if (obj.userData.type === 'group') {
+            icon = 'fa-object-group';
+            typeText = `Группа (${obj.userData.childCount || obj.children.length} объектов)`;
+        } else if (obj.userData.type) {
+            typeText = obj.userData.type;
+        }
+
+        return { icon, typeText };
+    }
+
+
+    updateSceneStats() {
+        let vertices = 0;
+        let faces = 0;
+
+        this.editor.objects.forEach(obj => {
+            if (obj.isGroup) {
+                obj.traverse((child) => {
+                    if (child.isMesh && child.geometry && child.geometry.attributes && child.geometry.attributes.position) {
+                        vertices += child.geometry.attributes.position.count || 0;
+                        if (child.geometry.index) {
+                            faces += child.geometry.index.count / 3;
+                        } else if (child.geometry.attributes.position) {
+                            faces += child.geometry.attributes.position.count / 3;
+                        }
+                    }
+                });
+            } else if (obj.isMesh && obj.geometry && obj.geometry.attributes && obj.geometry.attributes.position) {
+                vertices += obj.geometry.attributes.position.count || 0;
+                if (obj.geometry.index) {
+                    faces += obj.geometry.index.count / 3;
+                } else if (obj.geometry.attributes.position) {
+                    faces += obj.geometry.attributes.position.count / 3;
+                }
+            }
+        });
+
+        document.getElementById('objectCount').textContent = this.editor.objects.length;
+        document.getElementById('vertexCount').textContent = vertices.toLocaleString();
+        document.getElementById('faceCount').textContent = faces.toLocaleString();
+    }
+
+
+    updateSceneList() {
+        const container = document.getElementById('sceneList');
+        if (!container) return;
+
+        container.innerHTML = '';
+
+        this.editor.objects.forEach((obj, index) => {
+            const div = document.createElement('div');
+            div.className = 'scene-item';
+            if (this.editor.selectedObjects.includes(obj)) {
+                div.classList.add('selected');
+            }
+
+            const { icon, typeText } = this.getObjectIconAndType(obj, index);
+
+            // Создаем HTML для кнопок действий
+            let actionsHTML = `
+                <button class="scene-item-action" title="Скрыть/показать" data-action="toggle">
+                    <i class="fas fa-eye${obj.visible ? '' : '-slash'}"></i>
+                </button>
+            `;
+
+            // Добавляем кнопку редактирования скетча, если плоскость содержит элементы скетча
+            if (obj.userData.type === 'sketch_plane') {
+                actionsHTML += `
+                    <button class="scene-item-action" title="Редактировать скетч" data-action="edit-sketch">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                `;
+            }
+
+            actionsHTML += `
+                <button class="scene-item-action" title="Удалить" data-action="delete">
+                    <i class="fas fa-trash"></i>
+                </button>
+            `;
+
+            div.innerHTML = `
+                <i class="fas ${icon}"></i>
+                <div class="scene-item-info">
+                    <div class="scene-item-name">${obj.userData.name || typeText + ' ' + (index + 1)}</div>
+                    <div class="scene-item-type">${typeText}</div>
+                </div>
+                <div class="scene-item-actions">
+                    ${actionsHTML}
+                </div>
+            `;
+
+            // Обработчик одинарного клика - выделение
+//            div.addEventListener('click', (e) => {
+//                if (!e.target.closest('.scene-item-action')) {
+//                    this.editor.selectObject(obj);
+//                }
+//            });
+
+            // Обработчик двойного клика - фокусировка камеры
+            div.addEventListener('dblclick', (e) => {
+                e.stopPropagation();
+                if (!e.target.closest('.scene-item-action')) {
+                    // Выделяем объект при двойном клике
+                    this.editor.selectObject(obj);
+
+                    // Фокусируем камеру
+                    this.focusCameraOnObject(obj);
+                }
+            });
+
+            div.querySelector('[data-action="toggle"]').addEventListener('click', (e) => {
+                e.stopPropagation();
+                obj.visible = !obj.visible;
+                const icon = e.target.closest('button').querySelector('i');
+                icon.className = obj.visible ? 'fas fa-eye' : 'fas fa-eye-slash';
+            });
+
+            // Обработчик для кнопки редактирования скетча
+            if (obj.userData.type === 'sketch_plane') {
+                div.querySelector('[data-action="edit-sketch"]').addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    // выделяем и вкл режим скетч
+                    this.editor.selectObject(obj);
+                    this.editor.toolManager.setCurrentTool('sketch');
+                });
+            }
+
+            div.querySelector('[data-action="delete"]').addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.editor.deleteObject(obj);
+            });
+
+            container.appendChild(div);
+        });
+    }
+
+    // Новый метод для фокусировки камеры на объекте
+    focusCameraOnObject(object) {
+        if (!object || !this.editor.camera) return;
+
+        // Выделяем объект, если он не выделен
+        if (!this.editor.selectedObjects.includes(object)) {
+            this.editor.selectObject(object);
+        }
+
+        // Вычисляем bounding box объекта
+        const boundingBox = new THREE.Box3().setFromObject(object);
+        const center = new THREE.Vector3();
+        boundingBox.getCenter(center);
+        const size = new THREE.Vector3();
+        boundingBox.getSize(size);
+
+        // Если объект очень маленький (например, точка или линия), используем дефолтный размер
+        const maxSize = Math.max(size.x, size.y, size.z);
+        const targetDistance = maxSize > 0 ? maxSize * 2 : 100;
+
+        // Вычисляем новую позицию камеры
+        const direction = new THREE.Vector3();
+        this.editor.camera.getWorldDirection(direction);
+
+        // Сохраняем текущий взгляд камеры (направление)
+        const cameraDirection = direction.clone();
+
+        // Новая позиция камеры - от центра объекта отступим по направлению камеры
+        const newPosition = new THREE.Vector3();
+        newPosition.copy(center);
+
+        // Отодвигаем камеру назад по направлению ее взгляда
+        newPosition.add(cameraDirection.multiplyScalar(-targetDistance));
+
+        // Создаем анимацию плавного перемещения камеры
+        const animationDuration = 800; // мс
+        const startPosition = this.editor.camera.position.clone();
+        const startTarget = this.editor.controls.target.clone();
+
+        const startTime = Date.now();
+
+        const animateCamera = () => {
+            const elapsed = Date.now() - startTime;
+            const progress = Math.min(elapsed / animationDuration, 1);
+
+            // Используем easeOutCubic для плавного замедления
+            const easedProgress = 1 - Math.pow(1 - progress, 3);
+
+            // Интерполируем позицию камеры
+            this.editor.camera.position.lerpVectors(startPosition, newPosition, easedProgress);
+
+            // Интерполируем цель камеры
+            this.editor.controls.target.lerpVectors(startTarget, center, easedProgress);
+
+            // Обновляем контролы
+            this.editor.controls.update();
+
+            if (progress < 1) {
+                requestAnimationFrame(animateCamera);
+            } else {
+                // После завершения анимации центрируем камеру точно на объекте
+                this.editor.controls.target.copy(center);
+                this.editor.controls.update();
+
+                this.editor.showStatus(`Камера сфокусирована на объекте`, 'info');
+            }
+        };
+
+        // Запускаем анимацию
+        animateCamera();
+    }
+
+    highlightObject(object) {
+        if (object.isGroup) {
+            object.traverse((child) => {
+                if (child.isMesh && child.material) {
+                    this.highlightSingleObject(child);
+                }
+            });
+        } else if (object.isMesh && object.material) {
+            this.highlightSingleObject(object);
+        }
+    }
+
+    highlightSingleObject(object) {
+        if (!object.material || object.userData.isHighlighted) return;
+
+        object.userData.originalMaterial = object.material;
+        object.userData.isHighlighted = true;
+
+        if (object.material.isMeshPhongMaterial || object.material.isMeshLambertMaterial) {
+            const highlightMaterial = object.material.clone();
+            highlightMaterial.emissive = new THREE.Color(0x444444);
+            highlightMaterial.emissiveIntensity = 0.8;
+            const originalColor = highlightMaterial.color.clone();
+            const highlightedColor = originalColor.multiplyScalar(1.3);
+            highlightMaterial.color.copy(highlightedColor);
+            object.material = highlightMaterial;
+            object.material.needsUpdate = true;
+        }
+        else if (object.material.isMeshBasicMaterial) {
+            const highlightMaterial = object.material.clone();
+            const originalColor = highlightMaterial.color.clone();
+            const highlightedColor = originalColor.multiplyScalar(1.5);
+            highlightMaterial.color.copy(highlightedColor);
+            if (highlightMaterial.transparent) {
+                highlightMaterial.opacity = Math.min(highlightMaterial.opacity * 1.5, 1.0);
+            }
+            object.material = highlightMaterial;
+            object.material.needsUpdate = true;
+        }
+    }
+
+    unhighlightObject(object) {
+        if (object.isGroup) {
+            object.traverse((child) => {
+                if (child.isMesh && child.userData.isHighlighted) {
+                    this.unhighlightSingleObject(child);
+                }
+            });
+        } else if (object.isMesh && object.userData.isHighlighted) {
+            this.unhighlightSingleObject(object);
+        }
+    }
+
+    unhighlightSingleObject(object) {
+        if (!object.userData.originalMaterial) return;
+        object.material = object.userData.originalMaterial;
+        object.material.needsUpdate = true;
+        delete object.userData.originalMaterial;
+        delete object.userData.isHighlighted;
+    }
+
+    findTopParent(object) {
+        while (object.parent && object.parent !== this.editor.objectsGroup) {
+            object = object.parent;
+        }
+        return object;
+    }
+
+    safeSetElementColor(element, colorHex) {
+        if (!element || !element.material) return;
+
+        try {
+            const newMaterial = element.material.clone();
+            newMaterial.color.setHex(colorHex);
+            newMaterial.needsUpdate = true;
+
+            if (!element.userData.originalMaterial) {
+                element.userData.originalMaterial = element.material;
+            }
+
+            element.material = newMaterial;
+        } catch (error) {
+            console.warn('Error setting element color:', error);
+        }
+    }
+
+    // Метод для получения всех скетч-элементов (включая вложенные)
+    getAllSketchElements() {
+        const elements = [];
+
+        const collectElements = (object) => {
+            if (object.userData && object.userData.type === 'sketch_element') {
+                elements.push(object);
+            }
+            object.children.forEach(child => collectElements(child));
+        };
+
+        // Проверяем все плоскости скетча
+        this.editor.sketchPlanes.forEach(plane => collectElements(plane));
+
+        // Проверяем рабочие плоскости
+        this.editor.workPlanes.forEach(plane => collectElements(plane));
+
+        // Проверяем objectsGroup
+        collectElements(this.editor.objectsGroup);
+
+        return elements;
+    }
+
+    // Метод для получения замкнутых контуров
+    getClosedSketchElements() {
+        const allElements = this.getAllSketchElements();
+        return allElements.filter(element => {
+            if (!element.userData || !element.userData.type === 'sketch_element') {
+                return false;
+            }
+
+            // Используем метод из extrudeManager
+            return this.editor.extrudeManager.isSketchElementClosed(element);
+        });
+    }
+
+    // Метод для подсветки всех элементов в группе
+    highlightSketchElementsInGroup(group) {
+        if (!group) return;
+
+        group.traverse(child => {
+            if (child.userData && child.userData.type === 'sketch_element') {
+                this.safeSetElementColor(child, 0x2196F3);
+            }
+        });
+    }
+
+    isElementSelected(element) {
+        return this.editor.selectedObjects.includes(element);
+    }
+
+    toggleElementSelection(element) {
+        const index = this.editor.selectedObjects.indexOf(element);
+        if (index > -1) {
+            this.editor.selectedObjects.splice(index, 1);
+            this.safeRestoreElementColor(element);
+        } else {
+            this.editor.selectedObjects.push(element);
+            this.safeSetElementColor(element, 0xFFA500); // Оранжевый для множественного выделения
+        }
+    }
+
+    safeRestoreElementColor(element) {
+        if (!element || !element.userData) return;
+
+        try {
+            if (element.userData.originalMaterial) {
+                element.material = element.userData.originalMaterial;
+                delete element.userData.originalMaterial;
+            } else if (element.userData.originalColor) {
+                const newMaterial = element.material.clone();
+                newMaterial.color.copy(element.userData.originalColor);
+                newMaterial.needsUpdate = true;
+                element.material = newMaterial;
+            }
+        } catch (error) {
+            console.warn('Error restoring element color:', error);
+        }
+    }
+}

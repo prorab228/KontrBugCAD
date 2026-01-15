@@ -1,1 +1,353 @@
-class WorkPlaneTool extends Tool{constructor(e){super("workplane","fa-square",e),this.planesManager=e.planesManager,this.workPlaneMode=null,this.faceSelectionObject=null,this.tempWorkPlane=null,this.hoveredPlane=null,this.hoveredObject=null}createWorkPlane(){this.workPlaneMode="active",this.editor.basePlanes&&(this.editor.basePlanes.visible=!0),this.editor.showStatus("Выберите базовую плоскость (XY, XZ, YZ) или грань любого объекта для создания рабочей плоскости","info")}handleSelection(e){this.editor.raycaster.setFromCamera(this.editor.mouse,this.editor.camera);const t=this.editor.basePlanes?this.editor.basePlanes.children:[],s=this.editor.raycaster.intersectObjects(t);if(s.length>0){const e=s[0].object;return this.createWorkPlaneOnBasePlane(e)}const o=this.getAllSelectableObjects(),i=this.editor.raycaster.intersectObjects(o,!0);if(i.length>0){const e=i[0],t=this.getFaceWorldNormal(e);let s=e.object;for(;s.parent&&s.parent!==this.editor.objectsGroup&&"Scene"!==s.parent.type;)s=s.parent;const o=s.name||"объекте";return this.createWorkPlaneOnFace(e.point,t,`Плоскость на ${o}`)}return!1}handleHighlight(e){this.editor.raycaster.setFromCamera(this.editor.mouse,this.editor.camera),this.resetPreviousHighlight();let t=!1;const s=this.editor.basePlanes?this.editor.basePlanes.children:[],o=this.editor.raycaster.intersectObjects(s);if(o.length>0){t=!0;const e=o[0].object;return this.hoveredPlane=e,e.material.opacity=.4,void(document.body.style.cursor="pointer")}const i=this.getAllSelectableObjects(),r=this.editor.raycaster.intersectObjects(i,!0);if(r.length>0){t=!0;const e=r[0],s=this.getFaceWorldNormal(e);this.createOrUpdateTempWorkPlane(e.point,s);let o=e.object;for(;o.parent&&o.parent!==this.editor.objectsGroup&&"Scene"!==o.parent.type;)o=o.parent;return this.hoveredObject=o,this.editor.objectsManager.highlightSingleObject(o),void(document.body.style.cursor="pointer")}t||(document.body.style.cursor="default")}getAllSelectableObjects(){return this.faceSelectionObject?[this.faceSelectionObject]:this.editor.objectsGroup.children.filter(e=>{const t=e.userData?.type;return"work_plane"!==t&&"sketch_plane"!==t&&"base_plane"!==t})}getFaceWorldNormal(e){const t=new THREE.Vector3;if(e.face){const s=e.face.normal.clone(),o=(new THREE.Matrix3).getNormalMatrix(e.object.matrixWorld);s.applyMatrix3(o).normalize(),t.copy(s)}else t.copy(e.normal||new THREE.Vector3(0,0,1));return t}createWorkPlaneOnBasePlane(e){const t=this.planesManager.createWorkPlaneObject(e.userData.planeType.toUpperCase());return t.position.copy(e.position),t.quaternion.copy(e.quaternion),this.editor.objectsGroup.add(t),this.editor.objects.push(t),this.editor.workPlanes.push(t),this.exitWorkPlaneMode(),this.editor.clearSelection(),this.editor.selectObject(t),this.editor.showStatus(`Создана рабочая плоскость на ${e.userData.planeType.toUpperCase()}`,"success"),!0}createWorkPlaneOnFace(e,t,s="Плоскость на грани"){const o=this.planesManager.createWorkPlaneObject(s,"face");o.position.copy(e);const i=t.clone().multiplyScalar(.01);o.position.add(i);const r=new THREE.Vector3(0,0,1);t.normalize();const a=new THREE.Quaternion,n=r.dot(t);if(Math.abs(n+1)<1e-4)a.setFromAxisAngle(new THREE.Vector3(1,0,0),Math.PI);else if(Math.abs(n-1)<1e-4)a.identity();else{const e=(new THREE.Vector3).crossVectors(r,t).normalize(),s=Math.acos(r.dot(t));a.setFromAxisAngle(e,s)}return o.quaternion.copy(a),this.editor.objectsGroup.add(o),this.editor.objects.push(o),this.editor.workPlanes.push(o),this.exitWorkPlaneMode(),this.editor.clearSelection(),this.editor.selectObject(o),this.editor.showStatus("Создана рабочая плоскость на грани объекта","success"),!0}createOrUpdateTempWorkPlane(e,t){if(!this.tempWorkPlane){const e=new THREE.PlaneGeometry(50,50),t=new THREE.MeshBasicMaterial({color:16750592,transparent:!0,opacity:.4,side:THREE.DoubleSide,depthWrite:!1,depthTest:!0});this.tempWorkPlane=new THREE.Mesh(e,t),this.editor.objectsGroup.add(this.tempWorkPlane)}this.tempWorkPlane.position.copy(e),t.normalize();const s=new THREE.Vector3(0,0,1),o=new THREE.Quaternion,i=s.dot(t);if(Math.abs(i+1)<1e-4)o.setFromAxisAngle(new THREE.Vector3(1,0,0),Math.PI);else if(Math.abs(i-1)<1e-4)o.identity();else{const e=(new THREE.Vector3).crossVectors(s,t).normalize(),i=Math.acos(s.dot(t));o.setFromAxisAngle(e,i)}this.tempWorkPlane.quaternion.copy(o);const r=t.clone().multiplyScalar(.01);this.tempWorkPlane.position.add(r)}resetPreviousHighlight(){this.hoveredPlane&&(this.hoveredPlane.material.opacity=.1,this.hoveredPlane=null),this.hoveredObject&&(this.editor.objectsManager.unhighlightObject(this.hoveredObject),this.hoveredObject=null),this.tempWorkPlane&&(this.editor.objectsGroup.remove(this.tempWorkPlane),this.tempWorkPlane.geometry.dispose(),this.tempWorkPlane.material.dispose(),this.tempWorkPlane=null)}exitWorkPlaneMode(){this.workPlaneMode=null,this.faceSelectionObject=null,this.editor.basePlanes&&(this.editor.basePlanes.visible=!1),this.resetPreviousHighlight(),this.editor.showStatus("Режим создания рабочей плоскости завершен","info")}startWorkPlaneFaceSelection(){return 1===this.editor.selectedObjects.length&&"work_plane"!==this.editor.selectedObjects[0].userData.type&&"sketch_plane"!==this.editor.selectedObjects[0].userData.type&&"base_plane"!==this.editor.selectedObjects[0].userData.type&&(this.faceSelectionObject=this.editor.selectedObjects[0],this.workPlaneMode="active",this.editor.basePlanes&&(this.editor.basePlanes.visible=!1),this.editor.showStatus("Выберите грань выделенного объекта для создания рабочей плоскости","info"),!0)}onActivate(){return 1===this.editor.selectedObjects.length&&"work_plane"!==this.editor.selectedObjects[0].userData.type&&"sketch_plane"!==this.editor.selectedObjects[0].userData.type&&"base_plane"!==this.editor.selectedObjects[0].userData.type?(this.faceSelectionObject=this.editor.selectedObjects[0],this.workPlaneMode="active",this.editor.basePlanes&&(this.editor.basePlanes.visible=!1),this.editor.showStatus("Выберите грань выделенного объекта для создания рабочей плоскости","info")):this.createWorkPlane(),!0}onDeactivate(){this.exitWorkPlaneMode()}onMouseDown(e){return!("active"!==this.workPlaneMode||!this.handleSelection(e))&&(this.editor.toolManager.setCurrentTool("select"),!0)}onMouseMove(e){"active"===this.workPlaneMode&&this.handleHighlight(e)}onKeyDown(e){return!("Escape"!==e.key||!this.workPlaneMode)&&(this.editor.toolManager.setCurrentTool("select"),!0)}}
+// workplane-tool.js (улучшенная версия с единым подходом)
+class WorkPlaneTool extends Tool {
+    constructor(editor) {
+        super('workplane', 'fa-square', editor);
+        this.planesManager = editor.planesManager;
+        this.workPlaneMode = null;
+        this.faceSelectionObject = null;
+        this.tempWorkPlane = null;
+        this.hoveredPlane = null;
+        this.hoveredObject = null;
+    }
+
+    // МЕТОДЫ РАБОЧИХ ПЛОСКОСТЕЙ
+
+    createWorkPlane() {
+        this.workPlaneMode = 'active';
+
+        // Всегда показываем базовые плоскости
+        if (this.editor.basePlanes) {
+            this.editor.basePlanes.visible = true;
+        }
+
+        this.editor.showStatus('Выберите базовую плоскость (XY, XZ, YZ) или грань любого объекта для создания рабочей плоскости', 'info');
+    }
+
+    // ЕДИНЫЙ МЕТОД ДЛЯ ВЫБОРА ГРАНИ ЛЮБОГО ОБЪЕКТА ИЛИ БАЗОВОЙ ПЛОСКОСТИ
+    handleSelection(e) {
+        this.editor.raycaster.setFromCamera(this.editor.mouse, this.editor.camera);
+
+        // ШАГ 1: Проверяем пересечение с базовыми плоскостями
+        const basePlanes = this.editor.basePlanes ? this.editor.basePlanes.children : [];
+        const basePlaneIntersects = this.editor.raycaster.intersectObjects(basePlanes);
+
+        if (basePlaneIntersects.length > 0) {
+            const basePlane = basePlaneIntersects[0].object;
+            return this.createWorkPlaneOnBasePlane(basePlane);
+        }
+
+        // ШАГ 2: Проверяем пересечение с объектами (исключая плоскости)
+        const objects = this.getAllSelectableObjects();
+        const objectIntersects = this.editor.raycaster.intersectObjects(objects, true);
+
+        if (objectIntersects.length > 0) {
+            const intersect = objectIntersects[0];
+            const worldNormal = this.getFaceWorldNormal(intersect);
+
+            // Находим родительский объект
+            let object = intersect.object;
+            while (object.parent &&
+                   object.parent !== this.editor.objectsGroup &&
+                   object.parent.type !== 'Scene') {
+                object = object.parent;
+            }
+
+            const objectName = object.name || 'объекте';
+            return this.createWorkPlaneOnFace(intersect.point, worldNormal, `Плоскость на ${objectName}`);
+        }
+
+        return false;
+    }
+
+    // ЕДИНЫЙ МЕТОД ДЛЯ ПОДСВЕТКИ
+    handleHighlight(e) {
+        this.editor.raycaster.setFromCamera(this.editor.mouse, this.editor.camera);
+
+        // Сбрасываем предыдущую подсветку
+        this.resetPreviousHighlight();
+
+        let foundIntersection = false;
+
+        // 1. Проверяем базовые плоскости
+        const basePlanes = this.editor.basePlanes ? this.editor.basePlanes.children : [];
+        const basePlaneIntersects = this.editor.raycaster.intersectObjects(basePlanes);
+
+        if (basePlaneIntersects.length > 0) {
+            foundIntersection = true;
+            const plane = basePlaneIntersects[0].object;
+            this.hoveredPlane = plane;
+            plane.material.opacity = 0.4;
+            document.body.style.cursor = 'pointer';
+            return;
+        }
+
+        // 2. Проверяем объекты
+        const objects = this.getAllSelectableObjects();
+        const objectIntersects = this.editor.raycaster.intersectObjects(objects, true);
+
+        if (objectIntersects.length > 0) {
+            foundIntersection = true;
+            const intersect = objectIntersects[0];
+            const worldNormal = this.getFaceWorldNormal(intersect);
+
+            // Создаем/обновляем временную плоскость
+            this.createOrUpdateTempWorkPlane(intersect.point, worldNormal);
+
+            // Находим и подсвечиваем родительский объект
+            let object = intersect.object;
+            while (object.parent &&
+                   object.parent !== this.editor.objectsGroup &&
+                   object.parent.type !== 'Scene') {
+                object = object.parent;
+            }
+
+            this.hoveredObject = object;
+            this.editor.objectsManager.highlightSingleObject(object);
+            document.body.style.cursor = 'pointer';
+            return;
+        }
+
+        if (!foundIntersection) {
+            document.body.style.cursor = 'default';
+        }
+    }
+
+    // ПОЛУЧИТЬ ВСЕ ОБЪЕКТЫ, С КОТОРЫМИ МОЖНО РАБОТАТЬ
+    getAllSelectableObjects() {
+        // Сначала проверяем, есть ли выделенный объект (не плоскость)
+        if (this.faceSelectionObject) {
+            return [this.faceSelectionObject];
+        }
+
+        // Если нет выделенного объекта, возвращаем все объекты кроме плоскостей
+        return this.editor.objectsGroup.children.filter(obj => {
+            const type = obj.userData?.type;
+            return type !== 'work_plane' &&
+                   type !== 'sketch_plane' &&
+                   type !== 'base_plane';
+        });
+    }
+
+    // ПОЛУЧИТЬ НОРМАЛЬ ГРАНИ В МИРОВЫХ КООРДИНАТАХ
+    getFaceWorldNormal(intersect) {
+        const worldNormal = new THREE.Vector3();
+
+        if (intersect.face) {
+            const normal = intersect.face.normal.clone();
+            const normalMatrix = new THREE.Matrix3().getNormalMatrix(intersect.object.matrixWorld);
+            normal.applyMatrix3(normalMatrix).normalize();
+            worldNormal.copy(normal);
+        } else {
+            worldNormal.copy(intersect.normal || new THREE.Vector3(0, 0, 1));
+        }
+
+        return worldNormal;
+    }
+
+    // СОЗДАТЬ РАБОЧУЮ ПЛОСКОСТЬ НА БАЗОВОЙ ПЛОСКОСТИ
+    createWorkPlaneOnBasePlane(basePlane) {
+        const workPlane = this.planesManager.createWorkPlaneObject(basePlane.userData.planeType.toUpperCase());
+
+        workPlane.position.copy(basePlane.position);
+        workPlane.quaternion.copy(basePlane.quaternion);
+
+        this.editor.objectsGroup.add(workPlane);
+        this.editor.objects.push(workPlane);
+        this.editor.workPlanes.push(workPlane);
+
+        this.exitWorkPlaneMode();
+        this.editor.clearSelection();
+        this.editor.selectObject(workPlane);
+
+        this.editor.showStatus(`Создана рабочая плоскость на ${basePlane.userData.planeType.toUpperCase()}`, 'success');
+        return true;
+    }
+
+    // СОЗДАТЬ РАБОЧУЮ ПЛОСКОСТЬ НА ГРАНИ ОБЪЕКТА
+    createWorkPlaneOnFace(point, normal, objectName = 'Плоскость на грани') {
+        const workPlane = this.planesManager.createWorkPlaneObject(objectName, 'face');
+        workPlane.position.copy(point);
+
+        const offset = 0.01;
+        const offsetVector = normal.clone().multiplyScalar(offset);
+        workPlane.position.add(offsetVector);
+
+        const planeNormal = new THREE.Vector3(0, 0, 1);
+        normal.normalize();
+
+        const quaternion = new THREE.Quaternion();
+        const dot = planeNormal.dot(normal);
+
+        if (Math.abs(dot + 1) < 0.0001) {
+            quaternion.setFromAxisAngle(new THREE.Vector3(1, 0, 0), Math.PI);
+        } else if (Math.abs(dot - 1) < 0.0001) {
+            quaternion.identity();
+        } else {
+            const rotationAxis = new THREE.Vector3().crossVectors(planeNormal, normal).normalize();
+            const rotationAngle = Math.acos(planeNormal.dot(normal));
+            quaternion.setFromAxisAngle(rotationAxis, rotationAngle);
+        }
+
+        workPlane.quaternion.copy(quaternion);
+
+        this.editor.objectsGroup.add(workPlane);
+        this.editor.objects.push(workPlane);
+        this.editor.workPlanes.push(workPlane);
+
+        this.exitWorkPlaneMode();
+        this.editor.clearSelection();
+        this.editor.selectObject(workPlane);
+
+        this.editor.showStatus('Создана рабочая плоскость на грани объекта', 'success');
+        return true;
+    }
+
+    // СОЗДАТЬ ИЛИ ОБНОВИТЬ ВРЕМЕННУЮ ПЛОСКОСТЬ
+    createOrUpdateTempWorkPlane(position, normal) {
+        const size = 50;
+
+        if (!this.tempWorkPlane) {
+            const geometry = new THREE.PlaneGeometry(size, size);
+            const material = new THREE.MeshBasicMaterial({
+                color: 0xFF9800,
+                transparent: true,
+                opacity: 0.4,
+                side: THREE.DoubleSide,
+                depthWrite: false,
+                depthTest: true
+            });
+
+            this.tempWorkPlane = new THREE.Mesh(geometry, material);
+            this.editor.objectsGroup.add(this.tempWorkPlane);
+        }
+
+        this.tempWorkPlane.position.copy(position);
+        normal.normalize();
+
+        const planeNormal = new THREE.Vector3(0, 0, 1);
+        const quaternion = new THREE.Quaternion();
+        const dot = planeNormal.dot(normal);
+
+        if (Math.abs(dot + 1) < 0.0001) {
+            quaternion.setFromAxisAngle(new THREE.Vector3(1, 0, 0), Math.PI);
+        } else if (Math.abs(dot - 1) < 0.0001) {
+            quaternion.identity();
+        } else {
+            const rotationAxis = new THREE.Vector3().crossVectors(planeNormal, normal).normalize();
+            const rotationAngle = Math.acos(planeNormal.dot(normal));
+            quaternion.setFromAxisAngle(rotationAxis, rotationAngle);
+        }
+
+        this.tempWorkPlane.quaternion.copy(quaternion);
+        const offset = 0.01;
+        const offsetVector = normal.clone().multiplyScalar(offset);
+        this.tempWorkPlane.position.add(offsetVector);
+    }
+
+    // СБРОСИТЬ ПРЕДЫДУЩУЮ ПОДСВЕТКУ
+    resetPreviousHighlight() {
+        if (this.hoveredPlane) {
+            this.hoveredPlane.material.opacity = 0.1;
+            this.hoveredPlane = null;
+        }
+
+        if (this.hoveredObject) {
+            this.editor.objectsManager.unhighlightObject(this.hoveredObject);
+            this.hoveredObject = null;
+        }
+
+        if (this.tempWorkPlane) {
+            this.editor.objectsGroup.remove(this.tempWorkPlane);
+            this.tempWorkPlane.geometry.dispose();
+            this.tempWorkPlane.material.dispose();
+            this.tempWorkPlane = null;
+        }
+    }
+
+    // ВЫХОД ИЗ РЕЖИМА
+    exitWorkPlaneMode() {
+        this.workPlaneMode = null;
+        this.faceSelectionObject = null;
+
+        if (this.editor.basePlanes) {
+            this.editor.basePlanes.visible = false;
+        }
+
+        this.resetPreviousHighlight();
+        this.editor.showStatus('Режим создания рабочей плоскости завершен', 'info');
+    }
+
+    // НАЧАТЬ ВЫБОР ГРАНИ ВЫДЕЛЕННОГО ОБЪЕКТА (ДЛЯ СОВМЕСТИМОСТИ)
+    startWorkPlaneFaceSelection() {
+        if (this.editor.selectedObjects.length === 1 &&
+            this.editor.selectedObjects[0].userData.type !== 'work_plane' &&
+            this.editor.selectedObjects[0].userData.type !== 'sketch_plane' &&
+            this.editor.selectedObjects[0].userData.type !== 'base_plane') {
+
+            this.faceSelectionObject = this.editor.selectedObjects[0];
+            this.workPlaneMode = 'active';
+
+            // Не показываем базовые плоскости при работе с выделенным объектом
+            if (this.editor.basePlanes) {
+                this.editor.basePlanes.visible = false;
+            }
+
+            this.editor.showStatus('Выберите грань выделенного объекта для создания рабочей плоскости', 'info');
+            return true;
+        }
+        return false;
+    }
+
+    // ОБРАБОТКА СОБЫТИЙ
+
+    onActivate() {
+        // Если есть выделенный объект (не плоскость), работаем только с ним
+        if (this.editor.selectedObjects.length === 1 &&
+            this.editor.selectedObjects[0].userData.type !== 'work_plane' &&
+            this.editor.selectedObjects[0].userData.type !== 'sketch_plane' &&
+            this.editor.selectedObjects[0].userData.type !== 'base_plane') {
+
+            this.faceSelectionObject = this.editor.selectedObjects[0];
+            this.workPlaneMode = 'active';
+
+            // Не показываем базовые плоскости при работе с выделенным объектом
+            if (this.editor.basePlanes) {
+                this.editor.basePlanes.visible = false;
+            }
+
+            this.editor.showStatus('Выберите грань выделенного объекта для создания рабочей плоскости', 'info');
+        } else {
+            // Иначе работаем со всеми объектами и показываем базовые плоскости
+            this.createWorkPlane();
+        }
+        return true;
+    }
+
+    onDeactivate() {
+        this.exitWorkPlaneMode();
+    }
+
+    onMouseDown(e) {
+        if (this.workPlaneMode === 'active') {
+            if (this.handleSelection(e)) {
+                this.editor.toolManager.setCurrentTool('select');
+                return true;
+            }
+        }
+        return false;
+    }
+
+    onMouseMove(e) {
+        if (this.workPlaneMode === 'active') {
+            this.handleHighlight(e);
+        }
+    }
+
+    onKeyDown(e) {
+        if (e.key === 'Escape' && this.workPlaneMode) {
+            this.editor.toolManager.setCurrentTool('select');
+            return true;
+        }
+        return false;
+    }
+}

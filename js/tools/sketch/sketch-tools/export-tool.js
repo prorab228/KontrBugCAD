@@ -1,1 +1,520 @@
-class ExportSketchTool extends SketchToolBase{constructor(e){super(e,"export","fa-download")}onMouseDown(e){return this.showExportMenu(e),!0}showExportMenu(e){const t=document.createElement("div");t.className="export-menu",t.style.cssText="\n            position: fixed;\n            background: #2d2d2d;\n            border: 1px solid #444;\n            border-radius: 4px;\n            padding: 8px 0;\n            min-width: 200px;\n            box-shadow: 0 4px 12px rgba(0,0,0,0.5);\n            z-index: 10000;\n            font-family: 'Segoe UI', Arial, sans-serif;\n            font-size: 14px;\n        ",t.innerHTML='\n            <div class="export-menu-header" style="padding: 8px 12px; border-bottom: 1px solid #444; color: #aaa;">\n                Экспорт чертежа\n            </div>\n            <div class="export-option" data-format="svg" style="padding: 10px 12px; cursor: pointer; color: white; border-bottom: 1px solid #333;">\n                <i class="fa fa-file-image" style="margin-right: 8px;"></i> SVG (векторный)\n            </div>\n            <div class="export-option" data-format="dxf" style="padding: 10px 12px; cursor: pointer; color: white; border-bottom: 1px solid #333;">\n                <i class="fa fa-file-code" style="margin-right: 8px;"></i> DXF (AutoCAD)\n            </div>\n            <div class="export-option" data-format="json" style="padding: 10px 12px; cursor: pointer; color: white; border-bottom: 1px solid #333;">\n                <i class="fa fa-file-alt" style="margin-right: 8px;"></i> JSON (структура)\n            </div>\n            <div class="export-option" data-format="pdf" style="padding: 10px 12px; cursor: pointer; color: white;">\n                <i class="fa fa-file-pdf" style="margin-right: 8px;"></i> PDF (печать)\n            </div>\n        ',t.style.left=`${e.clientX}px`,t.style.top=`${e.clientY}px`,document.body.appendChild(t),t.querySelectorAll(".export-option").forEach(e=>{e.addEventListener("click",n=>{const s=e.dataset.format;this.exportSketch(s),document.body.removeChild(t),n.stopPropagation()}),e.addEventListener("mouseenter",()=>{e.style.background="#3a3a3a"}),e.addEventListener("mouseleave",()=>{e.style.background="transparent"})});const n=e=>{t.contains(e.target)||(document.body.removeChild(t),document.removeEventListener("click",n))};setTimeout(()=>{document.addEventListener("click",n)},0)}exportSketch(e){if(this.sketchManager.currentSketch&&0!==this.sketchManager.elements.length)switch(e){case"svg":this.exportToSVG();break;case"dxf":this.exportToDXF();break;case"json":this.exportToJSON();break;case"pdf":this.exportToPDF();break;default:this.sketchManager.editor.showStatus(`Формат ${e} не поддерживается`,"error")}else this.sketchManager.editor.showStatus("Нет данных для экспорта","warning")}exportToSVG(){const e=this.calculateBoundingBox();if(!e)return void this.sketchManager.editor.showStatus("Не удалось вычислить границы чертежа","error");const t={x:e.minX-10,y:e.minY-10,width:e.width+20,height:e.height+20};let n=`<?xml version="1.0" encoding="UTF-8" standalone="no"?>\n<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">\n<svg width="${t.width}mm" height="${t.height}mm" viewBox="${t.x} ${t.y} ${t.width} ${t.height}"\n     xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1">\n\n    <title>Чертеж ${this.sketchManager.currentSketch.name}</title>\n    <desc>Экспортировано из CAD Editor</desc>\n\n    \x3c!-- Стили --\x3e\n    <style type="text/css">\n        .sketch-element {\n            stroke: #000000;\n            stroke-width: 0.2;\n            fill: none;\n            stroke-linecap: round;\n            stroke-linejoin: round;\n        }\n        .sketch-text {\n            font-family: Arial, sans-serif;\n            font-size: 5mm;\n            fill: #000000;\n        }\n    </style>\n\n    \x3c!-- Сетка (если видима) --\x3e\n    ${this.generateSVGGrid(t)}\n\n    \x3c!-- Элементы чертежа --\x3e\n    ${this.generateSVGElements()}\n\n</svg>`;this.downloadFile(n,`${this.sketchManager.currentSketch.name}.svg`,"image/svg+xml"),this.sketchManager.editor.showStatus("Чертеж экспортирован в SVG","success")}exportToDXF(){let e="0\nSECTION\n2\nHEADER\n9\n$ACADVER\n1\nAC1018\n9\n$INSUNITS\n70\n4\n0\nENDSEC\n0\nSECTION\n2\nTABLES\n0\nENDSEC\n0\nSECTION\n2\nBLOCKS\n0\nENDSEC\n0\nSECTION\n2\nENTITIES\n";this.sketchManager.elements.forEach((t,n)=>{e+=this.generateDXFElement(t,n)}),e+="0\nENDSEC\n0\nEOF",this.downloadFile(e,`${this.sketchManager.currentSketch.name}.dxf`,"application/dxf"),this.sketchManager.editor.showStatus("Чертеж экспортирован в DXF","success")}exportToJSON(){const e={name:this.sketchManager.currentSketch.name,created:this.sketchManager.currentSketch.created,planeId:this.sketchManager.currentSketch.planeId,elements:this.sketchManager.elements.map(e=>({type:e.type,color:e.color?e.color.getHexString():"000000",points:e.points?e.points.map(e=>({x:e.x,y:e.y,z:e.z})):[],start:e.start?{x:e.start.x,y:e.start.y,z:e.start.z}:null,end:e.end?{x:e.end.x,y:e.end.y,z:e.end.z}:null,center:e.center?{x:e.center.x,y:e.center.y,z:e.center.z}:null,radius:e.radius,width:e.width,height:e.height,segments:e.segments,sides:e.sides,content:e.content,fontSize:e.fontSize,cornerRadius:e.cornerRadius})),metadata:{exportedAt:(new Date).toISOString(),exporter:"CAD Editor",version:"1.0"}},t=JSON.stringify(e,null,2);this.downloadFile(t,`${this.sketchManager.currentSketch.name}.json`,"application/json"),this.sketchManager.editor.showStatus("Чертеж экспортирован в JSON","success")}exportToPDF(){if(void 0===window.jspdf)return void this.sketchManager.editor.showStatus("Библиотека jsPDF не найдена","error");const e=this.calculateBoundingBox();if(!e)return;const{jsPDF:t}=window.jspdf,n=new t({orientation:e.width>e.height?"landscape":"portrait",unit:"mm",format:"a4"}),s=n.internal.pageSize.getWidth(),i=n.internal.pageSize.getHeight(),r=.8*Math.min(s/e.width,i/e.height),a=(s-e.width*r)/2,o=(i-e.height*r)/2;n.setFontSize(12),n.text(`Чертеж: ${this.sketchManager.currentSketch.name}`,10,10),n.text(`Дата экспорта: ${(new Date).toLocaleDateString()}`,10,16),n.setDrawColor(0),n.setLineWidth(.1),this.sketchManager.elements.forEach(t=>{if("line"===t.type&&t.start&&t.end){const s=a+(t.start.x-e.minX)*r,i=o+(t.start.y-e.minY)*r,c=a+(t.end.x-e.minX)*r,d=o+(t.end.y-e.minY)*r;n.line(s,i,c,d)}}),n.save(`${this.sketchManager.currentSketch.name}.pdf`),this.sketchManager.editor.showStatus("Чертеж экспортирован в PDF","success")}calculateBoundingBox(){if(0===this.sketchManager.elements.length)return null;let e=1/0,t=1/0,n=-1/0,s=-1/0;return this.sketchManager.elements.forEach(i=>{i.points&&i.points.length>0&&i.points.forEach(i=>{e=Math.min(e,i.x),t=Math.min(t,i.y),n=Math.max(n,i.x),s=Math.max(s,i.y)}),i.start&&(e=Math.min(e,i.start.x),t=Math.min(t,i.start.y),n=Math.max(n,i.start.x),s=Math.max(s,i.start.y)),i.end&&(e=Math.min(e,i.end.x),t=Math.min(t,i.end.y),n=Math.max(n,i.end.x),s=Math.max(s,i.end.y)),i.center&&i.radius&&(e=Math.min(e,i.center.x-i.radius),t=Math.min(t,i.center.y-i.radius),n=Math.max(n,i.center.x+i.radius),s=Math.max(s,i.center.y+i.radius))}),{minX:e,minY:t,maxX:n,maxY:s,width:n-e,height:s-t,centerX:(e+n)/2,centerY:(t+s)/2}}generateSVGGrid(e){if(!this.sketchManager.gridVisible)return"";let t="\x3c!-- Сетка --\x3e\n";t+='<g stroke="#cccccc" stroke-width="0.05" stroke-opacity="0.3">\n';for(let n=-50;n<=50;n++){const s=1*n,i=-50,r=50;s>=e.y&&s<=e.y+e.height&&(t+=`    <line x1="${i}" y1="${s}" x2="${r}" y2="${s}" />\n`)}for(let n=-50;n<=50;n++){const s=1*n,i=-50,r=50;s>=e.x&&s<=e.x+e.width&&(t+=`    <line x1="${s}" y1="${i}" x2="${s}" y2="${r}" />\n`)}return t+="</g>\n",t+='<g stroke="#666666" stroke-width="0.1">\n',t+=`    <line x1="${e.x}" y1="0" x2="${e.x+e.width}" y2="0" />\n`,t+=`    <line x1="0" y1="${e.y}" x2="0" y2="${e.y+e.height}" />\n`,t+="</g>\n",t}generateSVGElements(){let e="";return this.sketchManager.elements.forEach((t,n)=>{const s=`element-${n}`;switch(t.type){case"line":t.start&&t.end&&(e+=`    <line id="${s}" class="sketch-element" x1="${t.start.x}" y1="${t.start.y}" x2="${t.end.x}" y2="${t.end.y}" />\n`);break;case"rectangle":if(t.points&&t.points.length>=4){const n=t.points.map(e=>`${e.x},${e.y}`).join(" ");e+=`    <polygon id="${s}" class="sketch-element" points="${n}" />\n`}break;case"circle":t.center&&void 0!==t.radius&&(e+=`    <circle id="${s}" class="sketch-element" cx="${t.center.x}" cy="${t.center.y}" r="${t.radius}" />\n`);break;case"polygon":case"polyline":if(t.points&&t.points.length>0){const n=t.points.map(e=>`${e.x},${e.y}`).join(" "),i="polygon"===t.type?"polygon":"polyline";e+=`    <${i} id="${s}" class="sketch-element" points="${n}" />\n`}break;case"oval":t.center&&void 0!==t.radiusX&&void 0!==t.radiusY&&(e+=`    <ellipse id="${s}" class="sketch-element" cx="${t.center.x}" cy="${t.center.y}" rx="${t.radiusX}" ry="${t.radiusY}" />\n`);break;case"text":t.position&&t.content&&(e+=`    <text id="${s}" class="sketch-text" x="${t.position.x}" y="${t.position.y+(t.fontSize||5)}">${t.content}</text>\n`);break;case"arc":if(t.points&&t.points.length>0){const n=t.points.map(e=>`${e.x},${e.y}`).join(" ");e+=`    <polyline id="${s}" class="sketch-element" points="${n}" />\n`}break;case"curve":if(t.curvePoints&&t.curvePoints.length>0){const n=t.curvePoints.map(e=>`${e.x},${e.y}`).join(" ");e+=`    <polyline id="${s}" class="sketch-element" points="${n}" />\n`}}}),e}generateDXFElement(e,t){let n="";switch(e.type){case"line":e.start&&e.end&&(n=`0\nLINE\n8\n0\n10\n${e.start.x}\n20\n${e.start.y}\n30\n0\n11\n${e.end.x}\n21\n${e.end.y}\n31\n0\n`);break;case"circle":e.center&&void 0!==e.radius&&(n=`0\nCIRCLE\n8\n0\n10\n${e.center.x}\n20\n${e.center.y}\n30\n0\n40\n${e.radius}\n`)}return n}downloadFile(e,t,n){const s=new Blob([e],{type:n}),i=URL.createObjectURL(s),r=document.createElement("a");r.href=i,r.download=t,r.style.display="none",document.body.appendChild(r),r.click(),document.body.removeChild(r),URL.revokeObjectURL(i)}onCancel(){}}
+/**
+ * Инструмент для экспорта скетча в векторные форматы (SVG, DXF, PDF)
+ */
+class ExportSketchTool extends SketchToolBase {
+    constructor(sketchManager) {
+        super(sketchManager, 'export', 'fa-download');
+    }
+
+    onMouseDown(e) {
+        // Показываем меню выбора формата экспорта
+        this.showExportMenu(e);
+        return true;
+    }
+
+    showExportMenu(e) {
+        const menu = document.createElement('div');
+        menu.className = 'export-menu';
+        menu.style.cssText = `
+            position: fixed;
+            background: #2d2d2d;
+            border: 1px solid #444;
+            border-radius: 4px;
+            padding: 8px 0;
+            min-width: 200px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+            z-index: 10000;
+            font-family: 'Segoe UI', Arial, sans-serif;
+            font-size: 14px;
+        `;
+
+        menu.innerHTML = `
+            <div class="export-menu-header" style="padding: 8px 12px; border-bottom: 1px solid #444; color: #aaa;">
+                Экспорт чертежа
+            </div>
+            <div class="export-option" data-format="svg" style="padding: 10px 12px; cursor: pointer; color: white; border-bottom: 1px solid #333;">
+                <i class="fa fa-file-image" style="margin-right: 8px;"></i> SVG (векторный)
+            </div>
+            <div class="export-option" data-format="dxf" style="padding: 10px 12px; cursor: pointer; color: white; border-bottom: 1px solid #333;">
+                <i class="fa fa-file-code" style="margin-right: 8px;"></i> DXF (AutoCAD)
+            </div>
+            <div class="export-option" data-format="json" style="padding: 10px 12px; cursor: pointer; color: white; border-bottom: 1px solid #333;">
+                <i class="fa fa-file-alt" style="margin-right: 8px;"></i> JSON (структура)
+            </div>
+            <div class="export-option" data-format="pdf" style="padding: 10px 12px; cursor: pointer; color: white;">
+                <i class="fa fa-file-pdf" style="margin-right: 8px;"></i> PDF (печать)
+            </div>
+        `;
+
+        // Позиционируем меню рядом с курсором
+        menu.style.left = `${e.clientX}px`;
+        menu.style.top = `${e.clientY}px`;
+
+        document.body.appendChild(menu);
+
+        // Обработчики выбора формата
+        menu.querySelectorAll('.export-option').forEach(option => {
+            option.addEventListener('click', (event) => {
+                const format = option.dataset.format;
+                this.exportSketch(format);
+                document.body.removeChild(menu);
+                event.stopPropagation();
+            });
+
+            option.addEventListener('mouseenter', () => {
+                option.style.background = '#3a3a3a';
+            });
+
+            option.addEventListener('mouseleave', () => {
+                option.style.background = 'transparent';
+            });
+        });
+
+        // Закрытие меню при клике вне его
+        const closeMenu = (event) => {
+            if (!menu.contains(event.target)) {
+                document.body.removeChild(menu);
+                document.removeEventListener('click', closeMenu);
+            }
+        };
+
+        setTimeout(() => {
+            document.addEventListener('click', closeMenu);
+        }, 0);
+    }
+
+    exportSketch(format) {
+        if (!this.sketchManager.currentSketch || this.sketchManager.elementManager.elements.length === 0) {
+            this.sketchManager.editor.showStatus('Нет данных для экспорта', 'warning');
+            return;
+        }
+
+        switch (format) {
+            case 'svg':
+                this.exportToSVG();
+                break;
+            case 'dxf':
+                this.exportToDXF();
+                break;
+            case 'json':
+                this.exportToJSON();
+                break;
+            case 'pdf':
+                this.exportToPDF();
+                break;
+            default:
+                this.sketchManager.editor.showStatus(`Формат ${format} не поддерживается`, 'error');
+        }
+    }
+
+    exportToSVG() {
+        // Вычисляем bounding box всех элементов
+        const bbox = this.calculateBoundingBox();
+        if (!bbox) {
+            this.sketchManager.editor.showStatus('Не удалось вычислить границы чертежа', 'error');
+            return;
+        }
+
+        // Добавляем отступы
+        const padding = 10;
+        const viewBox = {
+            x: bbox.minX - padding,
+            y: bbox.minY - padding,
+            width: bbox.width + padding * 2,
+            height: bbox.height + padding * 2
+        };
+
+        // Создаем SVG документ
+        let svgContent = `<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg width="${viewBox.width}mm" height="${viewBox.height}mm" viewBox="${viewBox.x} ${viewBox.y} ${viewBox.width} ${viewBox.height}"
+     xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1">
+
+    <title>Чертеж ${this.sketchManager.currentSketch.name}</title>
+    <desc>Экспортировано из CAD Editor</desc>
+
+    <!-- Стили -->
+    <style type="text/css">
+        .sketch-element {
+            stroke: #000000;
+            stroke-width: 0.2;
+            fill: none;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+        .sketch-text {
+            font-family: Arial, sans-serif;
+            font-size: 5mm;
+            fill: #000000;
+        }
+    </style>
+
+    <!-- Сетка (если видима) -->
+    ${this.generateSVGGrid(viewBox)}
+
+    <!-- Элементы чертежа -->
+    ${this.generateSVGElements()}
+
+</svg>`;
+
+        this.downloadFile(svgContent, `${this.sketchManager.currentSketch.name}.svg`, 'image/svg+xml');
+        this.sketchManager.editor.showStatus('Чертеж экспортирован в SVG', 'success');
+    }
+
+    exportToDXF() {
+        // Генерируем DXF файл (упрощенная версия)
+        let dxfContent = `0
+SECTION
+2
+HEADER
+9
+$ACADVER
+1
+AC1018
+9
+$INSUNITS
+70
+4
+0
+ENDSEC
+0
+SECTION
+2
+TABLES
+0
+ENDSEC
+0
+SECTION
+2
+BLOCKS
+0
+ENDSEC
+0
+SECTION
+2
+ENTITIES
+`;
+
+        // Добавляем элементы
+        this.sketchManager.elementManager.elements.forEach((element, index) => {
+            dxfContent += this.generateDXFElement(element, index);
+        });
+
+        dxfContent += `0
+ENDSEC
+0
+EOF`;
+
+        this.downloadFile(dxfContent, `${this.sketchManager.currentSketch.name}.dxf`, 'application/dxf');
+        this.sketchManager.editor.showStatus('Чертеж экспортирован в DXF', 'success');
+    }
+
+    exportToJSON() {
+        const sketchData = {
+            name: this.sketchManager.currentSketch.name,
+            created: this.sketchManager.currentSketch.created,
+            planeId: this.sketchManager.currentSketch.planeId,
+            elements: this.sketchManager.elementManager.elements.map(element => ({
+                type: element.type,
+                color: element.color ? element.color.getHexString() : '000000',
+                points: element.points ? element.points.map(p => ({ x: p.x, y: p.y, z: p.z })) : [],
+                start: element.start ? { x: element.start.x, y: element.start.y, z: element.start.z } : null,
+                end: element.end ? { x: element.end.x, y: element.end.y, z: element.end.z } : null,
+                center: element.center ? { x: element.center.x, y: element.center.y, z: element.center.z } : null,
+                radius: element.radius,
+                width: element.width,
+                height: element.height,
+                segments: element.segments,
+                sides: element.sides,
+                content: element.content,
+                fontSize: element.fontSize,
+                cornerRadius: element.cornerRadius
+            })),
+            metadata: {
+                exportedAt: new Date().toISOString(),
+                exporter: 'CAD Editor',
+                version: '1.0'
+            }
+        };
+
+        const jsonContent = JSON.stringify(sketchData, null, 2);
+        this.downloadFile(jsonContent, `${this.sketchManager.currentSketch.name}.json`, 'application/json');
+        this.sketchManager.editor.showStatus('Чертеж экспортирован в JSON', 'success');
+    }
+
+    exportToPDF() {
+        // Для PDF экспорта используем jsPDF (должен быть подключен в проекте)
+        if (typeof window.jspdf === 'undefined') {
+            this.sketchManager.editor.showStatus('Библиотека jsPDF не найдена', 'error');
+            return;
+        }
+
+        const bbox = this.calculateBoundingBox();
+        if (!bbox) return;
+
+        // Создаем PDF документ
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF({
+            orientation: bbox.width > bbox.height ? 'landscape' : 'portrait',
+            unit: 'mm',
+            format: 'a4'
+        });
+
+        // Вычисляем масштаб
+        const pageWidth = pdf.internal.pageSize.getWidth();
+        const pageHeight = pdf.internal.pageSize.getHeight();
+        const scale = Math.min(pageWidth / bbox.width, pageHeight / bbox.height) * 0.8;
+
+        // Смещение для центрирования
+        const offsetX = (pageWidth - bbox.width * scale) / 2;
+        const offsetY = (pageHeight - bbox.height * scale) / 2;
+
+        // Добавляем заголовок
+        pdf.setFontSize(12);
+        pdf.text(`Чертеж: ${this.sketchManager.currentSketch.name}`, 10, 10);
+        pdf.text(`Дата экспорта: ${new Date().toLocaleDateString()}`, 10, 16);
+
+        // Рисуем элементы (упрощенно - только линии)
+        pdf.setDrawColor(0);
+        pdf.setLineWidth(0.1);
+
+        this.sketchManager.elementManager.elements.forEach(element => {
+            if (element.type === 'line' && element.start && element.end) {
+                const x1 = offsetX + (element.start.x - bbox.minX) * scale;
+                const y1 = offsetY + (element.start.y - bbox.minY) * scale;
+                const x2 = offsetX + (element.end.x - bbox.minX) * scale;
+                const y2 = offsetY + (element.end.y - bbox.minY) * scale;
+
+                pdf.line(x1, y1, x2, y2);
+            }
+        });
+
+        pdf.save(`${this.sketchManager.currentSketch.name}.pdf`);
+        this.sketchManager.editor.showStatus('Чертеж экспортирован в PDF', 'success');
+    }
+
+    calculateBoundingBox() {
+        if (this.sketchManager.elementManager.elements.length === 0) return null;
+
+        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+
+        this.sketchManager.elementManager.elements.forEach(element => {
+            // Обрабатываем точки в зависимости от типа элемента
+            if (element.points && element.points.length > 0) {
+                element.points.forEach(point => {
+                    minX = Math.min(minX, point.x);
+                    minY = Math.min(minY, point.y);
+                    maxX = Math.max(maxX, point.x);
+                    maxY = Math.max(maxY, point.y);
+                });
+            }
+
+            if (element.start) {
+                minX = Math.min(minX, element.start.x);
+                minY = Math.min(minY, element.start.y);
+                maxX = Math.max(maxX, element.start.x);
+                maxY = Math.max(maxY, element.start.y);
+            }
+
+            if (element.end) {
+                minX = Math.min(minX, element.end.x);
+                minY = Math.min(minY, element.end.y);
+                maxX = Math.max(maxX, element.end.x);
+                maxY = Math.max(maxY, element.end.y);
+            }
+
+            if (element.center && element.radius) {
+                minX = Math.min(minX, element.center.x - element.radius);
+                minY = Math.min(minY, element.center.y - element.radius);
+                maxX = Math.max(maxX, element.center.x + element.radius);
+                maxY = Math.max(maxY, element.center.y + element.radius);
+            }
+        });
+
+        return {
+            minX, minY, maxX, maxY,
+            width: maxX - minX,
+            height: maxY - minY,
+            centerX: (minX + maxX) / 2,
+            centerY: (minY + maxY) / 2
+        };
+    }
+
+    generateSVGGrid(viewBox) {
+        if (!this.sketchManager.gridVisible) return '';
+
+        const gridSize = 50;
+        const gridStep = 1;
+        const divisions = gridSize / gridStep;
+
+        let gridContent = '<!-- Сетка -->\n';
+        gridContent += '<g stroke="#cccccc" stroke-width="0.05" stroke-opacity="0.3">\n';
+
+        // Горизонтальные линии
+        for (let i = -divisions; i <= divisions; i++) {
+            const y = i * gridStep;
+            const x1 = -gridSize;
+            const x2 = gridSize;
+
+            if (y >= viewBox.y && y <= viewBox.y + viewBox.height) {
+                gridContent += `    <line x1="${x1}" y1="${y}" x2="${x2}" y2="${y}" />\n`;
+            }
+        }
+
+        // Вертикальные линии
+        for (let i = -divisions; i <= divisions; i++) {
+            const x = i * gridStep;
+            const y1 = -gridSize;
+            const y2 = gridSize;
+
+            if (x >= viewBox.x && x <= viewBox.x + viewBox.width) {
+                gridContent += `    <line x1="${x}" y1="${y1}" x2="${x}" y2="${y2}" />\n`;
+            }
+        }
+
+        gridContent += '</g>\n';
+
+        // Центральные оси
+        gridContent += '<g stroke="#666666" stroke-width="0.1">\n';
+        gridContent += `    <line x1="${viewBox.x}" y1="0" x2="${viewBox.x + viewBox.width}" y2="0" />\n`;
+        gridContent += `    <line x1="0" y1="${viewBox.y}" x2="0" y2="${viewBox.y + viewBox.height}" />\n`;
+        gridContent += '</g>\n';
+
+        return gridContent;
+    }
+
+    generateSVGElements() {
+        let svgElements = '';
+
+        this.sketchManager.elementManager.elements.forEach((element, index) => {
+            const elementId = `element-${index}`;
+
+            switch (element.type) {
+                case 'line':
+                    if (element.start && element.end) {
+                        svgElements += `    <line id="${elementId}" class="sketch-element" x1="${element.start.x}" y1="${element.start.y}" x2="${element.end.x}" y2="${element.end.y}" />\n`;
+                    }
+                    break;
+
+                case 'rectangle':
+                    if (element.points && element.points.length >= 4) {
+                        const points = element.points.map(p => `${p.x},${p.y}`).join(' ');
+                        svgElements += `    <polygon id="${elementId}" class="sketch-element" points="${points}" />\n`;
+                    }
+                    break;
+
+                case 'circle':
+                    if (element.center && element.radius !== undefined) {
+                        svgElements += `    <circle id="${elementId}" class="sketch-element" cx="${element.center.x}" cy="${element.center.y}" r="${element.radius}" />\n`;
+                    }
+                    break;
+
+                case 'polygon':
+                case 'polyline':
+                    if (element.points && element.points.length > 0) {
+                        const points = element.points.map(p => `${p.x},${p.y}`).join(' ');
+                        const tag = element.type === 'polygon' ? 'polygon' : 'polyline';
+                        svgElements += `    <${tag} id="${elementId}" class="sketch-element" points="${points}" />\n`;
+                    }
+                    break;
+
+                case 'oval':
+                    if (element.center && element.radiusX !== undefined && element.radiusY !== undefined) {
+                        svgElements += `    <ellipse id="${elementId}" class="sketch-element" cx="${element.center.x}" cy="${element.center.y}" rx="${element.radiusX}" ry="${element.radiusY}" />\n`;
+                    }
+                    break;
+
+                case 'text':
+                    if (element.position && element.content) {
+                        svgElements += `    <text id="${elementId}" class="sketch-text" x="${element.position.x}" y="${element.position.y + (element.fontSize || 5)}">${element.content}</text>\n`;
+                    }
+                    break;
+
+                case 'arc':
+                    if (element.points && element.points.length > 0) {
+                        const points = element.points.map(p => `${p.x},${p.y}`).join(' ');
+                        svgElements += `    <polyline id="${elementId}" class="sketch-element" points="${points}" />\n`;
+                    }
+                    break;
+
+                case 'curve':
+                    if (element.curvePoints && element.curvePoints.length > 0) {
+                        const points = element.curvePoints.map(p => `${p.x},${p.y}`).join(' ');
+                        svgElements += `    <polyline id="${elementId}" class="sketch-element" points="${points}" />\n`;
+                    }
+                    break;
+            }
+        });
+
+        return svgElements;
+    }
+
+    generateDXFElement(element, index) {
+        // Упрощенная генерация DXF элементов
+        let dxfElement = '';
+
+        switch (element.type) {
+            case 'line':
+                if (element.start && element.end) {
+                    dxfElement = `0
+LINE
+8
+0
+10
+${element.start.x}
+20
+${element.start.y}
+30
+0
+11
+${element.end.x}
+21
+${element.end.y}
+31
+0
+`;
+                }
+                break;
+
+            case 'circle':
+                if (element.center && element.radius !== undefined) {
+                    dxfElement = `0
+CIRCLE
+8
+0
+10
+${element.center.x}
+20
+${element.center.y}
+30
+0
+40
+${element.radius}
+`;
+                }
+                break;
+        }
+
+        return dxfElement;
+    }
+
+    downloadFile(content, filename, mimeType) {
+        const blob = new Blob([content], { type: mimeType });
+        const url = URL.createObjectURL(blob);
+
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        link.style.display = 'none';
+
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        URL.revokeObjectURL(url);
+    }
+
+    onCancel() {
+        // Ничего не делаем при отмене
+    }
+}

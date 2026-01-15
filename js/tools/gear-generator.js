@@ -1,1 +1,601 @@
-class GearGenerator{constructor(e){this.editor=e,this.defaultParams={teeth:20,module:2,pressureAngle:20,faceWidth:10,hubDiameter:20,boreDiameter:8,backlash:.1,quality:"medium"}}calculateGearParams(e){const t=e.teeth,a=e.module,r=THREE.MathUtils.degToRad(e.pressureAngle),o=t*a,n=a,s=1.25*a,i=o+2*n,d=o-2*s,l=o*Math.cos(r);return{teeth:t,module:a,pressureAngle:r,pitchDiameter:o,addendum:n,dedendum:s,outerDiameter:i,rootDiameter:d,baseDiameter:l,pitchRadius:o/2,outerRadius:i/2,rootRadius:d/2,baseRadius:l/2,angularPitch:2*Math.PI/t,fullToothAngle:2*Math.PI/t}}createToothProfile(e){const t=[];return t.push(new THREE.Vector2(-e.angularPitch/4,e.rootRadius)),t.push(new THREE.Vector2(0,e.outerRadius)),t.push(new THREE.Vector2(e.angularPitch/8,e.outerRadius)),t.push(new THREE.Vector2(e.angularPitch/4,e.rootRadius)),t.push(new THREE.Vector2(e.angularPitch/2,e.rootRadius)),t}createGearProfile(e){const t=new THREE.Shape,a=this.createToothProfile(e);for(let r=0;r<e.teeth;r++){const o=r*e.fullToothAngle;a.forEach((e,a)=>{const n=e.x*Math.cos(o)-e.y*Math.sin(o),s=e.x*Math.sin(o)+e.y*Math.cos(o);0===r&&0===a?t.moveTo(n,s):t.lineTo(n,s)})}const r=a[0],o=r.x*Math.cos(0)-r.y*Math.sin(0),n=r.x*Math.sin(0)+r.y*Math.cos(0);return t.lineTo(o,n),t}createGear(e={}){const t={...this.defaultParams,...e},a=this.calculateGearParams(t),r=this.createGearProfile(a);if(t.boreDiameter>0){const e=new THREE.Path;e.absarc(0,0,t.boreDiameter/2,0,2*Math.PI,!0),r.holes.push(e)}const o={depth:t.faceWidth,bevelEnabled:!1,curveSegments:Math.max(32,2*a.teeth)},n=new THREE.ExtrudeGeometry(r,o);n.rotateX(-Math.PI/2),n.translate(0,t.faceWidth/2,0);const s=new THREE.MeshStandardMaterial({color:8421504,roughness:.7,metalness:.3,side:THREE.DoubleSide}),i=new THREE.Mesh(n,s);return t.hubDiameter>t.boreDiameter&&this.addHub(i,t),i.castShadow=!0,i.receiveShadow=!0,i.userData={type:"gear",gearParams:t,name:`Шестерня ${t.teeth}z M${t.module}`,createdAt:(new Date).toISOString()},i}addHub(e,t){const a=new THREE.CylinderGeometry(t.hubDiameter/2,t.hubDiameter/2,t.faceWidth,32),r=new THREE.MeshStandardMaterial({color:6710886,roughness:.8,metalness:.2}),o=new THREE.Mesh(a,r);if(o.position.y=t.faceWidth/2,e.isGroup)e.add(o);else{const t=new THREE.Group;t.add(e),t.add(o),e=t}return e}createSimpleGear(e={}){const t={...this.defaultParams,...e},a=this.calculateGearParams(t),r=new THREE.Shape,o=8*t.teeth;for(let e=0;e<=o;e++){const t=e/o*Math.PI*2;let n;const s=t%a.fullToothAngle/a.fullToothAngle;n=s<.25?a.rootRadius+(a.outerRadius-a.rootRadius)*(s/.25):s<.5?a.outerRadius-(a.outerRadius-a.rootRadius)*((s-.25)/.25):a.rootRadius;const i=Math.cos(t)*n,d=Math.sin(t)*n;0===e?r.moveTo(i,d):r.lineTo(i,d)}if(t.boreDiameter>0){const e=new THREE.Path;e.absarc(0,0,t.boreDiameter/2,0,2*Math.PI,!0),r.holes.push(e)}const n={depth:t.faceWidth,bevelEnabled:!1,curveSegments:Math.max(32,2*t.teeth)},s=new THREE.ExtrudeGeometry(r,n);s.rotateX(-Math.PI/2),s.translate(0,t.faceWidth/2,0);const i=new THREE.MeshStandardMaterial({color:8421504,roughness:.7,metalness:.3}),d=new THREE.Mesh(s,i);return t.hubDiameter>t.boreDiameter&&this.addHub(d,t),d.castShadow=!0,d.receiveShadow=!0,d.userData={type:"gear",gearParams:t,name:`Шестерня ${t.teeth}z M${t.module} (упрощ.)`,createdAt:(new Date).toISOString(),simplified:!0},d}createTestGear(e={}){const t={...this.defaultParams,...e},a=8*t.teeth,r=new THREE.CylinderGeometry(t.module*t.teeth/2+t.module,t.module*t.teeth/2+t.module,t.faceWidth,a),o=r.attributes.position;for(let e=0;e<o.count;e++){const a=o.getX(e),r=o.getZ(e),n=Math.atan2(r,a),s=Math.sqrt(a*a+r*r);if(Math.abs(o.getY(e))<t.faceWidth/2-.1){const i=(n+Math.PI)%(2*Math.PI/t.teeth),d=Math.abs(Math.sin(i*t.teeth*2)),l=(t.module*t.teeth/2+t.module*(.5+.5*d))/s;o.setX(e,a*l),o.setZ(e,r*l)}}r.computeVertexNormals(),r.rotateX(Math.PI/2);const n=new THREE.MeshStandardMaterial({color:8421504,roughness:.7,metalness:.3}),s=new THREE.Mesh(r,n);if(t.boreDiameter>0){const e=new THREE.CylinderGeometry(t.boreDiameter/2,t.boreDiameter/2,t.faceWidth+2,32);e.rotateX(Math.PI/2);const a=new THREE.MeshStandardMaterial({color:6316128,roughness:.8}),r=new THREE.Mesh(e,a);s.add(r)}return s.castShadow=!0,s.receiveShadow=!0,s.userData={type:"gear",gearParams:t,name:`Тестовая шестерня ${t.teeth}z`,createdAt:(new Date).toISOString(),test:!0},s}showGearUI(){if(document.getElementById("gearModal"))return;const e=document.createElement("div");e.innerHTML='\n            <div class="modal-overlay active" id="gearModal">\n                <div class="modal-content" style="width: 500px;">\n                    <div class="modal-header">\n                        <h4><i class="fas fa-cog"></i> Генератор шестерён</h4>\n                        <button class="close-modal">&times;</button>\n                    </div>\n                    <div class="modal-body">\n                        <div class="form-group">\n                            <label>Количество зубьев:</label>\n                            <input type="number" id="gearTeeth" min="6" max="200" value="20" class="modal-input">\n                        </div>\n                        <div class="form-group">\n                            <label>Модуль (мм):</label>\n                            <input type="number" id="gearModule" min="0.5" max="20" step="0.1" value="2" class="modal-input">\n                        </div>\n                        <div class="form-group">\n                            <label>Ширина зуба (мм):</label>\n                            <input type="number" id="gearFaceWidth" min="1" max="100" value="10" class="modal-input">\n                        </div>\n                        <div class="form-group">\n                            <label>Диаметр ступицы (мм):</label>\n                            <input type="number" id="gearHubDiameter" min="5" max="200" value="20" class="modal-input">\n                        </div>\n                        <div class="form-group">\n                            <label>Диаметр отверстия (мм):</label>\n                            <input type="number" id="gearBoreDiameter" min="0" max="100" value="8" class="modal-input">\n                        </div>\n\n                        <div class="form-group">\n                            <label>Тип шестерни:</label>\n                            <select id="gearType" class="modal-select">\n                                <option value="simple">Упрощенная (рекомендуется)</option>\n                                <option value="test">Тестовая (быстрая)</option>\n                            </select>\n                        </div>\n\n                        <div class="info-box">\n                            <strong>Расчетные параметры:</strong>\n                            <div id="gearCalculations" style="margin-top: 5px; color: #aaa; font-size: 12px;">\n                                Диаметр: 40мм, Высота зуба: 2.5мм\n                            </div>\n                        </div>\n                    </div>\n                    <div class="modal-footer">\n                        <button class="btn btn-secondary" id="cancelGear">Отмена</button>\n                        <button class="btn btn-primary" id="createGear">Создать</button>\n                    </div>\n                </div>\n            </div>\n        ',document.body.appendChild(e),this.updateCalculations();const t=()=>{e&&e.parentNode&&e.parentNode.removeChild(e)};document.querySelector("#gearModal .close-modal").addEventListener("click",t),document.getElementById("cancelGear").addEventListener("click",t),document.getElementById("createGear").addEventListener("click",()=>{this.createGearFromUI(),t()}),document.querySelectorAll("#gearModal .modal-input").forEach(e=>{e.addEventListener("input",()=>{this.updateCalculations()})})}updateCalculations(){try{const e=parseInt(document.getElementById("gearTeeth").value)||20,t=parseFloat(document.getElementById("gearModule").value)||2,a=e*t,r=t,o=1.25*t,n=a+2*r,s=a-2*o,i=document.getElementById("gearCalculations");i&&(i.innerHTML=`\n                    <div>Диаметр вершин: ${n.toFixed(2)}мм</div>\n                    <div>Делительный диаметр: ${a.toFixed(2)}мм</div>\n                    <div>Диаметр впадин: ${s.toFixed(2)}мм</div>\n                    <div>Высота зуба: ${(r+o).toFixed(2)}мм</div>\n                `)}catch(e){console.warn("Не удалось обновить расчеты:",e)}}createGearFromUI(){try{const e={teeth:parseInt(document.getElementById("gearTeeth").value)||20,module:parseFloat(document.getElementById("gearModule").value)||2,faceWidth:parseFloat(document.getElementById("gearFaceWidth").value)||10,hubDiameter:parseFloat(document.getElementById("gearHubDiameter").value)||20,boreDiameter:parseFloat(document.getElementById("gearBoreDiameter").value)||8},t=document.getElementById("gearType").value;if(e.teeth<6)return void this.editor.showStatus("Количество зубьев должно быть не менее 6","error");if(e.module<=0)return void this.editor.showStatus("Модуль должен быть положительным числом","error");let a;switch(e.boreDiameter>=e.hubDiameter&&e.hubDiameter>0&&this.editor.showStatus("Диаметр отверстия должен быть меньше диаметра ступицы","warning"),t){case"simple":default:a=this.createSimpleGear(e);break;case"test":a=this.createTestGear(e)}if(!a)return void this.editor.showStatus("Не удалось создать шестерню","error");this.editor.objectsGroup.add(a),this.editor.objects.push(a),this.editor.selectObject(a),this.editor.history.addAction({type:"create",object:a.uuid,data:this.editor.projectManager.serializeObjectForHistory(a)}),this.editor.objectsManager.updateSceneStats(),this.editor.objectsManager.updateSceneList(),this.editor.showStatus(`Шестерня создана: ${e.teeth} зубьев, модуль ${e.module}мм`,"success")}catch(e){console.error("Ошибка создания шестерни:",e),this.editor.showStatus(`Ошибка создания шестерни: ${e.message}`,"error")}}}
+// gear-generator.js - полностью переработанный
+class GearGenerator {
+    constructor(cadEditor) {
+        this.editor = cadEditor;
+        this.defaultParams = {
+            teeth: 20,
+            module: 2,
+            pressureAngle: 20,
+            faceWidth: 10,
+            hubDiameter: 20,
+            boreDiameter: 8,
+            backlash: 0.1,
+            quality: 'medium'
+        };
+    }
+
+    /**
+     * Рассчитывает основные параметры шестерни
+     */
+    calculateGearParams(params) {
+        const teeth = params.teeth;
+        const module = params.module;
+        const pressureAngle = THREE.MathUtils.degToRad(params.pressureAngle);
+
+        // Основные диаметры шестерни
+        const pitchDiameter = teeth * module;
+        const addendum = module; // Высота головки зуба
+        const dedendum = 1.25 * module; // Высота ножки зуба
+
+        const outerDiameter = pitchDiameter + 2 * addendum;
+        const rootDiameter = pitchDiameter - 2 * dedendum;
+        const baseDiameter = pitchDiameter * Math.cos(pressureAngle);
+
+        // Угловой шаг между зубьями
+        const angularPitch = (2 * Math.PI) / teeth;
+
+        return {
+            teeth,
+            module,
+            pressureAngle,
+            pitchDiameter,
+            addendum,
+            dedendum,
+            outerDiameter,
+            rootDiameter,
+            baseDiameter,
+            pitchRadius: pitchDiameter / 2,
+            outerRadius: outerDiameter / 2,
+            rootRadius: rootDiameter / 2,
+            baseRadius: baseDiameter / 2,
+            angularPitch,
+            fullToothAngle: (2 * Math.PI) / teeth
+        };
+    }
+
+    /**
+     * Создает профиль одного зуба
+     */
+    createToothProfile(calculated) {
+        const points = [];
+
+        // Упрощенный профиль зуба (треугольный)
+        // Это даст более четкие зубья чем эвольвента
+
+        // 1. Начало зуба (левая часть)
+        points.push(new THREE.Vector2(
+            -calculated.angularPitch / 4,
+            calculated.rootRadius
+        ));
+
+        // 2. Левая наклонная сторона
+        points.push(new THREE.Vector2(
+            0,
+            calculated.outerRadius
+        ));
+
+        // 3. Вершина зуба
+        points.push(new THREE.Vector2(
+            calculated.angularPitch / 8,
+            calculated.outerRadius
+        ));
+
+        // 4. Правая наклонная сторона
+        points.push(new THREE.Vector2(
+            calculated.angularPitch / 4,
+            calculated.rootRadius
+        ));
+
+        // 5. Впадина между зубьями
+        points.push(new THREE.Vector2(
+            calculated.angularPitch / 2,
+            calculated.rootRadius
+        ));
+
+        return points;
+    }
+
+    /**
+     * Создает полный профиль шестерни
+     */
+    createGearProfile(calculated) {
+        // Создаем форму для зубьев
+        const shape = new THREE.Shape();
+
+        // Начинаем с первого зуба
+        const toothProfile = this.createToothProfile(calculated);
+
+        // Поворачиваем и добавляем все зубья
+        for (let i = 0; i < calculated.teeth; i++) {
+            const angle = i * calculated.fullToothAngle;
+
+            // Добавляем точки зуба с поворотом
+            toothProfile.forEach((point, index) => {
+                // Поворачиваем точку на нужный угол
+                const x = point.x * Math.cos(angle) - point.y * Math.sin(angle);
+                const y = point.x * Math.sin(angle) + point.y * Math.cos(angle);
+
+                if (i === 0 && index === 0) {
+                    shape.moveTo(x, y);
+                } else {
+                    shape.lineTo(x, y);
+                }
+            });
+        }
+
+        // Замыкаем контур
+        const firstPoint = toothProfile[0];
+        const x = firstPoint.x * Math.cos(0) - firstPoint.y * Math.sin(0);
+        const y = firstPoint.x * Math.sin(0) + firstPoint.y * Math.cos(0);
+        shape.lineTo(x, y);
+
+        return shape;
+    }
+
+    /**
+     * Создает 3D модель шестерни с отверстием
+     */
+    createGear(params = {}) {
+        const gearParams = { ...this.defaultParams, ...params };
+        const calculated = this.calculateGearParams(gearParams);
+
+        // Создаем основную форму шестерни
+        const gearShape = this.createGearProfile(calculated);
+
+        // Добавляем отверстие если нужно
+        if (gearParams.boreDiameter > 0) {
+            const holePath = new THREE.Path();
+            holePath.absarc(0, 0, gearParams.boreDiameter / 2, 0, Math.PI * 2, true);
+            gearShape.holes.push(holePath);
+        }
+
+        // Настройки экструзии
+        const extrudeSettings = {
+            depth: gearParams.faceWidth,
+            bevelEnabled: false,
+            curveSegments: Math.max(32, calculated.teeth * 2)
+        };
+
+        // Создаем геометрию зубьев
+        const gearGeometry = new THREE.ExtrudeGeometry(gearShape, extrudeSettings);
+        gearGeometry.rotateX(-Math.PI / 2);
+        gearGeometry.translate(0, gearParams.faceWidth / 2, 0);
+
+        // Создаем материал
+        const material = new THREE.MeshStandardMaterial({
+            color: 0x808080,
+            roughness: 0.7,
+            metalness: 0.3,
+            side: THREE.DoubleSide
+        });
+
+        // Создаем меш
+        const gearMesh = new THREE.Mesh(gearGeometry, material);
+
+        // Если нужна ступица, добавляем ее
+        if (gearParams.hubDiameter > gearParams.boreDiameter) {
+            this.addHub(gearMesh, gearParams);
+        }
+
+        // Настройки отображения
+        gearMesh.castShadow = true;
+        gearMesh.receiveShadow = true;
+
+        // Пользовательские данные
+        gearMesh.userData = {
+            type: 'gear',
+            gearParams: gearParams,
+            name: `Шестерня ${gearParams.teeth}z M${gearParams.module}`,
+            createdAt: new Date().toISOString()
+        };
+
+        return gearMesh;
+    }
+
+    /**
+     * Добавляет ступицу к шестерне
+     */
+    addHub(gearMesh, params) {
+        const hubGeometry = new THREE.CylinderGeometry(
+            params.hubDiameter / 2,
+            params.hubDiameter / 2,
+            params.faceWidth,
+            32
+        );
+
+        const hubMaterial = new THREE.MeshStandardMaterial({
+            color: 0x666666,
+            roughness: 0.8,
+            metalness: 0.2
+        });
+
+        const hubMesh = new THREE.Mesh(hubGeometry, hubMaterial);
+        hubMesh.position.y = params.faceWidth / 2;
+
+        // Если gearMesh - группа, добавляем в нее, иначе создаем группу
+        if (gearMesh.isGroup) {
+            gearMesh.add(hubMesh);
+        } else {
+            const group = new THREE.Group();
+            group.add(gearMesh);
+            group.add(hubMesh);
+            gearMesh = group;
+        }
+
+        return gearMesh;
+    }
+
+    /**
+     * Создает упрощенную шестерню (цилиндр с зубьями)
+     */
+    createSimpleGear(params = {}) {
+        const gearParams = { ...this.defaultParams, ...params };
+        const calculated = this.calculateGearParams(gearParams);
+
+        // Создаем форму для зубчатого профиля
+        const shape = new THREE.Shape();
+
+        // Количество сегментов для аппроксимации окружности
+        const segments = gearParams.teeth * 8;
+
+        // Создаем зубчатый профиль
+        for (let i = 0; i <= segments; i++) {
+            const angle = (i / segments) * Math.PI * 2;
+
+            // Определяем положение точки на профиле
+            let radius;
+            const toothAngle = angle % calculated.fullToothAngle;
+            const toothProgress = toothAngle / calculated.fullToothAngle;
+
+            if (toothProgress < 0.25) {
+                // Подъем к вершине
+                radius = calculated.rootRadius +
+                    (calculated.outerRadius - calculated.rootRadius) *
+                    (toothProgress / 0.25);
+            } else if (toothProgress < 0.5) {
+                // Спуск от вершины
+                radius = calculated.outerRadius -
+                    (calculated.outerRadius - calculated.rootRadius) *
+                    ((toothProgress - 0.25) / 0.25);
+            } else {
+                // Впадина
+                radius = calculated.rootRadius;
+            }
+
+            const x = Math.cos(angle) * radius;
+            const y = Math.sin(angle) * radius;
+
+            if (i === 0) {
+                shape.moveTo(x, y);
+            } else {
+                shape.lineTo(x, y);
+            }
+        }
+
+        // Добавляем отверстие если нужно
+        if (gearParams.boreDiameter > 0) {
+            const holePath = new THREE.Path();
+            holePath.absarc(0, 0, gearParams.boreDiameter / 2, 0, Math.PI * 2, true);
+            shape.holes.push(holePath);
+        }
+
+        // Настройки экструзии
+        const extrudeSettings = {
+            depth: gearParams.faceWidth,
+            bevelEnabled: false,
+            curveSegments: Math.max(32, gearParams.teeth * 2)
+        };
+
+        // Создаем геометрию
+        const gearGeometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+        gearGeometry.rotateX(-Math.PI / 2);
+        gearGeometry.translate(0, gearParams.faceWidth / 2, 0);
+
+        // Создаем материал
+        const material = new THREE.MeshStandardMaterial({
+            color: 0x808080,
+            roughness: 0.7,
+            metalness: 0.3
+        });
+
+        const gearMesh = new THREE.Mesh(gearGeometry, material);
+
+        // Если нужна ступица, добавляем ее
+        if (gearParams.hubDiameter > gearParams.boreDiameter) {
+            this.addHub(gearMesh, gearParams);
+        }
+
+        gearMesh.castShadow = true;
+        gearMesh.receiveShadow = true;
+
+        gearMesh.userData = {
+            type: 'gear',
+            gearParams: gearParams,
+            name: `Шестерня ${gearParams.teeth}z M${gearParams.module} (упрощ.)`,
+            createdAt: new Date().toISOString(),
+            simplified: true
+        };
+
+        return gearMesh;
+    }
+
+    /**
+     * Создает тестовую шестерню (быстрая и простая)
+     */
+    createTestGear(params = {}) {
+        const gearParams = { ...this.defaultParams, ...params };
+
+        // Создаем простую зубчатую шестерню через CylinderGeometry с модификацией
+        const segments = gearParams.teeth * 8; // Увеличиваем сегменты для зубьев
+
+        // Создаем цилиндр
+        const geometry = new THREE.CylinderGeometry(
+            gearParams.module * gearParams.teeth / 2 + gearParams.module, // Внешний радиус
+            gearParams.module * gearParams.teeth / 2 + gearParams.module,
+            gearParams.faceWidth,
+            segments
+        );
+
+        // Модифицируем вершины для создания зубьев
+        const positionAttribute = geometry.attributes.position;
+
+        for (let i = 0; i < positionAttribute.count; i++) {
+            const x = positionAttribute.getX(i);
+            const z = positionAttribute.getZ(i);
+
+            // Рассчитываем угол и расстояние от центра
+            const angle = Math.atan2(z, x);
+            const distance = Math.sqrt(x * x + z * z);
+
+            // Пропускаем верхние и нижние грани
+            if (Math.abs(positionAttribute.getY(i)) < gearParams.faceWidth / 2 - 0.1) {
+                // Создаем зубчатый профиль
+                const toothAngle = (angle + Math.PI) % (2 * Math.PI / gearParams.teeth);
+                const toothFactor = Math.abs(Math.sin(toothAngle * gearParams.teeth * 2));
+
+                // Внешний радиус с зубьями
+                const baseRadius = gearParams.module * gearParams.teeth / 2;
+                const newRadius = baseRadius + gearParams.module * (0.5 + 0.5 * toothFactor);
+
+                // Обновляем позицию
+                const ratio = newRadius / distance;
+                positionAttribute.setX(i, x * ratio);
+                positionAttribute.setZ(i, z * ratio);
+            }
+        }
+
+        geometry.computeVertexNormals();
+        geometry.rotateX(Math.PI / 2);
+
+        const material = new THREE.MeshStandardMaterial({
+            color: 0x808080,
+            roughness: 0.7,
+            metalness: 0.3
+        });
+
+        const gearMesh = new THREE.Mesh(geometry, material);
+
+        // Добавляем отверстие если нужно
+        if (gearParams.boreDiameter > 0) {
+            const boreGeometry = new THREE.CylinderGeometry(
+                gearParams.boreDiameter / 2,
+                gearParams.boreDiameter / 2,
+                gearParams.faceWidth + 2,
+                32
+            );
+            boreGeometry.rotateX(Math.PI / 2);
+
+            const boreMaterial = new THREE.MeshStandardMaterial({
+                color: 0x606060,
+                roughness: 0.8
+            });
+
+            const bore = new THREE.Mesh(boreGeometry, boreMaterial);
+            gearMesh.add(bore);
+        }
+
+        gearMesh.castShadow = true;
+        gearMesh.receiveShadow = true;
+
+        gearMesh.userData = {
+            type: 'gear',
+            gearParams: gearParams,
+            name: `Тестовая шестерня ${gearParams.teeth}z`,
+            createdAt: new Date().toISOString(),
+            test: true
+        };
+
+        return gearMesh;
+    }
+
+    /**
+     * Показывает UI для создания шестерни
+     */
+    showGearUI() {
+        if (document.getElementById('gearModal')) {
+            return;
+        }
+
+        const modalHTML = `
+            <div class="modal-overlay active" id="gearModal">
+                <div class="modal-content" style="width: 500px;">
+                    <div class="modal-header">
+                        <h4><i class="fas fa-cog"></i> Генератор шестерён</h4>
+                        <button class="close-modal">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label>Количество зубьев:</label>
+                            <input type="number" id="gearTeeth" min="6" max="200" value="20" class="modal-input">
+                        </div>
+                        <div class="form-group">
+                            <label>Модуль (мм):</label>
+                            <input type="number" id="gearModule" min="0.5" max="20" step="0.1" value="2" class="modal-input">
+                        </div>
+                        <div class="form-group">
+                            <label>Ширина зуба (мм):</label>
+                            <input type="number" id="gearFaceWidth" min="1" max="100" value="10" class="modal-input">
+                        </div>
+                        <div class="form-group">
+                            <label>Диаметр ступицы (мм):</label>
+                            <input type="number" id="gearHubDiameter" min="5" max="200" value="20" class="modal-input">
+                        </div>
+                        <div class="form-group">
+                            <label>Диаметр отверстия (мм):</label>
+                            <input type="number" id="gearBoreDiameter" min="0" max="100" value="8" class="modal-input">
+                        </div>
+
+                        <div class="form-group">
+                            <label>Тип шестерни:</label>
+                            <select id="gearType" class="modal-select">
+                                <option value="simple">Упрощенная (рекомендуется)</option>
+                                <option value="test">Тестовая (быстрая)</option>
+                            </select>
+                        </div>
+
+                        <div class="info-box">
+                            <strong>Расчетные параметры:</strong>
+                            <div id="gearCalculations" style="margin-top: 5px; color: #aaa; font-size: 12px;">
+                                Диаметр: 40мм, Высота зуба: 2.5мм
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-secondary" id="cancelGear">Отмена</button>
+                        <button class="btn btn-primary" id="createGear">Создать</button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        const modalContainer = document.createElement('div');
+        modalContainer.innerHTML = modalHTML;
+        document.body.appendChild(modalContainer);
+
+        // Обновляем расчетные параметры
+        this.updateCalculations();
+
+        // Обработчики событий
+        const closeModal = () => {
+            if (modalContainer && modalContainer.parentNode) {
+                modalContainer.parentNode.removeChild(modalContainer);
+            }
+        };
+
+        document.querySelector('#gearModal .close-modal').addEventListener('click', closeModal);
+        document.getElementById('cancelGear').addEventListener('click', closeModal);
+
+        document.getElementById('createGear').addEventListener('click', () => {
+            this.createGearFromUI();
+            closeModal();
+        });
+
+        // Обновление расчетов при изменении параметров
+        document.querySelectorAll('#gearModal .modal-input').forEach(input => {
+            input.addEventListener('input', () => {
+                this.updateCalculations();
+            });
+        });
+    }
+
+    /**
+     * Обновляет расчетные параметры в UI
+     */
+    updateCalculations() {
+        try {
+            const teeth = parseInt(document.getElementById('gearTeeth').value) || 20;
+            const module = parseFloat(document.getElementById('gearModule').value) || 2;
+
+            const pitchDiameter = teeth * module;
+            const addendum = module;
+            const dedendum = 1.25 * module;
+            const outerDiameter = pitchDiameter + 2 * addendum;
+            const rootDiameter = pitchDiameter - 2 * dedendum;
+
+            const calculations = document.getElementById('gearCalculations');
+            if (calculations) {
+                calculations.innerHTML = `
+                    <div>Диаметр вершин: ${outerDiameter.toFixed(2)}мм</div>
+                    <div>Делительный диаметр: ${pitchDiameter.toFixed(2)}мм</div>
+                    <div>Диаметр впадин: ${rootDiameter.toFixed(2)}мм</div>
+                    <div>Высота зуба: ${(addendum + dedendum).toFixed(2)}мм</div>
+                `;
+            }
+        } catch (e) {
+            console.warn('Не удалось обновить расчеты:', e);
+        }
+    }
+
+    /**
+     * Создает шестерню из параметров UI
+     */
+    createGearFromUI() {
+        try {
+            const params = {
+                teeth: parseInt(document.getElementById('gearTeeth').value) || 20,
+                module: parseFloat(document.getElementById('gearModule').value) || 2,
+                faceWidth: parseFloat(document.getElementById('gearFaceWidth').value) || 10,
+                hubDiameter: parseFloat(document.getElementById('gearHubDiameter').value) || 20,
+                boreDiameter: parseFloat(document.getElementById('gearBoreDiameter').value) || 8
+            };
+
+            const gearType = document.getElementById('gearType').value;
+
+            // Проверка параметров
+            if (params.teeth < 6) {
+                this.editor.showStatus('Количество зубьев должно быть не менее 6', 'error');
+                return;
+            }
+
+            if (params.module <= 0) {
+                this.editor.showStatus('Модуль должен быть положительным числом', 'error');
+                return;
+            }
+
+            if (params.boreDiameter >= params.hubDiameter && params.hubDiameter > 0) {
+                this.editor.showStatus('Диаметр отверстия должен быть меньше диаметра ступицы', 'warning');
+            }
+
+            let gear;
+            switch (gearType) {
+                case 'simple':
+                    gear = this.createSimpleGear(params);
+                    break;
+                case 'test':
+                    gear = this.createTestGear(params);
+                    break;
+                default:
+                    gear = this.createSimpleGear(params);
+            }
+
+            if (!gear) {
+                this.editor.showStatus('Не удалось создать шестерню', 'error');
+                return;
+            }
+
+            // Добавляем в сцену
+            this.editor.objectsGroup.add(gear);
+            this.editor.objects.push(gear);
+
+            // Выделяем новую шестерню
+            this.editor.selectObject(gear);
+
+            // Добавляем в историю
+            this.editor.history.addAction({
+                type: 'create',
+                object: gear.uuid,
+                data: this.editor.projectManager.serializeObjectForHistory(gear)
+            });
+
+            // Обновляем статистику
+            this.editor.objectsManager.updateSceneStats();
+            this.editor.objectsManager.updateSceneList();
+
+            this.editor.showStatus(`Шестерня создана: ${params.teeth} зубьев, модуль ${params.module}мм`, 'success');
+
+        } catch (error) {
+            console.error('Ошибка создания шестерни:', error);
+            this.editor.showStatus(`Ошибка создания шестерни: ${error.message}`, 'error');
+        }
+    }
+}

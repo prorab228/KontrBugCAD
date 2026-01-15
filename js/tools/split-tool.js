@@ -1,1 +1,279 @@
-class SplitTool extends Tool{constructor(e){super("split","fa-cut",e),this.requiresSelection=!0,this.splitMode=null,this.selectedPlane=null,this.tempVisuals=[],this.splitPlane=null}onActivate(){if(!this.canActivate())return void this.editor.toolManager.restorePreviousTool();if(1!==this.editor.selectedObjects.length)return this.editor.showStatus("Для разрезания выберите ровно один объект","error"),void this.editor.toolManager.restorePreviousTool();const e=this.editor.selectedObjects[0];if("work_plane"===e.userData.type||"sketch_plane"===e.userData.type)return this.editor.showStatus("Нельзя разрезать плоскость","error"),void this.editor.toolManager.restorePreviousTool();this.splitMode="select_plane",this.selectedPlane=null,this.editor.showStatus("Выберите рабочую плоскость для разрезания (ESC - отмена)","info")}onDeactivate(){this.cleanup(),document.body.style.cursor="default"}onMouseDown(e){if(0!==e.button||!this.splitMode)return!1;if(this.editor.updateMousePosition(e),this.editor.raycaster.setFromCamera(this.editor.mouse,this.editor.camera),"select_plane"===this.splitMode){const e=[...this.editor.workPlanes,...this.editor.sketchPlanes],t=this.editor.raycaster.intersectObjects(e,!0);if(t.length>0){const e=t[0].object;return this.selectedPlane=e,this.splitMode="confirm",this.createSplitVisualization(e),this.editor.showStatus("Нажмите ПРОБЕЛ для разрезания, ESC для отмены","info"),!0}}return!1}createSplitVisualization(e){this.cleanupVisualization();const t=this.editor.selectedObjects[0],i=(new THREE.Box3).setFromObject(t),s=new THREE.Vector3;i.getSize(s);const o=new THREE.PlaneGeometry(1.5*s.x,1.5*s.y),r=new THREE.MeshBasicMaterial({color:16711680,transparent:!0,opacity:.3,side:THREE.DoubleSide});this.splitPlane=new THREE.Mesh(o,r),this.splitPlane.position.copy(e.position),this.splitPlane.quaternion.copy(e.quaternion),this.splitPlane.userData.isSplitPlane=!0,this.editor.scene.add(this.splitPlane),this.tempVisuals.push(this.splitPlane);const a=new THREE.EdgesGeometry(o),n=new THREE.LineBasicMaterial({color:16711680,linewidth:2}),l=new THREE.LineSegments(a,n);l.position.copy(e.position),l.quaternion.copy(e.quaternion),l.userData.isSplitHelper=!0,this.editor.scene.add(l),this.tempVisuals.push(l)}performSplit(){if(!this.selectedPlane||1!==this.editor.selectedObjects.length)return void this.editor.showStatus("Не выбрана плоскость для разрезания","error");const e=this.editor.selectedObjects[0],t=this.selectedPlane;this.editor.showLoadingIndicator("Выполняется разрезание...");try{const i=this.cutWithCSG(e,t);i&&i.positive&&i.negative?(this.removeObject(e),this.addObject(i.positive,"положительная часть"),this.addObject(i.negative,"отрицательная часть"),this.editor.history.addAction({type:"delete",objects:[{uuid:e.uuid,data:this.editor.projectManager.serializeObjectForHistory(e)}]}),this.editor.history.addAction({type:"create",object:i.positive.uuid,data:this.editor.projectManager.serializeObjectForHistory(i.positive)}),this.editor.history.addAction({type:"create",object:i.negative.uuid,data:this.editor.projectManager.serializeObjectForHistory(i.negative)}),this.editor.clearSelection(),this.editor.showStatus("Объект разрезан на 2 части","success")):this.editor.showStatus("Не удалось разрезать объект","error")}catch(e){console.error("Split error:",e),this.editor.showStatus(`Ошибка разрезания: ${e.message}`,"error")}finally{this.editor.hideLoadingIndicator(),this.cleanup(),this.editor.toolManager.setCurrentTool("select")}}cutWithCSG(e,t){if(!this.editor.booleanOps)throw new Error("Библиотека булевых операций не загружена");const i=new THREE.Vector3(0,0,1).applyQuaternion(t.quaternion).normalize(),s=t.position.clone(),o=(new THREE.Box3).setFromObject(e),r=new THREE.Vector3;o.getSize(r);const a=Math.max(r.x,r.y,r.z),n=this.createHalfSpace(i,s,!0,a),l=this.createHalfSpace(i,s,!1,a),c=this.editor.booleanOps.intersect(e,n),h=this.editor.booleanOps.intersect(e,l);return n.geometry&&n.geometry.dispose(),l.geometry&&l.geometry.dispose(),{positive:c,negative:h}}createHalfSpace(e,t,i,s){const o=10*s,r=new THREE.BoxGeometry(o,o,o),a=new THREE.Mesh(r,new THREE.MeshBasicMaterial),n=e.clone().multiplyScalar(i?o/2:-o/2);return a.position.copy(t.clone().add(n)),a.lookAt(t.clone().add(e)),a}removeObject(e){this.editor.objectsGroup.remove(e);const t=this.editor.objects.indexOf(e);t>-1&&this.editor.objects.splice(t,1);const i=e.userData?.type;if("sketch_plane"===i){const t=this.editor.sketchPlanes.indexOf(e);t>-1&&this.editor.sketchPlanes.splice(t,1)}else if("work_plane"===i){const t=this.editor.workPlanes.indexOf(e);t>-1&&this.editor.workPlanes.splice(t,1)}}addObject(e,t){e.userData={...e.userData,name:`${e.userData?.name||"Объект"} (${t})`,isSplitPart:!0,createdAt:(new Date).toISOString()},this.editor.objectsGroup.add(e),this.editor.objects.push(e)}onKeyDown(e){return"Escape"===e.key?(this.cleanup(),this.editor.toolManager.setCurrentTool("select"),!0):" "===e.key&&"confirm"===this.splitMode&&(this.performSplit(),!0)}cleanupVisualization(){this.tempVisuals.forEach(e=>{e.parent&&e.parent.remove(e),e.geometry&&e.geometry.dispose(),e.material&&e.material.dispose()}),this.tempVisuals=[],this.splitPlane=null}cleanup(){this.cleanupVisualization(),this.splitMode=null,this.selectedPlane=null}}
+// js/tools/split-tool.js (улучшенная версия)
+class SplitTool extends Tool {
+    constructor(editor) {
+        super('split', 'fa-cut', editor);
+        this.requiresSelection = true;
+        this.splitMode = null; // 'select_plane' или 'confirm'
+        this.selectedPlane = null;
+        this.tempVisuals = [];
+        this.splitPlane = null;
+    }
+
+    onActivate() {
+        if (!this.canActivate()) {
+            this.editor.toolManager.restorePreviousTool();
+            return;
+        }
+
+        if (this.editor.selectedObjects.length !== 1) {
+            this.editor.showStatus('Для разрезания выберите ровно один объект', 'error');
+            this.editor.toolManager.restorePreviousTool();
+            return;
+        }
+
+        // Проверяем, что выбран не плоский объект
+        const targetObject = this.editor.selectedObjects[0];
+        if (targetObject.userData.type === 'work_plane' ||
+            targetObject.userData.type === 'sketch_plane') {
+            this.editor.showStatus('Нельзя разрезать плоскость', 'error');
+            this.editor.toolManager.restorePreviousTool();
+            return;
+        }
+
+        this.splitMode = 'select_plane';
+        this.selectedPlane = null;
+
+        this.editor.showStatus('Выберите рабочую плоскость для разрезания (ESC - отмена)', 'info');
+    }
+
+    onDeactivate() {
+        this.cleanup();
+        document.body.style.cursor = 'default';
+    }
+
+    onMouseDown(e) {
+        if (e.button !== 0 || !this.splitMode) return false;
+
+        this.editor.updateMousePosition(e);
+        this.editor.raycaster.setFromCamera(this.editor.mouse, this.editor.camera);
+
+        if (this.splitMode === 'select_plane') {
+            // Ищем плоскости (рабочие или скетч)
+            const planes = [...this.editor.workPlanes, ...this.editor.sketchPlanes];
+            const planeIntersects = this.editor.raycaster.intersectObjects(planes, true);
+
+            if (planeIntersects.length > 0) {
+                const plane = planeIntersects[0].object;
+                this.selectedPlane = plane;
+                this.splitMode = 'confirm';
+
+                // Создаем визуализацию плоскости разреза
+                this.createSplitVisualization(plane);
+
+                this.editor.showStatus('Нажмите ПРОБЕЛ для разрезания, ESC для отмены', 'info');
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    createSplitVisualization(plane) {
+        this.cleanupVisualization();
+
+        const targetObject = this.editor.selectedObjects[0];
+        const bbox = new THREE.Box3().setFromObject(targetObject);
+        const size = new THREE.Vector3();
+        bbox.getSize(size);
+
+        // Создаем плоскость разреза (красная прозрачная)
+        const planeGeometry = new THREE.PlaneGeometry(size.x * 1.5, size.y * 1.5);
+        const planeMaterial = new THREE.MeshBasicMaterial({
+            color: 0xff0000,
+            transparent: true,
+            opacity: 0.3,
+            side: THREE.DoubleSide
+        });
+
+        this.splitPlane = new THREE.Mesh(planeGeometry, planeMaterial);
+        this.splitPlane.position.copy(plane.position);
+        this.splitPlane.quaternion.copy(plane.quaternion);
+        this.splitPlane.userData.isSplitPlane = true;
+        this.editor.scene.add(this.splitPlane);
+        this.tempVisuals.push(this.splitPlane);
+
+        // Создаем контур плоскости
+        const edgesGeometry = new THREE.EdgesGeometry(planeGeometry);
+        const edgesMaterial = new THREE.LineBasicMaterial({
+            color: 0xff0000,
+            linewidth: 2
+        });
+        const edges = new THREE.LineSegments(edgesGeometry, edgesMaterial);
+        edges.position.copy(plane.position);
+        edges.quaternion.copy(plane.quaternion);
+        edges.userData.isSplitHelper = true;
+        this.editor.scene.add(edges);
+        this.tempVisuals.push(edges);
+    }
+
+    performSplit() {
+        if (!this.selectedPlane || this.editor.selectedObjects.length !== 1) {
+            this.editor.showStatus('Не выбрана плоскость для разрезания', 'error');
+            return;
+        }
+
+        const targetObject = this.editor.selectedObjects[0];
+        const plane = this.selectedPlane;
+
+        this.editor.showLoadingIndicator('Выполняется разрезание...');
+
+        try {
+            // Используем библиотеку three-bvh-csg для точного разрезания
+            const result = this.cutWithCSG(targetObject, plane);
+
+            if (result && result.positive && result.negative) {
+                // Удаляем исходный объект
+                this.removeObject(targetObject);
+
+                // Добавляем новые объекты
+                this.addObject(result.positive, 'положительная часть');
+                this.addObject(result.negative, 'отрицательная часть');
+
+                // Добавляем в историю как удаление и создание
+                this.editor.history.addAction({
+                    type: 'delete',
+                    objects: [{
+                        uuid: targetObject.uuid,
+                        data: this.editor.projectManager.serializeObjectForHistory(targetObject)
+                    }]
+                });
+
+                this.editor.history.addAction({
+                    type: 'create',
+                    object: result.positive.uuid,
+                    data: this.editor.projectManager.serializeObjectForHistory(result.positive)
+                });
+
+                this.editor.history.addAction({
+                    type: 'create',
+                    object: result.negative.uuid,
+                    data: this.editor.projectManager.serializeObjectForHistory(result.negative)
+                });
+
+                this.editor.clearSelection();
+                this.editor.showStatus('Объект разрезан на 2 части', 'success');
+            } else {
+                this.editor.showStatus('Не удалось разрезать объект', 'error');
+            }
+        } catch (error) {
+            console.error('Split error:', error);
+            this.editor.showStatus(`Ошибка разрезания: ${error.message}`, 'error');
+        } finally {
+            this.editor.hideLoadingIndicator();
+            this.cleanup();
+            this.editor.toolManager.setCurrentTool('select');
+        }
+    }
+
+    cutWithCSG(object, plane) {
+        if (!this.editor.booleanOps) {
+            throw new Error('Библиотека булевых операций не загружена');
+        }
+
+        // Получаем нормаль плоскости и точку на плоскости
+        const planeNormal = new THREE.Vector3(0, 0, 1).applyQuaternion(plane.quaternion).normalize();
+        const planePoint = plane.position.clone();
+
+        // Создаем куб для вырезания (плоскость превращаем в толстую пластину)
+        const bbox = new THREE.Box3().setFromObject(object);
+        const size = new THREE.Vector3();
+        bbox.getSize(size);
+        const maxSize = Math.max(size.x, size.y, size.z);
+
+        // Создаем два полупространства
+        const positiveHalf = this.createHalfSpace(planeNormal, planePoint, true, maxSize);
+        const negativeHalf = this.createHalfSpace(planeNormal, planePoint, false, maxSize);
+
+        // Выполняем пересечения для создания частей
+        const positivePart = this.editor.booleanOps.intersect(object, positiveHalf);
+        const negativePart = this.editor.booleanOps.intersect(object, negativeHalf);
+
+        // Удаляем временные объекты
+        if (positiveHalf.geometry) positiveHalf.geometry.dispose();
+        if (negativeHalf.geometry) negativeHalf.geometry.dispose();
+
+        return { positive: positivePart, negative: negativePart };
+    }
+
+    createHalfSpace(planeNormal, planePoint, isPositive, size) {
+        // Создаем большой куб, представляющий полупространство
+        const boxSize = size * 10;
+        const geometry = new THREE.BoxGeometry(boxSize, boxSize, boxSize);
+
+        // Позиционируем куб так, чтобы он покрывал нужную сторону плоскости
+        const halfBox = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial());
+
+        // Смещаем куб в нужном направлении от плоскости
+        const offset = planeNormal.clone().multiplyScalar(isPositive ? boxSize/2 : -boxSize/2);
+        halfBox.position.copy(planePoint.clone().add(offset));
+
+        // Ориентируем куб так, чтобы его грань была параллельна плоскости
+        halfBox.lookAt(planePoint.clone().add(planeNormal));
+
+        return halfBox;
+    }
+
+    removeObject(object) {
+        this.editor.objectsGroup.remove(object);
+        const index = this.editor.objects.indexOf(object);
+        if (index > -1) {
+            this.editor.objects.splice(index, 1);
+        }
+
+        // Удаляем из специальных массивов если нужно
+        const type = object.userData?.type;
+        if (type === 'sketch_plane') {
+            const planeIndex = this.editor.sketchPlanes.indexOf(object);
+            if (planeIndex > -1) {
+                this.editor.sketchPlanes.splice(planeIndex, 1);
+            }
+        } else if (type === 'work_plane') {
+            const planeIndex = this.editor.workPlanes.indexOf(object);
+            if (planeIndex > -1) {
+                this.editor.workPlanes.splice(planeIndex, 1);
+            }
+        }
+    }
+
+    addObject(object, description) {
+        object.userData = {
+            ...object.userData,
+            name: `${object.userData?.name || 'Объект'} (${description})`,
+            isSplitPart: true,
+            createdAt: new Date().toISOString()
+        };
+
+        this.editor.objectsGroup.add(object);
+        this.editor.objects.push(object);
+    }
+
+    onKeyDown(e) {
+        if (e.key === 'Escape') {
+            this.cleanup();
+            this.editor.toolManager.setCurrentTool('select');
+            return true;
+        } else if (e.key === ' ' && this.splitMode === 'confirm') {
+            this.performSplit();
+            return true;
+        }
+        return false;
+    }
+
+    cleanupVisualization() {
+        this.tempVisuals.forEach(obj => {
+            if (obj.parent) {
+                obj.parent.remove(obj);
+            }
+            if (obj.geometry) obj.geometry.dispose();
+            if (obj.material) obj.material.dispose();
+        });
+        this.tempVisuals = [];
+        this.splitPlane = null;
+    }
+
+    cleanup() {
+        this.cleanupVisualization();
+        this.splitMode = null;
+        this.selectedPlane = null;
+    }
+}

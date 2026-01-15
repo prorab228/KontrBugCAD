@@ -1,1 +1,45 @@
-class Tool{constructor(t,i,e){this.name=t,this.icon=i,this.editor=e,this.isActive=!1,this.isTransformTool=["move","rotate","scale"].includes(t),this.requiresSelection=!1,this.uiButton=null}activate(){this.isActive=!0,this.uiButton&&this.uiButton.classList.add("active"),this.onActivate()}deactivate(){this.isActive=!1,this.uiButton&&this.uiButton.classList.remove("active"),this.onDeactivate()}canActivate(){return!this.requiresSelection||0!==this.editor.selectedObjects.length}onActivate(){}onDeactivate(){}onMouseDown(t){return!1}onMouseMove(t){}onMouseUp(t){}onKeyDown(t){return!1}onKeyUp(t){}onDoubleClick(t){return!1}}
+// tool.js - базовый класс для инструментов
+class Tool {
+    constructor(name, icon, editor) {
+        this.name = name;
+        this.icon = icon;
+        this.editor = editor;
+        this.isActive = false;
+        this.isTransformTool = ['move', 'rotate', 'scale'].includes(name);
+        this.requiresSelection = false;
+        this.uiButton = null;
+    }
+
+    activate() {
+        this.isActive = true;
+        if (this.uiButton) {
+            this.uiButton.classList.add('active');
+        }
+        this.onActivate();
+    }
+
+    deactivate() {
+        this.isActive = false;
+        if (this.uiButton) {
+            this.uiButton.classList.remove('active');
+        }
+        this.onDeactivate();
+    }
+
+    canActivate() {
+        if (this.requiresSelection && this.editor.selectedObjects.length === 0) {
+            return false;
+        }
+        return true;
+    }
+
+    // Методы для переопределения
+    onActivate() {}
+    onDeactivate() {}
+    onMouseDown(e) { return false; }
+    onMouseMove(e) {}
+    onMouseUp(e) {}
+    onKeyDown(e) { return false; }
+    onKeyUp(e) {}
+    onDoubleClick(e) { return false; }
+}

@@ -1,1 +1,28 @@
-class SelectSketchTool extends SketchToolBase{constructor(e){super(e,"select","fa-mouse-pointer")}onMouseDown(e){const t=this.getPointOnPlane(e);if(!t)return!1;const n=this.sketchManager.getElementAtPoint(t);return n?(e.ctrlKey||e.metaKey?this.sketchManager.toggleElementSelection(n):this.sketchManager.selectElement(n),!0):(e.ctrlKey||e.metaKey||this.sketchManager.clearSelection(),!1)}}
+/**
+ * Инструмент "Выделение" для скетча
+ */
+class SelectSketchTool extends SketchToolBase {
+    constructor(sketchManager) {
+        super(sketchManager, 'select', 'fa-mouse-pointer');
+    }
+
+    onMouseDown(e) {
+        const point = this.getPointOnPlane(e);
+        if (!point) return false;
+
+        // Проверяем, не кликнули ли на существующий элемент для выделения
+        const clickedElement = this.sketchManager.elementManager.getElementAtPoint(point);
+        if (clickedElement) {
+            if (e.ctrlKey || e.metaKey) {
+                this.sketchManager.elementManager.toggleElementSelection(clickedElement);
+            } else {
+                this.sketchManager.elementManager.selectElement(clickedElement);
+            }
+            return true;
+        } else if (!e.ctrlKey && !e.metaKey) {
+            this.sketchManager.elementManager.clearSelection();
+        }
+
+        return false;
+    }
+}
