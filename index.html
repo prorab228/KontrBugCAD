@@ -294,8 +294,9 @@
                 <div class="tool-group">
                     <div class="theme-controls">
                         <div class="dropdown">
-                            <button class="tool-btn dropdown-toggle" title="Настройки окружения">
-                                <i class="fas fa-sun"></i>
+                            <button class="tool-btn dropdown-toggle" title="Настройки">
+                                <i class="fas fa-cog"></i>
+                                <i class="fas fa-caret-down"></i>
                             </button>
                             <div class="dropdown-menu">
                                 <div class="dropdown-section">
@@ -323,13 +324,31 @@
                                             <label>Цвет сетки:</label>
                                             <input type="color" id="gridColor" value="#999999">
                                         </div>
-                                        <button id="resetEnvironment" class="btn-small">
-                                            <i class="fas fa-redo"></i> Сбросить
-                                        </button>
                                     </div>
                                 </div>
+                                <!-- Настройки сетки: -->
+                                <div class="dropdown-section">
+                                    <div class="environment-controls">
+                                        <label>Единицы сетки:</label>
+                                        <select id="mainGridUnit" >
+                                            <option value="mm">мм</option>
+                                            <option value="inch">дюймы</option>
+                                        </select>
+                                    </div>
+                                    <div class="environment-controls">
+                                        <label>Шаг сетки:</label>
+                                        <select id="mainGridStep" >
+                                            <!-- Заполнится JavaScript -->
+                                        </select>
+                                    </div>
+                                </div>
+                                <button id="resetEnvironment" class="btn-small">
+                                    <i class="fas fa-redo"></i> Сбросить
+                                </button>
                             </div>
                         </div>
+
+
                     </div>
 
                     <button class="tool-btn" id="aboutBtn" title="О программе">
