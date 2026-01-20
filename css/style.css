@@ -1461,11 +1461,6 @@ input:checked + .toggle-slider:before {
         padding: 0 10px;
     }
 
-    .tool-btn span {
-        display: none;
-    }
-
-
 
     .project-info {
         padding-left: 10px;

@@ -107,14 +107,14 @@
     }
 
     .tool-btn {
-        width: 34px;
-        height: 34px;
-        font-size: 13px;
+        width: 30px;
+        height: 30px;
     }
 
+
     .tool-btn .cad-icon {
-        width: 16px;
-        height: 16px;
+        width: 15px;
+        height: 15px;
     }
 
     .logo span {
@@ -169,11 +169,6 @@
     :root {
         --toolbar-height: 46px;
     }
-
-    .properties-panel {
-        width: var(150px);
-    }
-
     .navbar {
         padding: 0 10px;
     }
@@ -249,6 +244,17 @@
 
     }
 
+     .tool-btn {
+        width: 30px;
+        height: 30px;
+    }
+
+
+    .tool-btn .cad-icon {
+        width: 15px;
+        height: 15px;
+    }
+
 
 
     .modal-content {
@@ -260,14 +266,14 @@
 /* Компактный режим для скетч - инструментов на маленьких экранах */
 @media (max-width: 1400px) {
     .sketch-tool-btn {
-        width: 36px;
-        height: 36px;
+        width: 30px;
+        height: 30px;
         font-size: 14px;
     }
 
     .sketch-tool-btn .cad-icon {
-        width: 16px;
-        height: 16px;
+        width: 15px;
+        height: 15px;
     }
 }
 
