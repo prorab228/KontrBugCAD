@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="css/sketch-extended.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="css/icons.css">
+    <link rel="stylesheet" href="css/resize.css">
 </head>
 <body>
     <!-- Навигация -->
@@ -62,6 +63,17 @@
                     </button>
                     <button class="tool-btn" style="display:none" id="deleteObject" title="Удалить (Delete)">
                         <i class="fas fa-trash"></i>
+                    </button>
+                    <button id="copyObject" class="tool-btn" title="Копировать (Ctrl+C)">
+                        <i class="fas fa-copy"></i>
+                    </button>
+
+                    <button id="pasteObject" class="tool-btn" title="Вставить (Ctrl+V)">
+                        <i class="fas fa-paste"></i>
+                    </button>
+
+                    <button id="duplicateObject" class="tool-btn" title="Дублировать (Ctrl+D)">
+                        <i class="fas fa-clone"></i>
                     </button>
                 </div>
             </div>
@@ -354,6 +366,9 @@
                     <button class="tool-btn" id="aboutBtn" title="О программе">
                         <i class="fas fa-info-circle"></i>
                     </button>
+<!--                    <button class="toggle-panel-btn" id="togglePanelBtn" title="Панель свойств" style="display: none;">-->
+<!--                        <i class="fas fa-sliders-h"></i>-->
+<!--                    </button>-->
                 </div>
             </div>
             <span id="projectName">Без названия</span>
