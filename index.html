@@ -64,17 +64,6 @@
                     <button class="tool-btn" style="display:none" id="deleteObject" title="Удалить (Delete)">
                         <i class="fas fa-trash"></i>
                     </button>
-                    <button id="copyObject" class="tool-btn" title="Копировать (Ctrl+C)">
-                        <i class="fas fa-copy"></i>
-                    </button>
-
-                    <button id="pasteObject" class="tool-btn" title="Вставить (Ctrl+V)">
-                        <i class="fas fa-paste"></i>
-                    </button>
-
-                    <button id="duplicateObject" class="tool-btn" title="Дублировать (Ctrl+D)">
-                        <i class="fas fa-clone"></i>
-                    </button>
                 </div>
             </div>
 
@@ -107,6 +96,26 @@
                 <!-- Трансформация -->
                 <div class="tool-section">
                     <div class="tool-group">
+
+                        <div class="dropdown">
+                            <button class="tool-btn dropdown-toggle" title="Копирование">
+                                <i class="fas fa-copy"></i>
+                                <i class="fas fa-caret-down"></i>
+                            </button>
+                            <div class="dropdown-menu">
+                                <a href="#" id="copyObject" title="Копировать (Ctrl+C)">
+                                    <i class="fas fa-copy"></i>Копировать (Ctrl+C)
+                                </a>
+
+                                <a href="#" id="pasteObject" title="Вставить (Ctrl+V)">
+                                    <i class="fas fa-paste"></i>Вставить (Ctrl+V)
+                                </a>
+
+                                <a href="#" id="duplicateObject"  title="Дублировать (Ctrl+D)">
+                                    <i class="fas fa-clone"></i>Дублировать (Ctrl+D)
+                                </a>
+                            </div>
+                        </div>
 
                         <div class="dropdown">
                             <button class="tool-btn dropdown-toggle" title="Трансформация">
