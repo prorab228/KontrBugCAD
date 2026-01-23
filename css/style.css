@@ -1807,6 +1807,7 @@ input:checked + .toggle-slider:before {
     display: flex;
     gap: 8px;
     margin-bottom: 15px;
+    overflow-y: auto;
 }
 
 .filter-btn {
