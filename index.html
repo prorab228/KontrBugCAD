@@ -88,7 +88,7 @@
                         <button class="tool-btn" data-tool="extrude"   title="Вытянуть скетч">
                             <span class="cad-icon icon-extrude"></span>
                         </button>
-                        <button class="tool-btn" data-tool="revolve"  style="display: none;" title="Вращение">
+                        <button class="tool-btn" data-tool="revolve"   title="Вращение">
                              <i class="fas fa-sync-alt"></i>
                          </button>
                     </div>
@@ -99,6 +99,11 @@
                 <!-- Трансформация -->
                 <div class="tool-section">
                     <div class="tool-group">
+
+<!--                        <button class="btn tool-btn" data-tool="chamfer" title="Фаска">-->
+<!--                            <i class="fas fa-angle-double-right"></i>-->
+<!--                            <span class="tooltip">Фаска</span>-->
+<!--                        </button>-->
 
                         <div class="dropdown">
                             <button class="tool-btn dropdown-toggle" title="Копирование">
@@ -474,7 +479,9 @@
                     <div class="filter-tabs">
                         <button class="filter-btn active" data-filter="all">Все</button>
                         <button class="filter-btn" data-filter="primitive">Примитивы</button>
-                        <button class="filter-btn" data-filter="models">STL модели</button>
+                        <button class="filter-btn" data-filter="components">Электронные компоненты</button>
+                        <button class="filter-btn" data-filter="stl_model">STL модели</button>
+
                     </div>
                 </div>
                 <div class="library-grid" id="libraryGrid">
@@ -645,7 +652,7 @@
                     <p><strong>Описание:</strong><br> Простой 3D САПР редактор для работы с примитивами и чертежами.
                         <br>Разработан как доступная альтернатива TinkerCAD и Fusion360<br>
                     </p>
-                    <p><strong>Технологии:</strong> Three.js, three-bvh-csg, JavaScript, HTML5, CSS3</p>
+                    <p><strong>Технологии:</strong> Three.js, three-bvh-csg, Clipper.js, JavaScript, HTML5, CSS3</p>
                     <br>
                     <p>За актуальной информацией следите в Telegramm канале</p>
                     <p><strong>Tg:</strong><a href="https://t.me/KontrBugTech">t.me/KontrBugTech</a> </p>
@@ -716,6 +723,11 @@
 <!--    REVOLVE-->
     <script src="js/tools/revolve/revolve-manager.js"></script>
     <script src="js/tools/revolve/revolve-tool.js"></script>
+
+<!--    фаска-->
+    <script src="js/tools/edge_tools/edge-tool-base.js"></script>
+    <script src="js/tools/edge_tools/chamfer-tool.js"></script>
+
 
 <!--    СКЕТЧ-->
     <script src="js/tools/sketch/utils/snap-helper.js"></script>
