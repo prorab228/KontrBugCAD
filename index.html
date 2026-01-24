@@ -100,10 +100,10 @@
                 <div class="tool-section">
                     <div class="tool-group">
 
-<!--                        <button class="btn tool-btn" data-tool="chamfer" title="Фаска">-->
-<!--                            <i class="fas fa-angle-double-right"></i>-->
-<!--                            <span class="tooltip">Фаска</span>-->
-<!--                        </button>-->
+                        <button class="btn tool-btn" data-tool="chamfer" style="display:none" title="Фаска">
+                            <i class="fas fa-angle-double-right"></i>
+                            <span class="tooltip">Фаска</span>
+                        </button>
 
                         <div class="dropdown">
                             <button class="tool-btn dropdown-toggle" title="Копирование">
@@ -695,9 +695,7 @@
     <script src="js/font-manager.js"></script>
     <script src="js/objects-manager.js"></script>
     <script src="js/planes-manager.js"></script>
-    <script src="js/FigureNode.js"></script>
-    <script src="js/FigureManager.js"></script>
-    <script src="js/extrude-manager.js"></script>
+
 
     <script src="js/drag-manager.js"></script>
     <script src="js/tools/gear-generator.js"></script>
@@ -709,7 +707,7 @@
     <script src="js/tools/move-tool.js"></script>
     <script src="js/tools/rotate-tool.js"></script>
     <script src="js/tools/scale-tool.js"></script>
-    <script src="js/tools/extrude-tool.js"></script>
+
     <script src="js/tools/workplane-tool.js"></script>
     <script src="js/tools/gear-tool.js"></script>
 <!--    <script src="js/tools/thread-tool.js"></script>-->
@@ -720,9 +718,14 @@
     <script src="js/tools/ungroup-tool.js"></script>
     <script src="js/tools/group-tool.js"></script>
 
-<!--    REVOLVE-->
-    <script src="js/tools/revolve/revolve-manager.js"></script>
-    <script src="js/tools/revolve/revolve-tool.js"></script>
+<!--    CREATE-->
+    <script src="js/tools/create/FigureNode.js"></script>
+    <script src="js/tools/create/FigureManager.js"></script>
+    <script src="js/tools/create/operation-manager.js"></script>
+    <script src="js/tools/create/revolve-manager.js"></script>
+    <script src="js/tools/create/revolve-tool.js"></script>
+    <script src="js/tools/create/extrude-tool.js"></script>
+    <script src="js/tools/create/extrude-manager.js"></script>
 
 <!--    фаска-->
     <script src="js/tools/edge_tools/edge-tool-base.js"></script>
