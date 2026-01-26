@@ -649,7 +649,7 @@ body.dark-theme {
 .panel-content {
     display: none;
     flex: 1;
-    padding: 20px;
+    padding: 10px;
     overflow-y: auto;
     min-height: 0;
 }

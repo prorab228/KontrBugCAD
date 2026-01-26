@@ -159,6 +159,12 @@
                                 <a href="#" id="booleanIntersect" title="останется только пересечение двух фигур">
                                     <span class="cad-icon icon-intersect"></span> Пересечение
                                 </a>
+<!--                                <a href="#" data-tool="repair" title="Ремонт геометрии">-->
+<!--                                    <i class="fas fa-tools"></i>Ремонт геометрии-->
+<!--                                </a>-->
+<!--                                <a href="#" data-tool="decimate" title="Уменьшить полигоны">-->
+<!--                                    <i class="fas fa-compress-alt"></i>Уменьшить полигоны-->
+<!--                                </a>-->
                             </div>
                         </div>
 
@@ -181,6 +187,7 @@
                                 <a href="#" data-tool="ungroup" title="Разгруппировать (Ctrl+Shift+G)">
                                     <span class="cad-icon icon-ungroup"></span> Разгруппировать
                                 </a>
+
                             </div>
                         </div>
                     </div>
@@ -209,6 +216,9 @@
                                 <a href="#" data-tool="text3dTool" title="3D Текст">
                                     <i class="fas fa-font"></i>3D Текст
                                 </a>
+                                <a href="#"  data-tool="imageTool" title="Изображение">
+                                    <i class="fas fa-image"></i>Изображение
+                                 </a>
                             </div>
                         </div>
 
@@ -279,9 +289,9 @@
                         <button class="tool-btn sketch-tool-btn"  data-sketch-tool="arc" title="Дуга">
                             <span class="cad-icon icon-arc"></span>
                         </button>
-                        <button class="tool-btn sketch-tool-btn"  data-sketch-tool="mirror" title="Симметрия">
-                            <span class="cad-icon icon-mirror"></span>
-                        </button>
+<!--                        <button class="tool-btn sketch-tool-btn"  data-sketch-tool="mirror" title="Симметрия">-->
+<!--                            <span class="cad-icon icon-mirror"></span>-->
+<!--                        </button>-->
 
                         <div class="divider"></div>
 
@@ -301,6 +311,12 @@
                         <button class="tool-btn" id="sketchClearBtn"  title="Очистить скетч">
                             <span class="cad-icon icon-clean"></span>
                         </button>
+<!--                        <button class="tool-btn sketch-tool-btn" data-sketch-tool="import" title="Импорт">-->
+<!--                            <i class="fa fa-upload"></i>-->
+<!--                        </button>-->
+<!--                        <button class="tool-btn sketch-tool-btn" data-sketch-tool="export" title="Экспорт">-->
+<!--                            <i class="fa fa-download"></i>-->
+<!--                        </button>-->
                         <button class="tool-btn" id="exitSketchBtn" title="Выйти из режима скетча">
                             <span class="cad-icon icon-exit"></span>
                         </button>
@@ -336,7 +352,7 @@
                                             <label class="switch">
                                                 <input type="checkbox" id="autoSaveCheckbox" checked>
                                                 <span class="slider"></span>
-                                                <span class="switch-label">Включить автосохранение</span>
+                                                <span class="switch-label">Включить автосохранение </span>
                                             </label>
 <!--                                            <small>Проект сохраняется каждые 30 секунд и при закрытии</small>-->
                                         </div>
@@ -617,6 +633,13 @@
                         <!-- Список проектов -->
                     </div>
                 </div>
+                <div class="modal-section">
+                    <label>
+                        <input type="checkbox" id="saveHistoryCheckbox" checked>
+                        Сохранить историю действий
+                        <small>(увеличивает размер файла сохранения)</small>
+                    </label>
+                </div>
             </div>
             <div class="modal-footer">
                 <button id="cancelSave" class="btn-secondary">Отмена</button>
@@ -687,6 +710,8 @@
 
 
     <script src="js/project-state/history.js"></script>
+    <script src="js/project-state/import-manager.js"></script>
+    <script src="js/project-state/export-manager.js"></script>
     <script src="js/project-state/project-manager.js"></script>
     <script src="js/project-state/object-validator.js"></script>
 
@@ -721,6 +746,9 @@
     <script src="js/tools/mirror-tool.js"></script>
     <script src="js/tools/ungroup-tool.js"></script>
     <script src="js/tools/group-tool.js"></script>
+    <script src="js/tools/repair-tool.js"></script>
+    <script src="js/tools/decimate-tool.js"></script>
+    <script src="js/tools/image-tool.js"></script>
 
 <!--    CREATE-->
     <script src="js/tools/create/FigureNode.js"></script>
