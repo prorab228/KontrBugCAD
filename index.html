@@ -456,12 +456,23 @@
                         <button class="view-btn-compact" id="bottomView" title="Вид снизу">
                             <i class="fas fa-arrow-down"></i>
                         </button>
+
                     </div>
                     <div class="view-center">
                         <button class="view-btn-compact home-btn" id="homeView" title="Домой">
                             <i class="fas fa-home"></i>
                         </button>
                     </div>
+
+
+                </div>
+                <div class="projection-controls">
+                    <button class="view-btn-compact" id="perspectiveView" title="Перспективная проекция">
+                        <i class="fas fa-cube"></i>
+                    </button>
+                    <button class="view-btn-compact" id="orthographicView" title="Ортографическая проекция">
+                        <i class="fas fa-vector-square"></i>
+                    </button>
                 </div>
             </div>
 
@@ -724,6 +735,9 @@
     <script src="js/objects-manager.js"></script>
     <script src="js/planes-manager.js"></script>
 
+    <script src="js/utils/font-converter.js"></script>
+     <script src="js/utils/simplify-modifier.js"></script>
+<!--    <script src="https://threejs.org/examples/js/modifiers/SimplifyModifier.js"></script>-->
 
     <script src="js/drag-manager.js"></script>
     <script src="js/tools/gear-generator.js"></script>
