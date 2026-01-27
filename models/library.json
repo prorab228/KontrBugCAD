@@ -118,7 +118,7 @@
       "category": "mechanical",
       "iconPath": "models/icons/bob.png",
       "modelPath": "models/bob.stl",
-      "author": "КонтрБагТех"
+      "author": "Миша"
     },
     {
       "id": "zero",
@@ -171,4 +171,5 @@
       "author": "КонтрБагТех"
     }
   ]
+
 }
