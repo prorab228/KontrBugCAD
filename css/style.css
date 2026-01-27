@@ -1967,6 +1967,12 @@ input:checked + .toggle-slider:before {
     height: 90px;
     object-fit: contain;
 }
+.library-item-author {
+    font-size: 11px;
+    color: #888;
+    margin-top: 2px;
+    font-style: italic;
+}
 
 .distance-input-container,
 .drag-input-container-x,
