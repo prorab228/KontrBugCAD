@@ -506,12 +506,9 @@
                         <input type="text" id="librarySearch" placeholder="Поиск примитивов...">
                         <i class="fas fa-search"></i>
                     </div>
+                    <!-- Оставляем как есть - фильтры будут создаваться динамически -->
                     <div class="filter-tabs">
-                        <button class="filter-btn active" data-filter="all">Все</button>
-                        <button class="filter-btn" data-filter="primitive">Примитивы</button>
-                        <button class="filter-btn" data-filter="components">Электронные компоненты</button>
-                        <button class="filter-btn" data-filter="stl_model">STL модели</button>
-
+                        <!-- Фильтры будут добавлены JavaScript -->
                     </div>
                 </div>
                 <div class="library-grid" id="libraryGrid">
@@ -730,12 +727,15 @@
     <script src="js/operations.js"></script>
 <!--    <script src="js/storage.js"></script>-->
     <script src="js/transforms.js"></script>
+
+    <script src="models/library-fallback-data.js"></script>
     <script src="js/library-manager.js"></script>
     <script src="js/font-manager.js"></script>
     <script src="js/objects-manager.js"></script>
     <script src="js/planes-manager.js"></script>
 
     <script src="js/utils/font-converter.js"></script>
+    <script src="js/utils/hollow-text-helper.js"></script>
      <script src="js/utils/simplify-modifier.js"></script>
 <!--    <script src="https://threejs.org/examples/js/modifiers/SimplifyModifier.js"></script>-->
 
@@ -784,6 +784,8 @@
 
     <script src="js/tools/sketch/sketch-tools/sketch-tool-base.js"></script>
     <script src="js/tools/sketch/sketch-tools/circle-tool.js"></script>
+
+    <script src="js/tools/sketch/sketch-tools/line-base-tool.js"></script>
     <script src="js/tools/sketch/sketch-tools/line-tool.js"></script>
     <script src="js/tools/sketch/sketch-tools/curve-tool.js"></script>
     <script src="js/tools/sketch/sketch-tools/polygon-tool.js"></script>
