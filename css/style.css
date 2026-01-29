@@ -675,9 +675,9 @@ body.dark-theme {
 
 .property-group h4 {
     margin-bottom: 15px;
-    color: var(--text-secondary);
+    color: var(--text-primary);
     font-size: 14px;
-    font-weight: 500;
+    font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.5px;
 }
@@ -686,13 +686,40 @@ body.dark-theme {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 12px;
+    margin-top: 24px;
+    gap: 5px;
 }
 
 .property-row label {
     color: var(--text-secondary);
-    font-size: 14px;
     flex: 1;
+}
+.property-input-group
+{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 5px;
+}
+.property-hint
+{
+  font-size: 12px;
+  color: #888;
+  margin: 0;
+
+}
+.property-buttons
+{
+    margin-top: 24px;
+}
+.property-select
+{
+    background: var(--bg-primary);
+    border: 1px solid var(--border-primary);
+    color: var(--text-primary);
+    border-radius: 4px;
+    font-size: 14px;
+    padding: 8px 12px;
 }
 
 /* Базовые инпуты */
@@ -705,7 +732,6 @@ body.dark-theme {
     border: 1px solid var(--border-primary);
     color: var(--text-primary);
     border-radius: 4px;
-    font-size: 14px;
     padding: 8px 12px;
 }
 
@@ -725,9 +751,17 @@ body.dark-theme {
     width: 120px;
 }
 
-.property-row input[type="number"] {
-    width: 120px;
+
+
+#performOperation:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
 }
+
+#performOperation:not(:disabled) {
+    background: linear-gradient(135deg, #4CAF50, #45a049);
+}
+
 
 .search-input {
     width: 100%;
@@ -1555,226 +1589,6 @@ input:checked + .toggle-slider:before {
 
 
 
-#performExtrude:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-
-#performExtrude:not(:disabled) {
-    background: linear-gradient(135deg, #4CAF50, #45a049);
-}
-
-#sketchSizeDisplay {
-    position: absolute;
-    top: 100px;
-    left: 20px;
-    background: rgba(0, 0, 0, 0.8);
-    color: white;
-    padding: 10px 15px;
-    border-radius: 5px;
-    font-family: 'Consolas', monospace;
-    font-size: 14px;
-    z-index: 1000;
-    pointer-events: none;
-    border: 1px solid #444;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.5);
-}
-
-#sketchSizeDisplay div {
-    margin: 2px 0;
-}
-
-#sizeInfo {
-    color: #4CAF50;
-    font-weight: bold;
-}
-
-/* Добавить в style.css */
-.extrude-ui {
-    position: absolute;
-    top: 70px;
-    right: 20px;
-    background: var(--bg-tertiary);
-    border: 1px solid #444;
-    border-radius: 8px;
-    padding: 15px;
-    width: 300px;
-    z-index: 100;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-}
-
-.extrude-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 15px;
-}
-
-.extrude-header h3 {
-    margin: 0;
-    font-size: 16px;
-    color: var(--text-primary);
-}
-
-.extrude-controls .control-group {
-    margin-bottom: 10px;
-}
-
-.extrude-controls label {
-    display: block;
-    margin-bottom: 5px;
-    color: var(--text-tertiary);
-    font-size: 14px;
-}
-
-.extrude-controls input,
-.extrude-controls select {
-    width: 100%;
-    padding: 6px;
-   /* background: #222;*/
-    border: 1px solid #444;
-    border-radius: 4px;
-  /*  color: #fff;*/
-}
-
-.extrude-hint {
-    margin-top: 15px;
-    padding: 8px;
-  /*  background: rgba(0, 100, 200, 0.2);*/
-    border-radius: 4px;
-    font-size: 12px;
-   /* color: #88c;*/
-}
-
-
-/* Операции выдавливания */
-.operation-options {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    margin: 15px 0;
-}
-
-.operation-option {
-    display: flex;
-    align-items: center;
-    padding: 15px;
-    border: 2px solid #444;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    background: rgba(255, 255, 255, 0.05);
-}
-
-.operation-option:hover {
-    border-color: #666;
-    background: rgba(255, 255, 255, 0.1);
-}
-
-.operation-option.selected {
-    border-color: #2196F3;
-    background: rgba(33, 150, 243, 0.1);
-}
-
-.operation-icon {
-    margin-right: 15px;
-    font-size: 24px;
-    color: #2196F3;
-    width: 40px;
-    text-align: center;
-}
-
-.operation-option[data-operation="cut"] .operation-icon {
-    color: #f44336;
-}
-
-.operation-info {
-    flex: 1;
-}
-
-.operation-info h5 {
-    margin: 0 0 5px 0;
-    color: #fff;
-}
-
-.operation-info p {
-    margin: 0;
-    font-size: 12px;
-    color: #aaa;
-}
-
-.operation-check {
-    color: #4CAF50;
-    opacity: 0;
-    transition: opacity 0.3s ease;
-}
-
-.operation-option.selected .operation-check {
-    opacity: 1;
-}
-
-/* Параметры выдавливания */
-.extrude-params {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 15px;
-    margin: 15px 0;
-}
-
-.param-group {
-    display: flex;
-    flex-direction: column;
-}
-
-.param-group label {
-    margin-bottom: 5px;
-    font-size: 14px;
-    color: #ccc;
-}
-
-/* Затронутые объекты */
-.affected-objects-list {
-    max-height: 200px;
-    overflow-y: auto;
-    margin: 10px 0;
-    padding: 10px;
-    background: rgba(0, 0, 0, 0.3);
-    border-radius: 5px;
-}
-
-.affected-object {
-    display: flex;
-    align-items: center;
-    padding: 8px;
-    border-bottom: 1px solid #333;
-}
-
-.affected-object:last-child {
-    border-bottom: none;
-}
-
-.affected-object input[type="checkbox"] {
-    margin-right: 10px;
-}
-
-.affected-object label {
-    display: flex;
-    align-items: center;
-    cursor: pointer;
-    flex: 1;
-}
-
-.affected-object label i {
-    margin-right: 8px;
-    color: #2196F3;
-}
-
-.no-objects {
-    text-align: center;
-    color: #888;
-    font-style: italic;
-    padding: 20px;
-}
 
 /* Стили для библиотеки */
 .library-controls {
