@@ -688,6 +688,7 @@ body.dark-theme {
     justify-content: space-between;
     margin-top: 24px;
     gap: 5px;
+    flex-wrap: wrap;
 }
 
 .property-row label {
@@ -733,6 +734,7 @@ body.dark-theme {
     color: var(--text-primary);
     border-radius: 4px;
     padding: 8px 12px;
+    max-width: 100%;
 }
 
 .property-row input:focus,
