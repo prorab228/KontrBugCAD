@@ -45,6 +45,9 @@
                             <a href="#" id="openSTL"><i class="fas fa-file-import"></i> Импорт STL</a>
                             <div class="dropdown-divider"></div>
                             <a href="#" id="exportBtn"><i class="fas fa-download"></i> Экспорт</a>
+                            <div class="dropdown-divider"></div>
+                            <a href="#" id="importSketchSVG" class="sketch-only" style="display: none;"><i class="fas fa-file-import"></i> Импорт SVG</a>
+                            <a href="#" id="exportSketchSVG" class="sketch-only" style="display: none;"><i class="fas fa-file-export"></i> Экспорт скетча в SVG</a>
                         </div>
                     </div>
                 </div>
@@ -85,10 +88,10 @@
                         <button class="tool-btn" data-tool="sketch"   title="Чертеж (Скетч)">
                             <span class="cad-icon icon-sketch"></span>
                         </button>
-                        <button class="tool-btn" data-tool="extrude"   title="Вытянуть скетч">
+                        <button class="tool-btn" data-tool="extrude"   title="Вытягивание">
                             <span class="cad-icon icon-extrude"></span>
                         </button>
-                        <button class="tool-btn" data-tool="revolve"   title="Вращение">
+                        <button class="tool-btn" data-tool="revolve"   title="Создать тело вращения">
                              <i class="fas fa-sync-alt"></i>
                          </button>
                     </div>
@@ -274,9 +277,9 @@
                         <button class="tool-btn sketch-tool-btn" data-sketch-tool="polygon" title="Многоугольник">
                             <span class="cad-icon icon-polygon"></span>
                         </button>
-                        <button class="tool-btn sketch-tool-btn" style="display:none" data-sketch-tool="curve" title="Кривая безье">
-                            <span class="cad-icon icon-bezier"></span>
-                        </button>
+<!--                        <button class="tool-btn sketch-tool-btn" data-sketch-tool="curve" title="Кривая безье">-->
+<!--                            <span class="cad-icon icon-bezier"></span>-->
+<!--                        </button>-->
                         <button class="tool-btn sketch-tool-btn" style="display:none" data-sketch-tool="text" title="Текст">
                             <span class="cad-icon icon-text"></span>
                         </button>
@@ -301,6 +304,12 @@
                         <button class="tool-btn sketch-tool-btn" data-sketch-tool="dimension" title="Размеры (D)">
                             <i class="fas fa-ruler-combined"></i>
                         </button>
+                        <button class="tool-btn  sketch-tool-btn" data-sketch-tool="move" title="Перемещение">
+                            <i class="fas fa-arrows-alt"></i>
+                        </button>
+                        <button class="tool-btn  sketch-tool-btn" data-sketch-tool="rotate" title="Вращение">
+                            <i class="fas fa-sync-alt"></i>
+                        </button>
 
 
                         <div class="divider"></div>
@@ -311,12 +320,6 @@
                         <button class="tool-btn" id="sketchClearBtn"  title="Очистить скетч">
                             <span class="cad-icon icon-clean"></span>
                         </button>
-<!--                        <button class="tool-btn sketch-tool-btn" data-sketch-tool="import" title="Импорт">-->
-<!--                            <i class="fa fa-upload"></i>-->
-<!--                        </button>-->
-<!--                        <button class="tool-btn sketch-tool-btn" data-sketch-tool="export" title="Экспорт">-->
-<!--                            <i class="fa fa-download"></i>-->
-<!--                        </button>-->
                         <button class="tool-btn" id="exitSketchBtn" title="Выйти из режима скетча">
                             <span class="cad-icon icon-exit"></span>
                         </button>
@@ -729,9 +732,11 @@
     <script src="https://cdn.jsdelivr.net/npm/clipper-lib@6.4.2/clipper.js"></script>
 
 
+    <script src="js/project-state/sketch-history-handler.js"></script>
     <script src="js/project-state/history.js"></script>
     <script src="js/project-state/import-manager.js"></script>
     <script src="js/project-state/export-manager.js"></script>
+    <script src="js/project-state/sketch-serializer.js"></script>
     <script src="js/project-state/project-manager.js"></script>
     <script src="js/project-state/object-validator.js"></script>
 
@@ -812,16 +817,18 @@
     <script src="js/tools/sketch/sketch-tools/ruler-tool.js"></script>
     <script src="js/tools/sketch/sketch-tools/dimension-tool.js"></script>
     <script src="js/tools/sketch/sketch-tools/dashed-line-tool.js"></script>
-
-    <script src="js/tools/sketch/sketch-tools/import-tool.js"></script>
-    <script src="js/tools/sketch/sketch-tools/export-tool.js"></script>
+    <script src="js/tools/sketch/sketch-tools/helpers/sketch-arrow-helper.js"></script>
+    <script src="js/tools/sketch/sketch-tools/transform-sketch-toolbase.js"></script>
+    <script src="js/tools/sketch/sketch-tools/sketch-rotate-tool.js"></script>
+    <script src="js/tools/sketch/sketch-tools/sketch-move-tool.js"></script>
 
     <script src="js/tools/sketch/managers/sketch-tool-manager.js"></script>
     <script src="js/tools/sketch/managers/sketch-element-manager.js"></script>
     <script src="js/tools/sketch/managers/sketch-view-manager.js"></script>
     <script src="js/tools/sketch/managers/sketch-dimension-manager.js"></script>
     <script src="js/tools/sketch/managers/sketch-outline-manager.js"></script>
-
+    <script src="js/tools/sketch/managers/sketch-import-manager.js"></script>
+    <script src="js/tools/sketch/managers/sketch-export-manager.js"></script>
 
 
 

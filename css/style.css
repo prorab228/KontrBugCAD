@@ -65,7 +65,9 @@ body {
     flex-direction: column;
 }
 
-
+.sketch-only {
+    display: none;
+}
 /* ========== Светлая тема ========== */
 
 /* Тема и настройки окружения */

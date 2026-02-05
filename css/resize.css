@@ -178,8 +178,13 @@
     }
 
     .tool-btn {
-        width: 32px;
-        height: 32px;
+        width: 30px;
+        height: 30px;
+        font-size: 10px;
+    }
+    .tool-btn .cad-icon {
+        width: 15px;
+        height: 15px;
     }
 
     .status-bar {
@@ -212,6 +217,18 @@
 @media (max-width: 992px) {
     .project-info {
         display: none;
+    }
+
+    .tool-btn {
+        width: 30px;
+        height: 30px;
+        font-size: 10px;
+    }
+
+
+    .tool-btn .cad-icon {
+        width: 15px;
+        height: 15px;
     }
 
     .toolbar-container {
