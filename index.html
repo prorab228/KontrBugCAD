@@ -710,26 +710,53 @@
         </div>
     </div>
 
+    <!-- Библиотеки локальные-->
+    <script src="lib/three.min.js"></script>
+    <script src="lib/OrbitControls.js"></script>
+    <script src="lib/STLExporter.js"></script>
+
+    <script src="lib/BufferGeometryUtils.js"></script>
+    <script src="lib/OBJExporter.js"></script>
+    <script src="lib/FontLoader.js"></script>
+    <script src="lib/TextGeometry.js"></script>
+    <script src="lib/jszip.min.js"></script>
+
+    <script src="lib/tween.umd.js"></script>
+    <script src="lib/opentype.min.js"></script>
+
+
+<!--    <script type="module">-->
+<!--        import * as THREE_BVH_CSG from 'lib/three-bvh-csg.js';-->
+<!--        window.THREE_BVH_CSG = THREE_BVH_CSG;-->
+<!--        console.log('Библиотека THREE_BVH_CSG загружена через модуль и назначена на window', window.THREE_BVH_CSG);-->
+<!--    </script>-->
+    <!-- Подключение Clipper.js -->
+    <script src="lib/clipper.js"></script>
+
     <!-- Библиотеки -->
-    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/controls/OrbitControls.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/exporters/STLExporter.js"></script>
+<!--    <script src="https://cdn.jsdelivr.net/npm/three@0.150/build/three.min.js"></script>-->
+<!--    <script src="https://cdn.jsdelivr.net/npm/three@0.147/examples/js/controls/OrbitControls.js"></script>-->
+<!--    <script src="https://cdn.jsdelivr.net/npm/three@0.147/examples/js/exporters/STLExporter.js"></script>-->
 
 
-     <!-- Библиотеки для экспорта OBJ и исправления геометрии -->
-    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/utils/BufferGeometryUtils.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/exporters/OBJExporter.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<!--     &lt;!&ndash; Библиотеки для экспорта OBJ и исправления геометрии &ndash;&gt;-->
+<!--    <script src="https://cdn.jsdelivr.net/npm/three@0.147/examples/js/utils/BufferGeometryUtils.js"></script>-->
+<!--    <script src="https://cdn.jsdelivr.net/npm/three@0.147/examples/js/exporters/OBJExporter.js"></script>-->
+<!--    <script src="https://cdn.jsdelivr.net/npm/three@0.147/examples/js/loaders/FontLoader.js"></script>-->
+<!--    <script src="https://cdn.jsdelivr.net/npm/three@0.147/examples/js/geometries/TextGeometry.js"></script>-->
+<!--    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>-->
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/tween.js/18.6.4/tween.umd.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/opentype.js@1.3.4/dist/opentype.min.js"></script>
+<!--    <script src="https://cdnjs.cloudflare.com/ajax/libs/tween.js/18.6.4/tween.umd.js"></script>-->
+<!--    <script src="https://cdn.jsdelivr.net/npm/opentype.js@1.3.4/dist/opentype.min.js"></script>-->
+
+
     <script type="module">
-        import * as THREE_BVH_CSG from 'https://cdn.jsdelivr.net/npm/three-bvh-csg@0.0.16/+esm';
+        import * as THREE_BVH_CSG from 'https://cdn.jsdelivr.net/npm/three-bvh-csg@0.0.17/+esm';
         window.THREE_BVH_CSG = THREE_BVH_CSG;
         console.log('Библиотека THREE_BVH_CSG загружена через модуль и назначена на window', window.THREE_BVH_CSG);
     </script>
-    <!-- Подключение Clipper.js -->
-    <script src="https://cdn.jsdelivr.net/npm/clipper-lib@6.4.2/clipper.js"></script>
+<!--    &lt;!&ndash; Подключение Clipper.js &ndash;&gt;-->
+<!--    <script src="https://cdn.jsdelivr.net/npm/clipper-lib@6.4.2/clipper.js"></script>-->
 
 
     <script src="js/project-state/sketch-history-handler.js"></script>
