@@ -162,9 +162,9 @@
                                 <a href="#" id="booleanIntersect" title="останется только пересечение двух фигур">
                                     <span class="cad-icon icon-intersect"></span> Пересечение
                                 </a>
-<!--                                <a href="#" data-tool="repair" title="Ремонт геометрии">-->
-<!--                                    <i class="fas fa-tools"></i>Ремонт геометрии-->
-<!--                                </a>-->
+                                <a href="#" data-tool="repair" title="Ремонт геометрии">
+                                    <i class="fas fa-tools"></i>Ремонт геометрии
+                                </a>
 <!--                                <a href="#" data-tool="decimate" title="Уменьшить полигоны">-->
 <!--                                    <i class="fas fa-compress-alt"></i>Уменьшить полигоны-->
 <!--                                </a>-->
@@ -675,7 +675,7 @@
             <span id="fpsCounter"><i class="fas fa-tachometer-alt"></i> FPS: 60</span>
             <span class="separator">|</span>
             <span id="memoryUsage"><i class="fas fa-memory"></i> Память: --</span>
-            <span id="version"><i class="fas fa-memory"></i> Версия: --</span> <a href="https://t.me/KontrBugTech"> <span>следить за обновлениями</span></a>
+            <span id="version"><i class="fas fa-memory"></i> Версия: --</span>  <span> Cледить за обновлениями: <a href="https://t.me/KontrBugTech"> в ТГ</a> <a href="https://vk.com/kontrbugtech"> в ВК</a> </span>  <a href="https://3dtoday.ru/blogs/envalid/kratkii-gaid-po-moemu-3d-redaktoru-kontrbagcad">Гайд на 3dtoday.ru</a>
         </div>
     </div>
 
@@ -689,17 +689,18 @@
             <div class="modal-body">
                 <div class="modal-section">
                     <h4>КонтрБагCAD</h4>
-                    <p><strong>Версия:</strong> 0.7.0 Beta</p>
+                    <p><strong>Версия:</strong> 0.8.0 Beta</p>
                     <p><strong>Разработчик:</strong>© 2025 КонтрБагТех, Лунев Валерий Константинович</p>
                     <p><strong>Описание:</strong><br> Простой 3D САПР редактор для работы с примитивами и чертежами.
                         <br>Разработан как доступная альтернатива TinkerCAD и Fusion360<br>
                     </p>
-                    <p><strong>Технологии:</strong> Three.js, three-bvh-csg, Clipper.js, JavaScript, HTML5, CSS3</p>
+                    <p><strong>Технологии:</strong> Three.js, manifold-3d, Clipper.js, JavaScript, HTML5, CSS3</p>
                     <br>
                     <p>За актуальной информацией следите в Telegramm канале</p>
                     <p><strong>Tg:</strong><a href="https://t.me/KontrBugTech">t.me/KontrBugTech</a> </p>
                     <p><strong>ВК:</strong><a href="https://vk.com/kontrbugtech">КонтрБагТех</a> </p>
                     <p><strong>Оф. сайт:</strong> <a href="https://www.КонтрБагТех.рф">КонтрБагТех.рф</a> </p>
+                    <p><strong>Гайд на 3dToday:</strong> <a href="https://3dtoday.ru/blogs/envalid/kratkii-gaid-po-moemu-3d-redaktoru-kontrbagcad">3dtoday.ru</a> </p>
                     <br><hr>
                     <p><strong>Обратите внимание! Редактор находится на стадии активной разработки, и не все функции работают в полной мере. Но ваше тестирование поможет улучшить его работу. Буду благодарен за обратную связь, сообщения об ошибках и предложения по развитию.</strong></p>
                 </div>
@@ -723,15 +724,11 @@
 
     <script src="lib/tween.umd.js"></script>
     <script src="lib/opentype.min.js"></script>
-
-
-<!--    <script type="module">-->
-<!--        import * as THREE_BVH_CSG from 'lib/three-bvh-csg.js';-->
-<!--        window.THREE_BVH_CSG = THREE_BVH_CSG;-->
-<!--        console.log('Библиотека THREE_BVH_CSG загружена через модуль и назначена на window', window.THREE_BVH_CSG);-->
-<!--    </script>-->
-    <!-- Подключение Clipper.js -->
+     <!-- Подключение Clipper.js -->
     <script src="lib/clipper.js"></script>
+
+
+
 
     <!-- Библиотеки -->
 <!--    <script src="https://cdn.jsdelivr.net/npm/three@0.150/build/three.min.js"></script>-->
@@ -748,15 +745,15 @@
 
 <!--    <script src="https://cdnjs.cloudflare.com/ajax/libs/tween.js/18.6.4/tween.umd.js"></script>-->
 <!--    <script src="https://cdn.jsdelivr.net/npm/opentype.js@1.3.4/dist/opentype.min.js"></script>-->
-
-
-    <script type="module">
-        import * as THREE_BVH_CSG from 'https://cdn.jsdelivr.net/npm/three-bvh-csg@0.0.17/+esm';
-        window.THREE_BVH_CSG = THREE_BVH_CSG;
-        console.log('Библиотека THREE_BVH_CSG загружена через модуль и назначена на window', window.THREE_BVH_CSG);
-    </script>
-<!--    &lt;!&ndash; Подключение Clipper.js &ndash;&gt;-->
 <!--    <script src="https://cdn.jsdelivr.net/npm/clipper-lib@6.4.2/clipper.js"></script>-->
+
+<!--    <script type="module">-->
+<!--        import * as THREE_BVH_CSG from 'https://cdn.jsdelivr.net/npm/three-bvh-csg@0.0.17/+esm';-->
+<!--        window.THREE_BVH_CSG = THREE_BVH_CSG;-->
+<!--        console.log('Библиотека THREE_BVH_CSG загружена через модуль и назначена на window', window.THREE_BVH_CSG);-->
+<!--    </script>-->
+<!--    &lt;!&ndash; Подключение Clipper.js &ndash;&gt;-->
+
 
 
     <script src="js/project-state/sketch-history-handler.js"></script>
@@ -768,7 +765,7 @@
     <script src="js/project-state/object-validator.js"></script>
 
 
-    <script src="js/operations.js"></script>
+    <script src="js/operations2.js"></script>
 <!--    <script src="js/storage.js"></script>-->
     <script src="js/transforms.js"></script>
 
@@ -781,6 +778,7 @@
     <script src="js/utils/font-converter.js"></script>
     <script src="js/utils/hollow-text-helper.js"></script>
      <script src="js/utils/simplify-modifier.js"></script>
+    <script src="js/utils/geometry-repair.js"></script>
 <!--    <script src="https://threejs.org/examples/js/modifiers/SimplifyModifier.js"></script>-->
 
     <script src="js/drag-manager.js"></script>
@@ -799,7 +797,7 @@
     <script src="js/tools/text3d-tool.js"></script>
 <!--    <script src="js/tools/thread-tool.js"></script>-->
     <script src="js/tools/ruler-tool.js"></script>
-    <script src="js/tools/boolean-tool.js"></script>
+    <script src="js/tools/boolean-tool2.js"></script>
     <script src="js/tools/split-tool.js"></script>
     <script src="js/tools/mirror-tool.js"></script>
     <script src="js/tools/ungroup-tool.js"></script>
