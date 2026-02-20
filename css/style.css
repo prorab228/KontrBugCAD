@@ -29,7 +29,7 @@
     --border-light: #ddd;
 
     /* Состояния */
-    --hover-overlay: rgba(255, 255, 255, 0.08);
+    --hover-overlay: rgb(54, 54, 54);
     --active-overlay: rgba(255, 255, 255, 0.15);
     --selected-overlay: rgba(0, 200, 83, 0.15);
 
@@ -312,7 +312,7 @@ body.dark-theme {
 }
 
 /* История действий */
-.history-list {
+/*.history-list {
     max-height: 85%;
     overflow-y: auto;
     margin-bottom: 20px;
@@ -335,6 +335,75 @@ body.dark-theme {
 
 .history-controls {
     text-align: center;
+}
+*/
+/* css/style.css или отдельный файл */
+
+.history-item {
+    display: flex;
+    align-items: center;
+    padding: 8px;
+    border-bottom: 1px solid var(--border-color);
+    cursor: pointer;
+    transition: background-color 0.2s;
+    position: relative;
+}
+
+.history-item:hover {
+    background-color: var(--hover-bg);
+}
+
+.history-item.active {
+    background-color: var(--active-bg);
+    border-left: 3px solid var(--primary-color);
+}
+
+.history-item-icon {
+    width: 30px;
+    text-align: center;
+    font-size: 16px;
+}
+
+.history-item-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.history-item-title {
+    font-size: 14px;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.history-item-time {
+    font-size: 11px;
+    color: var(--text-secondary);
+}
+
+.history-item-actions {
+    opacity: 0;
+    transition: opacity 0.2s;
+    padding: 0 5px;
+}
+
+.history-item:hover .history-item-actions {
+    opacity: 1;
+}
+
+.history-item-delete {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 3px;
+}
+
+.history-item-delete:hover {
+    color: #f44336;
+    background-color: rgba(244, 67, 54, 0.1);
 }
 
 /*project-info*/

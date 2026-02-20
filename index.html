@@ -42,7 +42,7 @@
                             <i class="fas fa-caret-down"></i>
                         </button>
                         <div class="dropdown-menu">
-                            <a href="#" id="openSTL"><i class="fas fa-file-import"></i> Импорт STL</a>
+                            <a href="#" id="importBtn"><i class="fas fa-file-import"></i> Импорт</a>
                             <div class="dropdown-divider"></div>
                             <a href="#" id="exportBtn"><i class="fas fa-download"></i> Экспорт</a>
                             <div class="dropdown-divider"></div>
@@ -82,9 +82,6 @@
                             <span class="cad-icon icon-select"></span>
                         </button>
 
-                        <button class="tool-btn" data-tool="workplane" title="Создать рабочую плоскость">
-                            <span class="cad-icon icon-plane"></span>
-                        </button>
                         <button class="tool-btn" data-tool="sketch"   title="Чертеж (Скетч)">
                             <span class="cad-icon icon-sketch"></span>
                         </button>
@@ -103,10 +100,10 @@
                 <div class="tool-section">
                     <div class="tool-group">
 
-                        <button class="btn tool-btn" data-tool="chamfer" style="display:none" title="Фаска">
-                            <i class="fas fa-angle-double-right"></i>
-                            <span class="tooltip">Фаска</span>
-                        </button>
+<!--                        <button class="btn tool-btn" data-tool="chamfer"  title="Фаска">-->
+<!--                            <i class="fas fa-angle-double-right"></i>-->
+<!--                            <span class="tooltip">Фаска</span>-->
+<!--                        </button>-->
 
                         <div class="dropdown">
                             <button class="tool-btn dropdown-toggle" title="Копирование">
@@ -178,6 +175,9 @@
                                 <i class="fas fa-caret-down"></i>
                             </button>
                             <div class="dropdown-menu">
+                                <a href="#" data-tool="workplane" title="Создать рабочую плоскость">
+                                    <span class="cad-icon icon-plane"></span> Создать рабочую плоскость
+                                </a>
                                 <a href="#" data-tool="split" title="Разрезать по плоскости (Ctrl+Shift+S)">
                                     <span class="cad-icon icon-split"></span> Разрезать
                                 </a>
@@ -437,47 +437,47 @@
             <div id="viewport"></div>
 
             <!-- Компактные кнопки видов -->
-            <div class="compact-view-controls">
-                <div class="view-compass">
-                    <div class="view-row top-row">
-                        <button class="view-btn-compact" id="topView" title="Вид сверху">
-                            <i class="fas fa-arrow-up"></i>
-                        </button>
-                    </div>
-                    <div class="view-row middle-row">
-                        <button class="view-btn-compact" id="leftView" title="Вид слева">
-                            <i class="fas fa-arrow-left"></i>
-                        </button>
-                        <button class="view-btn-compact" id="frontView" title="Вид спереди">
-                            <i class="fas fa-arrow-right"></i>
-                        </button>
-                        <button class="view-btn-compact" id="rightView" title="Вид справа">
-                            <i class="fas fa-arrow-right"></i>
-                        </button>
-                    </div>
-                    <div class="view-row bottom-row">
-                        <button class="view-btn-compact" id="bottomView" title="Вид снизу">
-                            <i class="fas fa-arrow-down"></i>
-                        </button>
+<!--            <div class="compact-view-controls">-->
+<!--                <div class="view-compass">-->
+<!--                    <div class="view-row top-row">-->
+<!--                        <button class="view-btn-compact" id="topView" title="Вид сверху">-->
+<!--                            <i class="fas fa-arrow-up"></i>-->
+<!--                        </button>-->
+<!--                    </div>-->
+<!--                    <div class="view-row middle-row">-->
+<!--                        <button class="view-btn-compact" id="leftView" title="Вид слева">-->
+<!--                            <i class="fas fa-arrow-left"></i>-->
+<!--                        </button>-->
+<!--                        <button class="view-btn-compact" id="frontView" title="Вид спереди">-->
+<!--                            <i class="fas fa-arrow-right"></i>-->
+<!--                        </button>-->
+<!--                        <button class="view-btn-compact" id="rightView" title="Вид справа">-->
+<!--                            <i class="fas fa-arrow-right"></i>-->
+<!--                        </button>-->
+<!--                    </div>-->
+<!--                    <div class="view-row bottom-row">-->
+<!--                        <button class="view-btn-compact" id="bottomView" title="Вид снизу">-->
+<!--                            <i class="fas fa-arrow-down"></i>-->
+<!--                        </button>-->
 
-                    </div>
-                    <div class="view-center">
-                        <button class="view-btn-compact home-btn" id="homeView" title="Домой">
-                            <i class="fas fa-home"></i>
-                        </button>
-                    </div>
+<!--                    </div>-->
+<!--                    <div class="view-center">-->
+<!--                        <button class="view-btn-compact home-btn" id="homeView" title="Домой">-->
+<!--                            <i class="fas fa-home"></i>-->
+<!--                        </button>-->
+<!--                    </div>-->
 
 
-                </div>
-                <div class="projection-controls">
-                    <button class="view-btn-compact" id="perspectiveView" title="Перспективная проекция">
-                        <i class="fas fa-cube"></i>
-                    </button>
-                    <button class="view-btn-compact" id="orthographicView" title="Ортографическая проекция">
-                        <i class="fas fa-vector-square"></i>
-                    </button>
-                </div>
-            </div>
+<!--                </div>-->
+<!--                <div class="projection-controls">-->
+<!--                    <button class="view-btn-compact" id="perspectiveView" title="Перспективная проекция">-->
+<!--                        <i class="fas fa-cube"></i>-->
+<!--                    </button>-->
+<!--                    <button class="view-btn-compact" id="orthographicView" title="Ортографическая проекция">-->
+<!--                        <i class="fas fa-vector-square"></i>-->
+<!--                    </button>-->
+<!--                </div>-->
+<!--            </div>-->
 
             <!-- Координаты -->
             <div class="coordinates">
@@ -601,15 +601,22 @@
                     <label>Название файла:</label>
                     <input type="text" id="exportFileName" value="модель" class="modal-input">
                 </div>
-                <div class="modal-section">
-                    <label>Формат:</label>
-                    <select id="exportFormat" class="modal-select">
+                <select id="exportFormat" class="modal-select">
                         <option value="stl">STL (Binary)</option>
                         <option value="stl-ascii">STL (ASCII)</option>
                         <option value="obj">OBJ + MTL</option>
-<!--                        <option value="json">JSON проект</option>-->
+                        <option value="ply">PLY (ASCII)</option>
+                        <option value="dae">Collada (DAE)</option>
+                        <option value="gltf">GLTF (JSON)</option>
+                        <option value="3mf">3MF</option>
                     </select>
-                </div>
+
+                    <div class="modal-section">
+                        <label>
+                            <input type="checkbox" id="exportMaterials" checked>
+                            Экспортировать материалы (если поддерживается форматом)
+                        </label>
+                    </div>
                 <div class="modal-section">
                     <label>
                         <input type="checkbox" id="exportSelected" checked>
@@ -675,7 +682,7 @@
             <span id="fpsCounter"><i class="fas fa-tachometer-alt"></i> FPS: 60</span>
             <span class="separator">|</span>
             <span id="memoryUsage"><i class="fas fa-memory"></i> Память: --</span>
-            <span id="version"><i class="fas fa-memory"></i> Версия: --</span>  <span> Cледить за обновлениями: <a href="https://t.me/KontrBugTech"> в ТГ</a> <a href="https://vk.com/kontrbugtech"> в ВК</a> </span>  <a href="https://3dtoday.ru/blogs/envalid/kratkii-gaid-po-moemu-3d-redaktoru-kontrbagcad">Гайд на 3dtoday.ru</a>
+            <span id="version"><i class="fas fa-memory"></i> Версия: --</span>  <span> Cледить за обновлениями: <a href="https://t.me/KontrBugTech"> в ТГ</a> <a href="https://vk.com/kontrbugtech"> в ВК</a> </span>  <a href="https://3dtoday.ru/blogs/envalid/kratkii-gaid-po-moemu-3d-redaktoru-kontrbagcad">Гайд на 3dtoday.ru</a> <a href="https://prorab228.github.io/KontrBugCAD_old">Прошлая версия</a>
         </div>
     </div>
 
@@ -691,7 +698,7 @@
                     <h4>КонтрБагCAD</h4>
                     <p><strong>Версия:</strong> 0.8.0 Beta</p>
                     <p><strong>Разработчик:</strong>© 2025 КонтрБагТех, Лунев Валерий Константинович</p>
-                    <p><strong>Описание:</strong><br> Простой 3D САПР редактор для работы с примитивами и чертежами.
+                    <p><strong>Описание:</strong><br> КонтрБагCAD это полноценный online-редактор для твердотельного 3D-моделирования.
                         <br>Разработан как доступная альтернатива TinkerCAD и Fusion360<br>
                     </p>
                     <p><strong>Технологии:</strong> Three.js, manifold-3d, Clipper.js, JavaScript, HTML5, CSS3</p>
@@ -714,10 +721,19 @@
     <!-- Библиотеки локальные-->
     <script src="lib/three.min.js"></script>
     <script src="lib/OrbitControls.js"></script>
-    <script src="lib/STLExporter.js"></script>
-
     <script src="lib/BufferGeometryUtils.js"></script>
+
+    <script src="lib/STLExporter.js"></script>
     <script src="lib/OBJExporter.js"></script>
+    <script src="lib/PLYExporter.js"></script>
+    <script src="lib/ColladaExporter.js"></script>
+    <script src="lib/GLTFExporter.js"></script>
+
+     <!-- Подключаем загрузчик 3MF (для версии three r128) -->
+    <script src="lib/fflate.js"></script>
+    <script src="lib/3MFLoader.js"></script>
+    <script src="lib/OBJLoader.js"></script>
+
     <script src="lib/FontLoader.js"></script>
     <script src="lib/TextGeometry.js"></script>
     <script src="lib/jszip.min.js"></script>
@@ -730,10 +746,21 @@
 
 
 
+
+
     <!-- Библиотеки -->
 <!--    <script src="https://cdn.jsdelivr.net/npm/three@0.150/build/three.min.js"></script>-->
 <!--    <script src="https://cdn.jsdelivr.net/npm/three@0.147/examples/js/controls/OrbitControls.js"></script>-->
 <!--    <script src="https://cdn.jsdelivr.net/npm/three@0.147/examples/js/exporters/STLExporter.js"></script>-->
+<!--    <script src="https://unpkg.com/three@0.128.0/examples/js/exporters/PLYExporter.js"></script>-->
+<!--    <script src="https://unpkg.com/three@0.128.0/examples/js/exporters/ColladaExporter.js"></script>-->
+<!--    <script src="https://unpkg.com/three@0.128.0/examples/js/exporters/GLTFExporter.js"></script>-->
+
+
+    <!-- Подключаем загрузчик 3MF (для версии three r128) -->
+<!--    <script src="https://unpkg.com/fflate@0.8.2/umd/index.js"></script>-->
+<!--    <script src="https://unpkg.com/three@0.147.0/examples/js/loaders/3MFLoader.js"></script>-->
+<!--    <script src="https://unpkg.com/three@0.147.0/examples/js/loaders/OBJLoader.js"></script>-->
 
 
 <!--     &lt;!&ndash; Библиотеки для экспорта OBJ и исправления геометрии &ndash;&gt;-->
@@ -755,12 +782,12 @@
 <!--    &lt;!&ndash; Подключение Clipper.js &ndash;&gt;-->
 
 
-
-    <script src="js/project-state/sketch-history-handler.js"></script>
-    <script src="js/project-state/history.js"></script>
+    <script src="js/project-state/LegacyProjectConverter.js"></script>
+<!--    <script src="js/project-state/sketch-history-handler.js"></script>-->
+<!--    <script src="js/project-state/history.js"></script>-->
     <script src="js/project-state/import-manager.js"></script>
     <script src="js/project-state/export-manager.js"></script>
-    <script src="js/project-state/sketch-serializer.js"></script>
+<!--    <script src="js/project-state/sketch-serializer.js"></script>-->
     <script src="js/project-state/project-manager.js"></script>
     <script src="js/project-state/object-validator.js"></script>
 
@@ -781,9 +808,51 @@
     <script src="js/utils/geometry-repair.js"></script>
 <!--    <script src="https://threejs.org/examples/js/modifiers/SimplifyModifier.js"></script>-->
 
+    <!-- Параметрические исполнители -->
+    <script src="js/parametric/executors/ParametricExecutor.js"></script>
+    <script src="js/parametric/executors/DuplicateExecutor.js"></script>
+    <script src="js/parametric/executors/CreatePrimitiveExecutor.js"></script>
+    <script src="js/parametric/executors/ImportSTLExecutor.js"></script>
+    <script src="js/parametric/executors/MoveExecutor.js"></script>
+    <script src="js/parametric/executors/ExtrudeExecutor.js"></script>
+    <script src="js/parametric/executors/RevolveExecutor.js"></script>
+    <script src="js/parametric/executors/BooleanBaseExecutor.js"></script>
+    <script src="js/parametric/executors/CreateWorkplaneExecutor.js"></script>
+    <script src="js/parametric/executors/GroupExecutor.js"></script>
+    <script src="js/parametric/executors/UngroupExecutor.js"></script>
+    <script src="js/parametric/executors/SketchExecutor.js"></script>
+    <script src="js/parametric/executors/MoveMultipleExecutor.js"></script>
+    <script src="js/parametric/executors/RotateExecutor.js"></script>
+    <script src="js/parametric/executors/ScaleExecutor.js"></script>
+    <script src="js/parametric/executors/ImportMeshExecutor.js"></script>
+    <script src="js/parametric/executors/DeleteExecutor.js"></script>
+    <script src="js/parametric/executors/SplitExecutor.js"></script>
+    <script src="js/parametric/executors/MirrorExecutor.js"></script>
+    <script src="js/parametric/executors/ImageExecutor.js"></script>
+    <script src="js/parametric/executors/Text3DExecutor.js"></script>
+    <script src="js/parametric/executors/RepairExecutor.js"></script>
+    <script src="js/parametric/executors/DecimateExecutor.js"></script>
+    <script src="js/parametric/executors/FilletChamferExecutor.js"></script>
+
+    <script src="js/parametric/executors/GearExecutor.js"></script>
+    <script src="js/parametric/executors/ThreadExecutor.js"></script>
+
+    <!-- Параметрические классы -->
+    <script src="js/parametric/ParametricOperation.js"></script>
+    <script src="js/parametric/ParametricModel.js"></script>
+
+    <script src="js/ui/HistoryPanel.js"></script>
+    <script src="js/ui/NavigationCube.js"></script>
+    <script src="js/camera/CameraManager.js"></script>
+    <script src="js/ui/ThemeManager.js"></script>
+
+<!--    Генераторы-->
+
+    <script src="js/generators/gear-generator.js"></script>
+    <script src="js/generators/thread-generator.js"></script>
+
+
     <script src="js/drag-manager.js"></script>
-    <script src="js/tools/gear-generator.js"></script>
-    <script src="js/tools/thread-generator.js"></script>
     <script src="js/tools/tool.js"></script>
     <script src="js/tools/tool-manager.js"></script>
     <script src="js/tools/select-tool.js"></script>
@@ -794,8 +863,9 @@
 
     <script src="js/tools/workplane-tool.js"></script>
     <script src="js/tools/gear-tool.js"></script>
+    <script src="js/tools/thread-tool.js"></script>
     <script src="js/tools/text3d-tool.js"></script>
-<!--    <script src="js/tools/thread-tool.js"></script>-->
+
     <script src="js/tools/ruler-tool.js"></script>
     <script src="js/tools/boolean-tool2.js"></script>
     <script src="js/tools/split-tool.js"></script>
@@ -808,7 +878,7 @@
 
 <!--    CREATE-->
     <script src="js/tools/create/FigureNode.js"></script>
-    <script src="js/tools/create/FigureManager.js"></script>
+    <script src="js/tools/create/FigureManager3.js"></script>
     <script src="js/tools/create/operation-manager.js"></script>
     <script src="js/tools/create/revolve-manager.js"></script>
     <script src="js/tools/create/revolve-tool.js"></script>
@@ -816,8 +886,8 @@
     <script src="js/tools/create/extrude-manager.js"></script>
 
 <!--    фаска-->
-    <script src="js/tools/edge_tools/edge-tool-base.js"></script>
-    <script src="js/tools/edge_tools/chamfer-tool.js"></script>
+    <script src="js/tools/fillet-chamfer-tool.js"></script>
+
 
 
 <!--    СКЕТЧ-->
@@ -847,6 +917,7 @@
     <script src="js/tools/sketch/sketch-tools/sketch-rotate-tool.js"></script>
     <script src="js/tools/sketch/sketch-tools/sketch-move-tool.js"></script>
 
+    <script src="js/tools/sketch/managers/sketch-region-manager.js"></script>
     <script src="js/tools/sketch/managers/sketch-tool-manager.js"></script>
     <script src="js/tools/sketch/managers/sketch-element-manager.js"></script>
     <script src="js/tools/sketch/managers/sketch-view-manager.js"></script>

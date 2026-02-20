@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>КонтрБагCAD - 3D САПР редактор</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/sketch-extended.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/icons.css">
+<!--    <link rel="stylesheet" href="css/icons2.css">-->
+</head>
+<body>
+    <!-- Навигация -->
+    <div class="navbar">
+        <div class="logo">
+            <i class="fas fa-cube"></i>
+<!--            <img src="css/kontrbugcad-logo.svg" alt="КонтрБагCAD" width="60" height="60">-->
+            <span>КонтрБагCAD</span>
+        </div>
+
+        <div class="toolbar-container">
+            <!-- Файл -->
+            <div class="tool-section">
+                <div class="tool-group">
+                    <button class="tool-btn" id="newProject" title="Новый проект (Ctrl+N)">
+<!--                        <i class="fas fa-file"></i>-->
+                         <span class="cad-icon icon-new"></span>
+                    </button>
+                    <button class="tool-btn" id="openProject" title="Открыть проект">
+                        <i class="fas fa-folder-open"></i>
+                    </button>
+                    <button class="tool-btn" id="saveProject" title="Сохранить проект (Ctrl+S)">
+                        <i class="fas fa-save"></i>
+                    </button>
+                    <div class="dropdown">
+                        <button class="tool-btn dropdown-toggle" title="Экспорт">
+                            <i class="fas fa-download"></i>
+                            <i class="fas fa-caret-down"></i>
+                        </button>
+                        <div class="dropdown-menu">
+                            <a href="#" id="exportSTL"><i class="fas fa-cube"></i> STL</a>
+                            <a href="#" id="exportJSON"><i class="fas fa-code"></i> JSON</a>
+                            <a href="#" id="exportSVG"><i class="fas fa-vector-square"></i> SVG</a>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="tool-section">
+                <div class="tool-group">
+                    <button class="tool-btn" id="openSTL" title="Открыть STL">
+                        <i class="fas fa-file-import"></i> STL
+                    </button>
+                </div>
+            </div>
+
+            <div class="divider"></div>
+
+            <!-- Редактирование -->
+            <div class="tool-section">
+                <div class="tool-group">
+                    <button class="tool-btn" id="undo" title="Отменить (Ctrl+Z)">
+                        <i class="fas fa-undo"></i>
+                    </button>
+                    <button class="tool-btn" id="redo" title="Повторить (Ctrl+Y)">
+                        <i class="fas fa-redo"></i>
+                    </button>
+                    <button class="tool-btn" id="deleteObject" title="Удалить (Delete)">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="divider"></div>
+
+            <!-- Инструменты скетча (скрыты по умолчанию) -->
+           <!-- Инструменты скетча (скрыты по умолчанию) -->
+        <div class="tool-section" id="sketchToolsSection" style="display: none;">
+            <div class="tool-group">
+                <button class="tool-btn sketch-tool-btn" data-sketch-tool="select" title="Выделение скетча">
+<!--                    <i class="fas fa-mouse-pointer"></i>-->
+                    <span class="cad-icon icon-select"></span>
+                </button>
+                <button class="tool-btn sketch-tool-btn" data-sketch-tool="line" title="Линия">
+<!--                    <i class="fas fa-slash"></i>-->
+                    <span class="cad-icon icon-line"></span>
+                </button>
+                <button class="tool-btn sketch-tool-btn" data-sketch-tool="rectangle" title="Прямоугольник">
+<!--                    <i class="fas fa-vector-square"></i>-->
+                    <span class="cad-icon icon-rectangle"></span>
+                </button>
+                <button class="tool-btn sketch-tool-btn" data-sketch-tool="circle" title="Окружность">
+<!--                    <i class="fas fa-circle"></i>-->
+                    <span class="cad-icon icon-circle"></span>
+                </button>
+                <button class="tool-btn sketch-tool-btn" data-sketch-tool="polyline" title="Кривая">
+<!--                    <i class="fas fa-draw-polygon"></i>-->
+                    <span class="cad-icon icon-polyline"></span>
+                </button>
+                <button class="tool-btn sketch-tool-btn" data-sketch-tool="polygon" title="Многоугольник">
+<!--                    <i class="fas fa-shapes"></i>-->
+                    <span class="cad-icon icon-subtract"></span>
+                </button>
+                <button class="tool-btn sketch-tool-btn" data-sketch-tool="curve" title="Кривая безье">
+<!--                    <i class="fas fa-wave-square"></i>-->
+                    <span class="cad-icon icon-bezier"></span>
+                </button>
+                <button class="tool-btn sketch-tool-btn" data-sketch-tool="text" title="Текст">
+<!--                    <i class="fas fa-font"></i>-->
+                    <span class="cad-icon icon-text"></span>
+                </button>
+                <button class="tool-btn sketch-tool-btn" data-sketch-tool="oval" title="Овал">
+<!--                    <i class="fas fa-egg"></i>-->
+                    <span class="cad-icon icon-oval"></span>
+                </button>
+                <button class="tool-btn sketch-tool-btn" data-sketch-tool="stadium" title="Стадион">
+<!--                    <i class="fas fa-running"></i>-->
+                    <span class="cad-icon icon-stadion"></span>
+                </button>
+                <button class="tool-btn sketch-tool-btn" data-sketch-tool="arc" title="Дуга">
+<!--                    <i class="fas fa-arc"></i>-->
+                    <span class="cad-icon icon-arc"></span>
+                </button>
+                <button class="tool-btn sketch-tool-btn" data-sketch-tool="mirror" title="Симметрия">
+<!--                    <i class="fas fa-balance-scale"></i>-->
+                    <span class="cad-icon icon-mirror"></span>
+                </button>
+                <button class="tool-btn" id="sketchDeleteBtn" title="Удалить элемент скетча">
+<!--                    <i class="fas fa-trash"></i>-->
+                    <span class="cad-icon icon-delete"></span>
+                </button>
+                <button class="tool-btn" id="sketchClearBtn" title="Очистить скетч">
+<!--                    <i class="fas fa-broom"></i>-->
+                    <span class="cad-icon icon-clean"></span>
+                </button>
+                <button class="tool-btn" id="toggleSketchGrid" title="Сетка скетча">
+<!--                    <i class="fas fa-th"></i>-->
+                    <span class="cad-icon icon-grid"></span>
+                </button>
+                <button class="tool-btn" id="exitSketchBtn" title="Выйти из режима скетча">
+<!--                    <i class="fas fa-times"></i>-->
+                    <span class="cad-icon icon-exit"></span>
+                </button>
+
+<!--                <button class="sketch-tool-btn" data-sketch-tool="import" title="Импорт">-->
+<!--                    <i class="fa fa-upload"></i>-->
+<!--                </button>-->
+<!--                <button class="sketch-tool-btn" data-sketch-tool="export" title="Экспорт">-->
+<!--                    <i class="fa fa-download"></i>-->
+<!--                </button>-->
+
+
+            </div>
+            <div class="divider"></div>
+        </div>
+
+
+
+
+
+            <!-- Редактирование объектов -->
+            <div class="tool-section">
+                <div class="tool-group">
+                    <button class="tool-btn" data-tool="select" title="Выделение">
+<!--                        <i class="fas fa-mouse-pointer"></i>-->
+                        <span class="cad-icon icon-select"></span>
+                    </button>
+                    <button class="tool-btn" id="extrudeSketch" title="Вытянуть скетч">
+<!--                            <i class="fas fa-arrows-alt-v"></i>-->
+                            <span class="cad-icon icon-extrude"></span>
+                    </button>
+                    <div class="dropdown">
+                        <button class="tool-btn dropdown-toggle" title="Трансформация">
+<!--                            <i class="fas fa-arrows-alt"></i>-->
+                            <span class="cad-icon icon-move"></span>
+                            <i class="fas fa-caret-down"></i>
+                        </button>
+                        <div class="dropdown-menu">
+                            <a href="#"  data-tool="move" title="Перемещение">
+<!--                                <i class="fas fa-arrows-alt"></i>-->
+                                <span class="cad-icon icon-move"></span>Перемещение
+                            </a>
+                            <a href="#"  data-tool="rotate" title="Вращение">
+<!--                                <i class="fas fa-sync-alt"></i>-->
+                                <span class="cad-icon icon-rotate"></span>Вращение
+                            </a>
+                            <a href="#"  data-tool="scale" title="Масштаб">
+<!--                                <i class="fas fa-expand-alt"></i>-->
+                                <span class="cad-icon icon-scale"></span>Масштаб
+                            </a>
+                        </div>
+                    </div>
+
+
+<!--                    <button class="tool-btn" data-tool="move" title="Перемещение">-->
+<!--                        <i class="fas fa-arrows-alt"></i>-->
+<!--                    </button>-->
+<!--                    <button class="tool-btn" data-tool="rotate" title="Вращение">-->
+<!--                        <i class="fas fa-sync-alt"></i>-->
+<!--                    </button>-->
+<!--                    <button class="tool-btn" data-tool="scale" title="Масштаб">-->
+<!--                        <i class="fas fa-expand-alt"></i>-->
+<!--                    </button>-->
+                    <div class="dropdown">
+                        <button class="tool-btn dropdown-toggle" title="Булевы операции">
+                            <span class="cad-icon icon-subtract"></span>
+                            <i class="fas fa-caret-down"></i>
+                        </button>
+                        <div class="dropdown-menu">
+                            <a href="#" id="booleanUnion" title="фигуры объединятся в одну"><span class="cad-icon icon-union"></span>Объединение</a>
+                            <a href="#" id="booleanSubtract" title="из первой фигуры вычитается вторая"><span class="cad-icon icon-subtract" ></span>Вычитание</a>
+                            <a href="#" id="booleanIntersect" title="останется только пересечение двух фигур"><span class="cad-icon icon-intersect"></span>Пересечение</a>
+                        </div>
+                    </div>
+
+
+                    <button class="tool-btn" data-tool="split" title="Разрезать по плоскости (Ctrl+Shift+S)">
+<!--                        <i class="fas fa-cut"></i>-->
+                        <span class="cad-icon icon-split"></span>
+                    </button>
+                    <button class="tool-btn" data-tool="mirror" title="Отражение (Ctrl+Shift+M)">
+<!--                        <i class="fas fa-expand-arrows-alt"></i>-->
+                        <span class="cad-icon icon-mirror"></span>
+                    </button>
+                    <button class="tool-btn" data-tool="group" title="Группировать (Ctrl+G)">
+<!--                        <i class="fas fa-object-group"></i>-->
+                        <span class="cad-icon icon-group"></span>
+                    </button>
+                    <button class="tool-btn" data-tool="ungroup" title="Разгруппировать (Ctrl+Shift+G)">
+<!--                        <i class="fas fa-object-ungroup"></i>-->
+                        <span class="cad-icon icon-ungroup"></span>
+                    </button>
+
+                </div>
+            </div>
+
+
+
+            <div class="divider"></div>
+
+            <!-- Чертеж и булевы операции -->
+            <div class="tool-section">
+                <div class="tool-group">
+
+                    <button class="tool-btn" id="createSketchPlane" title="Создать рабочую плоскость">
+<!--                        <i class="fas fa-square"></i>-->
+                        <span class="cad-icon icon-plane"></span>
+                    </button>
+                    <button class="tool-btn" id="openSketch" title="Чертеж (Скетч)">
+<!--                        <i class="fas fa-drafting-compass"></i>-->
+                        <span class="cad-icon icon-sketch"></span>
+                    </button>
+                    <button class="tool-btn" data-tool="rulerTool" id="rulerTool" title="Линейка (Ctrl+M)">
+<!--                        <i class="fas fa-ruler"></i>-->
+                        <span class="cad-icon icon-ruler"></span>
+                    </button>
+
+
+                </div>
+            </div>
+            <div class="divider"></div>
+
+            <!-- Чертеж и булевы операции -->
+            <div class="tool-section">
+                <div class="tool-group">
+                    <div class="dropdown">
+                        <button class="tool-btn dropdown-toggle" title="Генераторы">
+                            <i class="fas fa-cog"></i>
+                            <i class="fas fa-caret-down"></i>
+                        </button>
+                        <div class="dropdown-menu">
+                            <a href="#" data-tool="gearGenerator" id="gearGenerator" title="Шестерня"><i class="fas fa-cog"></i> Генератор шестерней</a>
+                            <a href="#" data-tool="threadGenerator" id="threadGenerator" title="Резьба"><i class="fas fa-screwdriver"></i> Генератор резьбы</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="divider"></div>
+
+            <!-- Вид -->
+            <div class="tool-section">
+                <div class="tool-group">
+                    <button class="tool-btn" id="toggleGrid" title="Сетка">
+                        <i class="fas fa-th"></i>
+                    </button>
+                    <button class="tool-btn" id="toggleAxes" title="Оси">
+                        <i class="fas fa-crosshairs"></i>
+                    </button>
+                    <button class="tool-btn" id="toggleWireframe" title="Каркас">
+                        <i class="fas fa-border-style"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+        <div class="tool-group">
+            <div class="theme-controls">
+                <div class="dropdown">
+                    <button class="tool-btn dropdown-toggle" title="Настройки окружения">
+                        <i class="fas fa-sun"></i>
+                    </button>
+                    <div class="dropdown-menu">
+                        <div class="dropdown-section">
+                            <h4>Тема</h4>
+                            <div class="theme-options">
+                                <button class="theme-btn" data-theme="dark">
+                                    <i class="fas fa-moon"></i> Тёмная
+                                </button>
+                                <button class="theme-btn" data-theme="light">
+                                    <i class="fas fa-sun"></i> Светлая
+                                </button>
+                                <button class="theme-btn" data-theme="auto">
+                                    <i class="fas fa-adjust"></i> Авто
+                                </button>
+                            </div>
+                        </div>
+                        <div class="dropdown-section">
+                            <h4>Окружение</h4>
+                            <div class="environment-controls">
+                                <div class="color-picker-group">
+                                    <label>Цвет фона:</label>
+                                    <input type="color" id="backgroundColor" value="#1a1a1a">
+                                </div>
+                                <div class="color-picker-group">
+                                    <label>Цвет сетки:</label>
+                                    <input type="color" id="gridColor" value="#999999">
+                                </div>
+                                <button id="resetEnvironment" class="btn-small">
+                                    <i class="fas fa-redo"></i> Сбросить
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <button class="tool-btn" id="aboutBtn" title="О программе">
+                <i class="fas fa-info-circle"></i>
+            </button>
+        </div>
+<!--        <div class="tool-section">-->
+<!--            <div class="tool-group">-->
+<!--                <button class="tool-btn" id="toggleSnap" title="Привязка к сетке (Ctrl+G)">-->
+<!--                    <i class="fas fa-magnet"></i>-->
+<!--                </button>-->
+<!--                <button class="tool-btn" id="dragModeToggle" title="Режим перетаскивания (D)">-->
+<!--                    <i class="fas fa-hand-paper"></i>-->
+<!--                </button>-->
+<!--                <div class="dropdown">-->
+<!--                    <button class="tool-btn dropdown-toggle" title="Настройки перетаскивания">-->
+<!--                        <i class="fas fa-sliders-h"></i>-->
+<!--                        <i class="fas fa-caret-down"></i>-->
+<!--                    </button>-->
+<!--                    <div class="dropdown-menu">-->
+<!--                        <a href="#" id="snap5mm"><i class="fas fa-th"></i> Сетка 5 мм</a>-->
+<!--                        <a href="#" id="snap10mm"><i class="fas fa-th-large"></i> Сетка 10 мм</a>-->
+<!--                        <a href="#" id="snap1mm"><i class="fas fa-border-all"></i> Сетка 1 мм</a>-->
+<!--                        <div class="dropdown-divider"></div>-->
+<!--                        <a href="#" id="toggleDragAxis"><i class="fas fa-arrows-alt-h"></i> Ограничить оси</a>-->
+<!--                    </div>-->
+<!--                </div>-->
+<!--            </div>-->
+<!--        </div>-->
+
+        <div class="project-info">
+            <span id="projectName">Без названия</span>
+            <div class="status" id="status">Готов</div>
+        </div>
+    </div>
+
+    <!-- Основной контент -->
+    <div class="main-container">
+        <div class="viewport-container">
+            <!-- Добавьте этот блок в viewport-container -->
+            <div class="controls-hint">
+                <span>Управление: ЛКМ - выделение, ПКМ - вращение, Колесико - перемещение</span><br>
+                <span>Ctrl+H - привязка к сетке</span>
+            </div>
+            <div id="viewport"></div>
+
+            <!-- Компактные кнопки видов в правом верхнем углу -->
+            <!-- Компактные кнопки видов -->
+                <div class="compact-view-controls">
+                    <div class="view-compass">
+                        <!-- Верхний ряд -->
+                        <div class="view-row top-row">
+                            <button class="view-btn-compact" id="topView" title="Вид сверху">
+                                <i class="fas fa-arrow-up"></i>
+                            </button>
+                        </div>
+
+                        <!-- Средний ряд -->
+                        <div class="view-row middle-row">
+                            <button class="view-btn-compact" id="leftView" title="Вид слева">
+                                <i class="fas fa-arrow-left"></i>
+                            </button>
+                            <button class="view-btn-compact" id="frontView" title="Вид спереди">
+                                <i class="fas fa-arrow-right"></i>
+                            </button>
+                            <button class="view-btn-compact" id="rightView" title="Вид справа">
+                                <i class="fas fa-arrow-right"></i>
+                            </button>
+                        </div>
+
+                        <!-- Нижний ряд -->
+                        <div class="view-row bottom-row">
+                            <button class="view-btn-compact" id="bottomView" title="Вид снизу">
+                                <i class="fas fa-arrow-down"></i>
+                            </button>
+                        </div>
+
+                        <!-- Центральная кнопка -->
+                        <div class="view-center">
+                            <button class="view-btn-compact home-btn" id="homeView" title="Домой">
+                                <i class="fas fa-home"></i>
+                            </button>
+<!--                            <button class="view-btn-compact iso-btn" id="isoView" title="Изометрия">-->
+<!--                                <i class="fas fa-cube"></i>-->
+<!--                            </button>-->
+                        </div>
+                    </div>
+                </div>
+
+            <!-- Координаты -->
+            <div class="coordinates">
+                <span id="coords">X: 0.00, Y: 0.00, Z: 0.00</span>
+            </div>
+        </div>
+
+        <!-- Правая панель свойств -->
+        <div class="properties-panel">
+            <div class="panel-tabs">
+                <button class="panel-tab active" data-tab="library" title="Библиотека">
+                    <i class="fas fa-shapes"></i>
+                </button>
+                <button class="panel-tab " data-tab="properties" title="Свойства">
+                    <i class="fas fa-sliders-h"></i>
+                </button>
+                <button class="panel-tab" data-tab="scene" title="Объекты">
+                    <i class="fas fa-layer-group"></i>
+                </button>
+                <button class="panel-tab" data-tab="history" title="История">
+                    <i class="fas fa-history"></i>
+                </button>
+            </div>
+
+            <div class="panel-content active" id="libraryContent">
+                <h3><i class="fas fa-shapes"></i> Библиотека моделей</h3>
+
+                <div class="library-controls">
+                    <div class="search-box">
+                        <input type="text" id="librarySearch" placeholder="Поиск примитивов...">
+                        <i class="fas fa-search"></i>
+                    </div>
+                    <div class="filter-tabs">
+                        <button class="filter-btn active" data-filter="all">Все</button>
+                        <button class="filter-btn" data-filter="primitive">Примитивы</button>
+                        <button class="filter-btn" data-filter="models">STL модели</button>
+                    </div>
+                </div>
+
+                <div class="library-grid" id="libraryGrid">
+                    <!-- Библиотечные элементы будут добавляться здесь -->
+                </div>
+
+                <div class="library-info">
+                    <p><i class="fas fa-info-circle"></i> Перетащите элемент в 3D окно для создания</p>
+                </div>
+            </div>
+
+
+            <div class="panel-content" id="propertiesContent">
+                <!-- Группа центрирования - всегда видна при выделении -->
+                <div class="property-group" data-type="center" style="display: none;">
+                    <h4><i class="fas fa-bullseye"></i> Центрирование</h4>
+                    <div class="property-row center-buttons">
+                        <button id="centerX" class="btn-small" title="Центрировать по X" >
+                            <i class="fas fa-arrows-alt-h"></i> X
+                        </button>
+                        <button id="centerY" class="btn-small" title="Центрировать по Y" >
+                            <i class="fas fa-arrows-alt-v"></i> Y
+                        </button>
+                        <button id="centerZ" class="btn-small" title="Центрировать по Z" >
+                            <i class="fas fa-arrows-alt"></i> Z
+                        </button>
+                        <button id="centerAll" class="btn-small" title="Центрировать по всем осям" >
+                            <i class="fas fa-bullseye"></i> Все
+                        </button>
+                    </div>
+                </div>
+
+
+
+                <!-- Группа внешнего вида -->
+                <div class="property-group" data-type="appearance" style="display: none;">
+                    <h4><i class="fas fa-palette"></i> Внешний вид</h4>
+                    <div class="property-row">
+                        <label>Цвет:</label>
+                        <input type="color" id="objectColor" value="#00c853" disabled>
+                    </div>
+                    <div class="property-row">
+                        <label>Прозрачность:</label>
+                        <input type="range" id="objectOpacity" min="0" max="1" step="0.1" value="0.8" disabled>
+                    </div>
+                </div>
+            </div>
+
+
+            <div class="panel-content" id="sceneContent">
+                <h3><i class="fas fa-cubes"></i> Объекты в сцене</h3>
+                <div class="scene-list" id="sceneList">
+                    <!-- Объекты будут здесь -->
+                </div>
+                <div class="scene-stats">
+                    <div class="stat-item">
+                        <span class="stat-label">Объектов:</span>
+                        <span class="stat-value" id="objectCount">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Вершин:</span>
+                        <span class="stat-value" id="vertexCount">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Полигонов:</span>
+                        <span class="stat-value" id="faceCount">0</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel-content" id="historyContent">
+                <h3><i class="fas fa-history"></i> История действий</h3>
+                <div class="history-list" id="historyList">
+                    <!-- История будет здесь -->
+                </div>
+                <div class="history-controls">
+                    <button id="clearHistory" class="btn-small">
+                        <i class="fas fa-trash"></i> Очистить
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+
+    <!-- Модальные окна -->
+    <div id="exportModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-download"></i> Экспорт модели</h3>
+                <button class="close-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="modal-section">
+                    <label>Название файла:</label>
+                    <input type="text" id="exportFileName" value="модель" class="modal-input">
+                </div>
+                <div class="modal-section">
+                    <label>Формат:</label>
+                    <select id="exportFormat" class="modal-select">
+                        <option value="stl">STL (бинарный)</option>
+                        <option value="stl-ascii">STL (текстовый)</option>
+                        <option value="json">JSON проект</option>
+                    </select>
+                </div>
+                <div class="modal-section">
+                    <label>
+                        <input type="checkbox" id="exportSelected" checked>
+                        Только выделенные объекты
+                    </label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="cancelExport" class="btn-secondary">Отмена</button>
+                <button id="confirmExport" class="btn-primary">Экспорт</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно сохранения -->
+    <div id="saveModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-save"></i> Сохранить проект</h3>
+                <button class="close-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="modal-section">
+                    <label>Название проекта:</label>
+                    <input type="text" id="projectNameInput" value="Без названия" class="modal-input">
+                </div>
+                <div class="modal-section">
+                    <label>Описание:</label>
+                    <textarea id="projectDescription" rows="3" class="modal-input" placeholder="Описание проекта"></textarea>
+                </div>
+                <div class="modal-section">
+                    <label>Сохраненные проекты:</label>
+                    <div id="savedProjects" class="projects-list">
+                        <!-- Список проектов -->
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="cancelSave" class="btn-secondary">Отмена</button>
+                <button id="confirmSave" class="btn-primary">Сохранить</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Статус бар -->
+    <div class="status-bar">
+        <div class="status-left">
+            <span id="modeIndicator"><i class="fas fa-mouse-pointer"></i> Режим: Выделение</span>
+            <span class="separator">|</span>
+            <span id="selectedInfo">Выбрано: 0</span>
+        </div>
+        <div class="status-right">
+            <span id="fpsCounter"><i class="fas fa-tachometer-alt"></i> FPS: 60</span>
+            <span class="separator">|</span>
+            <span id="memoryUsage"><i class="fas fa-memory"></i> Память: --</span>
+            <span id="version"><i class="fas fa-memory"></i> Версия: --</span>
+        </div>
+    </div>
+
+
+    <!-- Модальное окно "О программе" -->
+    <div id="aboutModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-info-circle"></i> О программе</h3>
+                <button class="close-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="modal-section">
+                    <h4>КонтрБагCAD</h4>
+                    <p><strong>Версия:</strong> 0.5.0</p>
+                    <p><strong>Разработчик:</strong>© 2025 КонтрБагТех, Лунев Валерий Константинович</p>
+                    <p><strong>Описание:</strong><br> Простой 3D САПР редактор для работы с примитивами и чертежами.
+                        <br>Разработан как доступная альтернатива TinkerCAD и Fusion360<br>
+
+                    </p>
+
+                    <p><strong>Технологии:</strong> Three.js, three-bvh-csg, JavaScript, HTML5, CSS3</p>
+                    <br>
+                    <p>За актуальной информацией следите в Telegramm канале</p>
+                    <p><strong>Tg:</strong><a href="https://t.me/KontrBugTech">t.me/KontrBugTech</a> </p>
+                    <p><strong>ВК:</strong><a href="https://vk.com/kontrbugtech">КонтрБагТех</a> </p>
+                    <p><strong>Оф. сайт:</strong> <a href="https://www.КонтрБагТех.рф">КонтрБагТех.рф</a> </p>
+                    <br><hr>
+                    <p><strong>Обратите внимание! Редактор находится на стадии активной разработки, и не все функции работают в полной мере. Но ваше тестирование поможет улучшить его работу. Буду благодарен за обратную связь, сообщения об ошибках и предложения по развитию.</strong></p>
+
+                </div>
+
+<!--                <div class="modal-section">-->
+<!--                    <h4>Горячие клавиши</h4>-->
+<!--                    <ul style="margin-left: 20px; color: var(&#45;&#45;text-secondary);">-->
+<!--                        <li>Ctrl+Z - Отменить</li>-->
+<!--                        <li>Ctrl+Y - Повторить</li>-->
+<!--                        <li>Delete - Удалить</li>-->
+<!--                        <li>Ctrl+S - Сохранить</li>-->
+<!--                        <li>H - Вид домой</li>-->
+<!--                        <li>F - Вид спереди</li>-->
+<!--                    </ul>-->
+<!--                </div>-->
+            </div>
+            <div class="modal-footer" style="justify-content: center;">
+                 <p><strong>© 2026 КонтрБагТех</strong></p>
+            </div>
+        </div>
+    </div>
+
+
+
+    <!-- Библиотеки -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/exporters/STLExporter.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tween.js/18.6.4/tween.umd.js"></script>
+<!--    шрифты-->
+    <script src="https://cdn.jsdelivr.net/npm/opentype.js@1.3.4/dist/opentype.min.js"></script>
+<!--    <script src="https://unpkg.com/three-mesh-bvh@0.6.0/build/index.module.js"></script>-->
+<!--    <script src="https://unpkg.com/three-bvh-csg@0.0.16/build/index.module.js"></script>-->
+<!--    <script src="lib/three-mesh-bvh@0.6.0"></script>-->
+<!--    <script src="lib/three-bvh-csg@0.0.16"></script>-->
+
+    <script type="module">
+        // Импортируем всю библиотеку как модуль
+        import * as THREE_BVH_CSG from 'https://cdn.jsdelivr.net/npm/three-bvh-csg@0.0.16/+esm';
+        // Делаем её доступной глобально под привычным именем
+        window.THREE_BVH_CSG = THREE_BVH_CSG;
+        console.log('Библиотека THREE_BVH_CSG загружена через модуль и назначена на window', window.THREE_BVH_CSG);
+    </script>
+
+    <script src="js/history.js"></script>
+
+
+    <script src="js/operations.js"></script>
+    <script src="js/storage.js"></script>
+    <script src="js/transforms.js"></script>
+    <script src="js/library-manager.js"></script>
+    <script src="js/font-manager.js"></script>
+
+    <!-- Новые менеджеры -->
+
+    <script src="js/objects-manager.js"></script>
+    <script src="js/planes-manager.js"></script>
+
+    <script src="js/FigureNode.js"></script>
+    <script src="js/FigureManager.js"></script>
+    <script src="js/extrude-manager.js"></script>
+    <script src="js/project-manager.js"></script>
+    <script src="js/drag-manager.js"></script>
+
+<!--    инструменты-->
+
+    <script src="js/tools/gear-generator.js"></script>
+    <script src="js/tools/thread-generator.js"></script>
+
+    <script src="js/tools/tool.js"></script>
+    <script src="js/tools/tool-manager.js"></script>
+    <script src="js/tools/select-tool.js"></script>
+    <script src="js/tools/transform-tool-base.js"></script>
+    <script src="js/tools/move-tool.js"></script>
+    <script src="js/tools/rotate-tool.js"></script>
+    <script src="js/tools/scale-tool.js"></script>
+
+    <script src="js/tools/extrude-tool.js"></script>
+    <script src="js/tools/workplane-tool.js"></script>
+    <script src="js/tools/gear-tool.js"></script>
+    <script src="js/tools/thread-tool.js"></script>
+    <script src="js/tools/ruler-tool.js"></script>
+    <script src="js/tools/boolean-tool.js"></script>
+    <script src="js/tools/split-tool.js"></script>
+    <script src="js/tools/mirror-tool.js"></script>
+    <script src="js/tools/ungroup-tool.js"></script>
+    <script src="js/tools/group-tool.js"></script>
+
+<!--    скетч-->
+
+    <script src="js/tools/sketch/snap-helper.js"></script>
+    <script src="js/tools/sketch/contour-detector.js"></script>
+    <script src="js/tools/sketch/OptimizedContourDetector.js"></script>
+    <script src="js/tools/sketch/sketch-tool-base.js"></script>
+    <script src="js/tools/sketch/sketch-utils.js"></script>
+<!--    инструменты-->
+    <script src="js/tools/sketch/sketch-tools/circle-tool.js"></script>
+    <script src="js/tools/sketch/sketch-tools/line-tool.js"></script>
+    <script src="js/tools/sketch/sketch-tools/curve-tool.js"></script>
+    <script src="js/tools/sketch/sketch-tools/polygon-tool.js"></script>
+    <script src="js/tools/sketch/sketch-tools/polyline-tool.js"></script>
+    <script src="js/tools/sketch/sketch-tools/rectangle-tool.js"></script>
+    <script src="js/tools/sketch/sketch-tools/select-tool.js"></script>
+    <script src="js/tools/sketch/sketch-tools/text-tool.js"></script>
+    <script src="js/tools/sketch/sketch-tools/mirror-tool.js"></script>
+    <script src="js/tools/sketch/sketch-tools/oval-tool.js"></script>
+    <script src="js/tools/sketch/sketch-tools/stadium-tool.js"></script>
+    <script src="js/tools/sketch/sketch-tools/arc-tool.js"></script>
+    <script src="js/tools/sketch/sketch-tools/import-tool.js"></script>
+    <script src="js/tools/sketch/sketch-tools/export-tool.js"></script>
+
+    <script src="js/tools/sketch/sketch-manager.js"></script>
+    <script src="js/tools/sketch/sketch-tool.js"></script>
+
+
+
+    <script src="js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,1 @@
+class GearExecutor extends ParametricExecutor{constructor(e){super(),this.editor=e}execute(e,r){const t=e.parameters,u=this.editor.gearGenerator.createGear(t);if(!u)throw new Error("GearExecutor: не удалось создать шестерню");return e.outputs.length>0?u.uuid=e.outputs[0]:e.outputs=[u.uuid],u}}
