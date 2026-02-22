@@ -1,0 +1,1 @@
+class ChangeVisibilityExecutor extends ParametricExecutor{execute(e,t){const{target:i,visible:r}=e.parameters,a=t.objectMap.get(i);if(!a)throw new Error(`ChangeVisibilityExecutor: объект с UUID ${i} не найден`);return a.visible=r,[]}}
