@@ -1863,6 +1863,7 @@ input:checked + .toggle-slider:before {
 
 .distance-input-container,
 .drag-input-container-x,
+.drag-input-container-y,
 .drag-input-container-z
 {
     position: absolute;
@@ -1877,6 +1878,7 @@ input:checked + .toggle-slider:before {
 
 .distance-input-container input,
 .drag-input-container-x input,
+.drag-input-container-y input,
 .drag-input-container-z input
 {
     width: 80px;
