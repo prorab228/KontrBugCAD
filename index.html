@@ -362,6 +362,18 @@
                                     </div>
 
                                 </div>
+                                <!-- В модальном окне настроек добавьте: -->
+                                <div class="dropdown-section">
+                                    <h4>Язык / Language</h4>
+                                    <div class="language-options">
+                                        <select id="languageSelect" class="modal-select">
+                                            <option value="ru">Русский</option>
+                                            <option value="en">English</option>
+<!--                                            <option value="es">Español</option>-->
+                                            <!-- Добавьте другие языки -->
+                                        </select>
+                                    </div>
+                                </div>
                                 <div class="dropdown-section">
                                     <h4>Тема</h4>
                                     <div class="theme-options">
@@ -833,6 +845,9 @@
     <script src="js/parametric/executors/RepairExecutor.js"></script>
     <script src="js/parametric/executors/DecimateExecutor.js"></script>
     <script src="js/parametric/executors/FilletChamferExecutor.js"></script>
+    <script src="js/parametric/executors/ChangeOpacityExecutor.js"></script>
+    <script src="js/parametric/executors/ChangeColorExecutor.js"></script>
+
 
     <script src="js/parametric/executors/GearExecutor.js"></script>
     <script src="js/parametric/executors/ThreadExecutor.js"></script>
@@ -930,7 +945,7 @@
 
     <script src="js/tools/sketch/sketch-manager.js"></script>
     <script src="js/tools/sketch/sketch-tool.js"></script>
-
+    <script src="js/ui/translator.js"></script>
     <script src="js/app.js"></script>
 
 
