@@ -12,6 +12,8 @@
     --primary-light: #02c852;
     --secondary-color: #2979ff;
 
+     --a-color: #02c852;;
+
     /* Фоны */
     --bg-primary: #1e1e1e;
     --bg-secondary: #2d2d2d;
@@ -276,7 +278,12 @@ body.dark-theme {
 }
 
 
-
+a {
+    color: var(--a-color);
+}
+a:hover {
+    color: var(--text-secondary);
+}
 
 /* ========== Навигация ========== */
 .navbar {
