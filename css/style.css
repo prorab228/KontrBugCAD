@@ -587,6 +587,19 @@ body.dark-theme {
     margin-left: 4px;
 }
 
+.dropdown-menu {
+    display: none;
+    position: fixed;          /* обязательно fixed, а не absolute */
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-primary);
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow-lg);
+    z-index: 99999;
+    min-width: 180px;
+    overflow: hidden;
+    /* top и left не задаём – они будут установлены скриптом */
+}
+/*
 .dropdown-menu,
 .context-menu,
 .object-context-menu {
@@ -600,10 +613,10 @@ body.dark-theme {
     min-width: 180px;
     overflow: hidden;
 }
-
+/*
 .dropdown:hover .dropdown-menu {
     display: block;
-}
+}*/
 
 .context-menu,
 .object-context-menu {

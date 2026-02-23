@@ -255,7 +255,7 @@
 /* Для очень маленьких экранов (телефоны) */
 @media (max-width: 768px) {
     .properties-panel {
-        width: 140px;
+        width: 100px;
 
 
     }
@@ -264,20 +264,36 @@
         display: none;
     }
 
+    .panel-content
+    {
+            padding: 6px;
+    }
+
     .library-item
     {
-        width: 100px;
+        width: 80px;
+    }
+
+    .library-item-img
+    {
+        width: 50px;
     }
     .library-grid
     {
         scrollbar-width: none;
         max-height: 75%;
+        gap: 0;
+        padding: 0;
+        margin: 0;
     }
     .library-info, .status-left
     {
         display:none;
     }
-
+    .dropdown:hover .dropdown-menu
+    {
+      /*  right: 10px;*/
+    }
 
 
 
