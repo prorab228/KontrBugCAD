@@ -255,7 +255,7 @@
 /* Для очень маленьких экранов (телефоны) */
 @media (max-width: 768px) {
     .properties-panel {
-        width: 100px;
+        width: 150px;
 
 
     }
@@ -271,12 +271,12 @@
 
     .library-item
     {
-        width: 80px;
+        width: 125px;
     }
 
     .library-item-img
     {
-        width: 50px;
+        width: 80px;
     }
     .library-grid
     {
