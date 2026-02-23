@@ -9,7 +9,7 @@
     /* Основные цвета - темная тема по умолчанию */
     --primary-color: #00c853;
     --primary-dark: #009624;
-    --primary-light: #5efc82;
+    --primary-light: #02c852;
     --secondary-color: #2979ff;
 
     /* Фоны */
@@ -1579,7 +1579,7 @@ input:checked + .toggle-slider:before {
         font-size: 12px;
     }
 }
-
+/*
 @media (max-width: 480px) {
     .logo i {
         margin-right: 0;
@@ -1608,7 +1608,7 @@ input:checked + .toggle-slider:before {
         display: none;
     }
 }
-
+*/
 /* Специфичные стили для браузеров */
 @supports (-webkit-touch-callout: none) {
     .tool-btn {
@@ -1714,8 +1714,8 @@ input:checked + .toggle-slider:before {
 }
 
 .filter-btn.active {
-    background: #00c853;
-    border-color: #00c853;
+    background: var(--primary-light);
+    border-color: var(--primary-light);
     color: white;
 }
 

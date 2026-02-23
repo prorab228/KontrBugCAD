@@ -134,6 +134,10 @@
         font-size: 12px;
         padding: 4px 10px;
         min-width: 60px;
+        opacity: 0.5;
+        top: 60px;
+        left: 10px;
+        right: auto;
     }
 
     .properties-panel {
@@ -215,9 +219,6 @@
 
 /* Для мобильных устройств и планшетов */
 @media (max-width: 992px) {
-    .project-info {
-        display: none;
-    }
 
     .tool-btn {
         width: 30px;
@@ -232,14 +233,12 @@
     }
 
     .toolbar-container {
-        justify-content: center;
+      /*  justify-content: center;*/
     }
 
     .status-bar {
         flex-direction: column;
         height: auto;
-        padding: 8px;
-        gap: 5px;
     }
 
     .status-left, .status-right {
@@ -260,6 +259,27 @@
 
 
     }
+
+    #projectName {
+        display: none;
+    }
+
+    .library-item
+    {
+        width: 100px;
+    }
+    .library-grid
+    {
+        scrollbar-width: none;
+        max-height: 75%;
+    }
+    .library-info, .status-left
+    {
+        display:none;
+    }
+
+
+
 
      .tool-btn {
         width: 30px;
