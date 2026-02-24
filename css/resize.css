@@ -92,6 +92,7 @@
 }
 
 /* Для маленьких экранов (ширина < 1200px) */
+
 @media (max-width: 1200px) {
     :root {
         --toolbar-height: 48px;
@@ -228,7 +229,7 @@
 
     .navbar {
         padding: 0;
-        height:70px;
+        height:60px;
     }
 
     .logo {
@@ -236,8 +237,8 @@
     }
 
     .tool-btn {
-        width: 50px;
-        height: 50px;
+        width: 40px;
+        height: 40px;
         font-size: 10px;
     }
 
