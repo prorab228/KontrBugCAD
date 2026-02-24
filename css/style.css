@@ -447,19 +447,7 @@ a:hover {
   right: 10px;
 }
 
-.controls-hint {
-  position: absolute;
-  bottom: 10px;
-  right: 350px;
-  background: rgba(0, 0, 0, 0.7);
-  color: white;
-  padding: 10px 15px;
-  border-radius: 8px;
-  font-size: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  z-index: 100;
-  max-width: 300px;
-}
+
 
 /* Контейнер для тулбара */
 .toolbar-container {
@@ -747,10 +735,70 @@ a:hover {
     right: calc(-1 * var(--panel-width));
 }
 
-/* Когда панель открыта, кнопка смещается влево на её ширину */
-.properties-panel:not(.hidden) + .panel-toggle-btn {
+/* Контейнер для правых элементов (подсказка и кнопка) */
+.right-panel-elements {
+    position: absolute;
+    top: 0;
+    right: 0;
+    height: 100%;          /* занимает всю высоту родителя */
+    width: auto;
+    pointer-events: none;  /* чтобы клики проходили сквозь пустые области */
+    z-index: 20;
+    transition: right 0.2s ease;
+}
+
+/* Дочерние элементы должны быть кликабельны */
+.right-panel-elements .controls-hint,
+.right-panel-elements .panel-toggle-btn {
+    pointer-events: auto;
+}
+
+/* Кнопка переключения панели – по центру */
+.panel-toggle-btn {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    right: 0;               /* будет сдвигаться вместе с контейнером */
+    width: 32px;
+    height: 40px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-primary);
+    border-radius: 4px 0 0 4px;
+    color: var(--text-primary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    padding: 0;
+    margin: 0;
+}
+
+.panel-toggle-btn:hover {
+    background: var(--primary-color);
+}
+
+/* Подсказка – внизу, на 20px от нижнего края */
+.controls-hint {
+    position: absolute;
+    bottom: 20px;
+    right: 20px;
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    padding: 10px 15px;
+    border-radius: 8px;
+    font-size: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    width: 300px;
+
+}
+
+/* Сдвиг всего контейнера при открытой панели */
+.properties-panel:not(.hidden) + .right-panel-elements {
     right: var(--panel-width);
 }
+
+
 
 /* Вьюпорт всегда занимает всю ширину */
 .viewport-container {
@@ -1621,26 +1669,7 @@ input:checked + .toggle-slider:before {
     }
 }
 
-@media (max-width: 992px) {
-    .logo span {
-        display: none;
-    }
 
-    .toolbar-container {
-        padding-left: 0;
-    }
-
-
-
-    .sketch-modal {
-        width: 98%;
-        max-width: 98%;
-    }
-
-    .compact-view-controls {
-        display: none;
-    }
-}
 
 @media (max-width: 768px) {
     .navbar {

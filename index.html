@@ -445,11 +445,6 @@
     <!-- Основной контент -->
     <div class="main-container">
         <div class="viewport-container">
-            <div class="controls-hint">
-                <span>Управление: ЛКМ - выделение, ПКМ - вращение, Колесико - перемещение камеры</span><br>
-                <span>S - масштабирование</span>
-                <span>R - вращение</span>
-            </div>
             <div id="viewport"></div>
 
             <!-- Компактные кнопки видов -->
@@ -607,9 +602,15 @@
                 </div>
             </div>
         </div>
-         <button class="panel-toggle-btn" id="togglePanelBtn">
-            <i class="fas fa-chevron-right"></i>
-        </button>
+        <div class="right-panel-elements">
+            <div class="controls-hint">
+                Управление: ЛКМ - выделение, ПКМ - вращение, Колесико - перемещение камеры S - масштабирование R - вращение<br>
+            </div>
+             <button class="panel-toggle-btn" id="togglePanelBtn">
+                <i class="fas fa-chevron-right"></i>
+            </button>
+        </div>
+
     </div>
 
     <!-- Модальные окна -->

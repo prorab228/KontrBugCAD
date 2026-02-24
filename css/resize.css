@@ -206,6 +206,24 @@
 */
 /* Для мобильных устройств и планшетов */
 @media (max-width: 992px) {
+    .logo span {
+        display: none;
+    }
+
+    .toolbar-container {
+        padding-left: 0;
+    }
+
+
+
+    .sketch-modal {
+        width: 98%;
+        max-width: 98%;
+    }
+
+    .compact-view-controls {
+        display: none;
+    }
 
     :root {
         --toolbar-height: 50px;
@@ -266,12 +284,14 @@
         display:none;
     }
 
+    .scene-item .scene-item-name,.scene-item .fas {
+        font-size: 12px;
+    }
+
     /* Когда панель открыта, кнопка смещается влево на её ширину */
     .properties-panel:not(.hidden) + .panel-toggle-btn {
         right: var(--panel-width);
     }
-
-
 
     .panel-content
     {
