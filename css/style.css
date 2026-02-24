@@ -390,7 +390,6 @@ a:hover {
 }
 
 .history-item-actions {
-    opacity: 0;
     transition: opacity 0.2s;
     padding: 0 5px;
 }
