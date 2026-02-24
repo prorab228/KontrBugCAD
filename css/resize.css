@@ -130,15 +130,7 @@
         max-width: 150px;
     }
 
-    .status {
-        font-size: 12px;
-        padding: 4px 10px;
-        min-width: 60px;
-        opacity: 0.5;
-        top: 60px;
-        left: 10px;
-        right: auto;
-    }
+
 
     .properties-panel {
         width: var(--panel-width);
@@ -160,15 +152,11 @@
         font-size: 12px;
     }
 
-    .controls-hint {
-        font-size: 11px;
-        padding: 8px 12px;
-        max-width: 250px;
-        bottom: 50px;
-    }
+
 }
 
 /* Для экранов с высотой < 700px */
+/*
 @media (max-height: 700px) {
     :root {
         --toolbar-height: 46px;
@@ -197,9 +185,7 @@
     }
 
     .controls-hint {
-        bottom: 40px;
-        font-size: 10px;
-        padding: 6px 10px;
+        display:none;
     }
 
     .coordinates {
@@ -216,24 +202,91 @@
         padding: 12px;
     }
 }
-
+*/
 /* Для мобильных устройств и планшетов */
 @media (max-width: 992px) {
 
+    :root {
+        --toolbar-height: 50px;
+        --panel-width: 150px;
+        --border-radius: 5px;
+    }
+
+    .status {
+        font-size: 12px;
+        padding: 4px 10px;
+        min-width: 60px;
+        opacity: 0.5;
+        top: 80px;
+        left: 10px;
+        right: auto;
+    }
+
+    #projectName {
+        display: none;
+    }
+
+    .navbar {
+        padding: 0;
+        height:70px;
+    }
+
+    .logo {
+        padding:0;
+    }
+
     .tool-btn {
-        width: 30px;
-        height: 30px;
+        width: 50px;
+        height: 50px;
         font-size: 10px;
     }
 
-
-    .tool-btn .cad-icon {
-        width: 15px;
-        height: 15px;
+    .tool-btn .cad-icon, .tool-btn .fas {
+        width: 20px;
+        height: 20px;
+        font-size: 16px;
+    }
+    .toolbar-container {
+        gap: 0;
     }
 
-    .toolbar-container {
-      /*  justify-content: center;*/
+    .tool-section, divider {
+        padding: 0;
+    }
+    .project-info {
+        padding:0;
+    }
+
+    #settings.hidden {
+        display: none;
+    }
+
+    .controls-hint {
+        display:none;
+    }
+
+    /* Когда панель открыта, кнопка смещается влево на её ширину */
+    .properties-panel:not(.hidden) + .panel-toggle-btn {
+        right: var(--panel-width);
+    }
+
+
+
+    .panel-content
+    {
+      padding: 6px;
+    }
+
+    .library-grid
+    {
+        scrollbar-width: none;
+        gap: 0;
+        padding: 0;
+        margin: 0;
+    }
+    .library-info, .status-left
+    {
+        display:none;
     }
 
     .status-bar {
@@ -252,83 +305,8 @@
     }
 }
 
-/* Для очень маленьких экранов (телефоны) */
-@media (max-width: 768px) {
-    .properties-panel {
-        width: 150px;
 
 
-    }
-
-    #projectName {
-        display: none;
-    }
-
-    .panel-content
-    {
-            padding: 6px;
-    }
-
-    .library-item
-    {
-        width: 125px;
-    }
-
-    .library-item-img
-    {
-        width: 80px;
-    }
-    .library-grid
-    {
-        scrollbar-width: none;
-        max-height: 75%;
-        gap: 0;
-        padding: 0;
-        margin: 0;
-    }
-    .library-info, .status-left
-    {
-        display:none;
-    }
-    .dropdown:hover .dropdown-menu
-    {
-      /*  right: 10px;*/
-    }
-
-
-
-     .tool-btn {
-        width: 30px;
-        height: 30px;
-    }
-
-
-    .tool-btn .cad-icon {
-        width: 15px;
-        height: 15px;
-    }
-
-
-
-    .modal-content {
-        width: 95%;
-        max-height: 85vh;
-    }
-}
-
-/* Компактный режим для скетч - инструментов на маленьких экранах */
-@media (max-width: 1400px) {
-    .sketch-tool-btn {
-        width: 30px;
-        height: 30px;
-        font-size: 14px;
-    }
-
-    .sketch-tool-btn .cad-icon {
-        width: 15px;
-        height: 15px;
-    }
-}
 
 /* Уменьшение шрифтов для лучшего восприятия при масштабировании */
 @media screen and (min-resolution: 120dpi) {
