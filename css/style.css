@@ -950,12 +950,12 @@ a:hover {
 
 
 
-#performOperation:disabled {
+.btn-primary:disabled {
     opacity: 0.5;
     cursor: not-allowed;
 }
 
-#performOperation:not(:disabled) {
+.btn-primary:not(:disabled) {
     background: linear-gradient(135deg, #4CAF50, #45a049);
 }
 
