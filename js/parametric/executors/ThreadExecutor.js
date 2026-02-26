@@ -1,1 +1,0 @@
-class ThreadExecutor extends ParametricExecutor{constructor(t){super(),this.editor=t}execute(t,e){const r=t.parameters,u=this.editor.threadGenerator.createThread(r);if(!u)throw new Error("ThreadExecutor: не удалось создать резьбу");return t.outputs.length>0?u.uuid=t.outputs[0]:t.outputs=[u.uuid],u}}

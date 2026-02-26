@@ -1,0 +1,1 @@
+import{ParametricExecutor}from"./ParametricExecutor.js";export class RotateExecutor extends ParametricExecutor{execute(r,t){const{target:e,rotation:o}=r.parameters,a=t.objectMap.get(e);if(!a)throw new Error(`Rotate: объект ${e} не найден`);return 4===o.length?a.quaternion.fromArray(o):3===o.length&&a.rotation.fromArray(o),null}}

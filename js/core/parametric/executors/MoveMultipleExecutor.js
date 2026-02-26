@@ -1,0 +1,1 @@
+import*as THREE from"three";import{ParametricExecutor}from"./ParametricExecutor.js";export class MoveMultipleExecutor extends ParametricExecutor{execute(r,t){const{objects:e}=r.parameters;for(const r of e){const e=t.objectMap.get(r.uuid);e&&e.position.fromArray(r.position)}return null}}

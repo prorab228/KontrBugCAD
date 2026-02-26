@@ -4,9 +4,46 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>КонтрБагCAD - 3D САПР online</title>
+
+<!--   <script type="importmap">-->
+<!--        {-->
+
+<!--            "imports": {-->
+<!--                "three": "https://www.unpkg.com/three@0.182.0/build/three.module.js",-->
+<!--                "three/addons/": "https://www.unpkg.com/three@0.182.0/examples/jsm/",-->
+<!--                "@tweenjs/tween.js": "https://www.unpkg.com/@tweenjs/tween.js@18.6.4/dist/tween.esm.js",-->
+<!--                "opentype.js": "https://cdn.jsdelivr.net/npm/opentype.js@1.3.4/dist/opentype.module.js",-->
+<!--                "clipper-lib": "https://cdn.jsdelivr.net/npm/clipper-lib@6.4.2/clipper.js",-->
+<!--                "fflate": "https://unpkg.com/fflate@0.8.2/esm/browser.js",-->
+<!--                "jszip": "https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"-->
+<!--            }-->
+<!--        }-->
+<!--    </script>-->
+
+    <script type="importmap">
+        {
+
+            "imports": {
+                "three": "/lib/three@0.182.0/build/three.module.js",
+                "three/addons/": "/lib/three@0.182.0/examples/jsm/",
+                "@tweenjs/tween.js": "/lib/tween.esm.js",
+                "opentype.js": "/lib/opentype.module.js",
+                "clipper-lib": "/lib/clipper.js",
+                "fflate": "/lib/browser.js",
+                "jszip": "/lib/jszip.min.js"
+            }
+        }
+    </script>
+
+    <script type="module" src="js/app.js"></script>
+    <script src="lib/clipper.js"></script>
+    <script src="js/utils/hollow-text-helper.js"></script>
+    <script src="js/ui/ui-manager.js"></script>
+
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/sketch-extended.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<!--    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">-->
+    <link rel="stylesheet" href="lib/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="css/icons.css">
     <link rel="stylesheet" href="css/resize.css">
     <link rel="icon" href="css/favicon.ico" type="image/x-icon">
@@ -152,13 +189,13 @@
                                 <i class="fas fa-caret-down"></i>
                             </button>
                             <div class="dropdown-menu">
-                                <a href="#" id="booleanUnion" title="фигуры объединятся в одну">
+                                <a href="#" data-tool="boolean-union"  title="фигуры объединятся в одну">
                                     <span class="cad-icon icon-union"></span> Объединение
                                 </a>
-                                <a href="#" id="booleanSubtract" title="из первой фигуры вычитается вторая">
+                                <a href="#" data-tool="boolean-subtract"  title="из первой фигуры вычитается вторая">
                                     <span class="cad-icon icon-subtract"></span> Вычитание
                                 </a>
-                                <a href="#" id="booleanIntersect" title="останется только пересечение двух фигур">
+                                <a href="#" data-tool="boolean-intersect"  title="останется только пересечение двух фигур">
                                     <span class="cad-icon icon-intersect"></span> Пересечение
                                 </a>
                                 <a href="#" data-tool="repair" title="Ремонт геометрии">
@@ -444,50 +481,6 @@
     <div class="main-container">
         <div class="viewport-container">
             <div id="viewport"></div>
-
-            <!-- Компактные кнопки видов -->
-<!--            <div class="compact-view-controls">-->
-<!--                <div class="view-compass">-->
-<!--                    <div class="view-row top-row">-->
-<!--                        <button class="view-btn-compact" id="topView" title="Вид сверху">-->
-<!--                            <i class="fas fa-arrow-up"></i>-->
-<!--                        </button>-->
-<!--                    </div>-->
-<!--                    <div class="view-row middle-row">-->
-<!--                        <button class="view-btn-compact" id="leftView" title="Вид слева">-->
-<!--                            <i class="fas fa-arrow-left"></i>-->
-<!--                        </button>-->
-<!--                        <button class="view-btn-compact" id="frontView" title="Вид спереди">-->
-<!--                            <i class="fas fa-arrow-right"></i>-->
-<!--                        </button>-->
-<!--                        <button class="view-btn-compact" id="rightView" title="Вид справа">-->
-<!--                            <i class="fas fa-arrow-right"></i>-->
-<!--                        </button>-->
-<!--                    </div>-->
-<!--                    <div class="view-row bottom-row">-->
-<!--                        <button class="view-btn-compact" id="bottomView" title="Вид снизу">-->
-<!--                            <i class="fas fa-arrow-down"></i>-->
-<!--                        </button>-->
-
-<!--                    </div>-->
-<!--                    <div class="view-center">-->
-<!--                        <button class="view-btn-compact home-btn" id="homeView" title="Домой">-->
-<!--                            <i class="fas fa-home"></i>-->
-<!--                        </button>-->
-<!--                    </div>-->
-
-
-<!--                </div>-->
-<!--                <div class="projection-controls">-->
-<!--                    <button class="view-btn-compact" id="perspectiveView" title="Перспективная проекция">-->
-<!--                        <i class="fas fa-cube"></i>-->
-<!--                    </button>-->
-<!--                    <button class="view-btn-compact" id="orthographicView" title="Ортографическая проекция">-->
-<!--                        <i class="fas fa-vector-square"></i>-->
-<!--                    </button>-->
-<!--                </div>-->
-<!--            </div>-->
-
             <!-- Координаты -->
             <div class="coordinates">
                 <span id="coords">X: 0.00, Y: 0.00, Z: 0.00</span>
@@ -628,7 +621,6 @@
                         <option value="stl-ascii">STL (ASCII)</option>
                         <option value="obj">OBJ + MTL</option>
                         <option value="ply">PLY (ASCII)</option>
-                        <option value="dae">Collada (DAE)</option>
                         <option value="gltf">GLTF (JSON)</option>
                         <option value="3mf">3MF</option>
                     </select>
@@ -729,6 +721,7 @@
                     <p><strong>ВК:</strong><a href="https://vk.com/kontrbugtech">КонтрБагТех</a> </p>
                     <p><strong>Оф. сайт:</strong> <a href="https://www.КонтрБагТех.рф">КонтрБагТех.рф</a> </p>
                     <p><strong>Гайд на 3dToday:</strong> <a href="https://3dtoday.ru/blogs/envalid/kratkii-gaid-po-moemu-3d-redaktoru-kontrbagcad">3dtoday.ru</a> </p>
+                    <br><p><h3> <a href="https://boosty.to/kontrbugtech/donate">Поддержать проект</a> </h3></p>
                     <br><hr>
                     <p><strong>Обратите внимание! Редактор находится на стадии активной разработки, и не все функции работают в полной мере. Но ваше тестирование поможет улучшить его работу. Буду благодарен за обратную связь, сообщения об ошибках и предложения по развитию.</strong></p>
                 </div>
@@ -738,231 +731,5 @@
             </div>
         </div>
     </div>
-
-    <!-- Библиотеки локальные-->
-    <script src="lib/three.min.js"></script>
-    <script src="lib/OrbitControls.js"></script>
-    <script src="lib/BufferGeometryUtils.js"></script>
-
-    <script src="lib/STLExporter.js"></script>
-    <script src="lib/OBJExporter.js"></script>
-    <script src="lib/PLYExporter.js"></script>
-    <script src="lib/ColladaExporter.js"></script>
-    <script src="lib/GLTFExporter.js"></script>
-
-     <!-- Подключаем загрузчик 3MF (для версии three r128) -->
-    <script src="lib/fflate.js"></script>
-    <script src="lib/3MFLoader.js"></script>
-    <script src="lib/OBJLoader.js"></script>
-
-    <script src="lib/FontLoader.js"></script>
-    <script src="lib/TextGeometry.js"></script>
-    <script src="lib/jszip.min.js"></script>
-
-    <script src="lib/tween.umd.js"></script>
-    <script src="lib/opentype.min.js"></script>
-     <!-- Подключение Clipper.js -->
-    <script src="lib/clipper.js"></script>
-
-
-
-
-
-
-    <!-- Библиотеки -->
-<!--    <script src="https://cdn.jsdelivr.net/npm/three@0.150/build/three.min.js"></script>-->
-<!--    <script src="https://cdn.jsdelivr.net/npm/three@0.147/examples/js/controls/OrbitControls.js"></script>-->
-<!--    <script src="https://cdn.jsdelivr.net/npm/three@0.147/examples/js/exporters/STLExporter.js"></script>-->
-<!--    <script src="https://unpkg.com/three@0.128.0/examples/js/exporters/PLYExporter.js"></script>-->
-<!--    <script src="https://unpkg.com/three@0.128.0/examples/js/exporters/ColladaExporter.js"></script>-->
-<!--    <script src="https://unpkg.com/three@0.128.0/examples/js/exporters/GLTFExporter.js"></script>-->
-
-
-    <!-- Подключаем загрузчик 3MF (для версии three r128) -->
-<!--    <script src="https://unpkg.com/fflate@0.8.2/umd/index.js"></script>-->
-<!--    <script src="https://unpkg.com/three@0.147.0/examples/js/loaders/3MFLoader.js"></script>-->
-<!--    <script src="https://unpkg.com/three@0.147.0/examples/js/loaders/OBJLoader.js"></script>-->
-
-
-<!--     &lt;!&ndash; Библиотеки для экспорта OBJ и исправления геометрии &ndash;&gt;-->
-<!--    <script src="https://cdn.jsdelivr.net/npm/three@0.147/examples/js/utils/BufferGeometryUtils.js"></script>-->
-<!--    <script src="https://cdn.jsdelivr.net/npm/three@0.147/examples/js/exporters/OBJExporter.js"></script>-->
-<!--    <script src="https://cdn.jsdelivr.net/npm/three@0.147/examples/js/loaders/FontLoader.js"></script>-->
-<!--    <script src="https://cdn.jsdelivr.net/npm/three@0.147/examples/js/geometries/TextGeometry.js"></script>-->
-<!--    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>-->
-
-<!--    <script src="https://cdnjs.cloudflare.com/ajax/libs/tween.js/18.6.4/tween.umd.js"></script>-->
-<!--    <script src="https://cdn.jsdelivr.net/npm/opentype.js@1.3.4/dist/opentype.min.js"></script>-->
-<!--    <script src="https://cdn.jsdelivr.net/npm/clipper-lib@6.4.2/clipper.js"></script>-->
-
-<!--    <script type="module">-->
-<!--        import * as THREE_BVH_CSG from 'https://cdn.jsdelivr.net/npm/three-bvh-csg@0.0.17/+esm';-->
-<!--        window.THREE_BVH_CSG = THREE_BVH_CSG;-->
-<!--        console.log('Библиотека THREE_BVH_CSG загружена через модуль и назначена на window', window.THREE_BVH_CSG);-->
-<!--    </script>-->
-<!--    &lt;!&ndash; Подключение Clipper.js &ndash;&gt;-->
-
-
-    <script src="js/project-state/LegacyProjectConverter.js"></script>
-<!--    <script src="js/project-state/sketch-history-handler.js"></script>-->
-<!--    <script src="js/project-state/history.js"></script>-->
-    <script src="js/project-state/import-manager.js"></script>
-    <script src="js/project-state/export-manager.js"></script>
-<!--    <script src="js/project-state/sketch-serializer.js"></script>-->
-    <script src="js/project-state/project-manager.js"></script>
-    <script src="js/project-state/object-validator.js"></script>
-
-
-    <script src="js/operations2.js"></script>
-<!--    <script src="js/storage.js"></script>-->
-    <script src="js/transforms.js"></script>
-
-    <script src="models/library-fallback-data.js"></script>
-    <script src="js/library-manager.js"></script>
-    <script src="js/font-manager.js"></script>
-    <script src="js/objects-manager.js"></script>
-    <script src="js/planes-manager.js"></script>
-
-    <script src="js/utils/font-converter.js"></script>
-    <script src="js/utils/hollow-text-helper.js"></script>
-     <script src="js/utils/simplify-modifier.js"></script>
-    <script src="js/utils/geometry-repair.js"></script>
-<!--    <script src="https://threejs.org/examples/js/modifiers/SimplifyModifier.js"></script>-->
-
-    <!-- Параметрические исполнители -->
-    <script src="js/parametric/executors/ParametricExecutor.js"></script>
-    <script src="js/parametric/executors/DuplicateExecutor.js"></script>
-    <script src="js/parametric/executors/CreatePrimitiveExecutor.js"></script>
-    <script src="js/parametric/executors/ImportSTLExecutor.js"></script>
-    <script src="js/parametric/executors/MoveExecutor.js"></script>
-    <script src="js/parametric/executors/ExtrudeExecutor.js"></script>
-    <script src="js/parametric/executors/RevolveExecutor.js"></script>
-    <script src="js/parametric/executors/BooleanBaseExecutor.js"></script>
-    <script src="js/parametric/executors/CreateWorkplaneExecutor.js"></script>
-    <script src="js/parametric/executors/GroupExecutor.js"></script>
-    <script src="js/parametric/executors/UngroupExecutor.js"></script>
-    <script src="js/parametric/executors/SketchExecutor.js"></script>
-    <script src="js/parametric/executors/MoveMultipleExecutor.js"></script>
-    <script src="js/parametric/executors/RotateExecutor.js"></script>
-    <script src="js/parametric/executors/ScaleExecutor.js"></script>
-    <script src="js/parametric/executors/ImportMeshExecutor.js"></script>
-    <script src="js/parametric/executors/DeleteExecutor.js"></script>
-    <script src="js/parametric/executors/SplitExecutor.js"></script>
-    <script src="js/parametric/executors/MirrorExecutor.js"></script>
-    <script src="js/parametric/executors/ImageExecutor.js"></script>
-    <script src="js/parametric/executors/Text3DExecutor.js"></script>
-    <script src="js/parametric/executors/RepairExecutor.js"></script>
-    <script src="js/parametric/executors/DecimateExecutor.js"></script>
-    <script src="js/parametric/executors/FilletChamferExecutor.js"></script>
-    <script src="js/parametric/executors/ChangeOpacityExecutor.js"></script>
-    <script src="js/parametric/executors/ChangeColorExecutor.js"></script>
-    <script src="js/parametric/executors/ChangeVisibilityExecutor.js"></script>
-
-
-    <script src="js/parametric/executors/GearExecutor.js"></script>
-    <script src="js/parametric/executors/ThreadExecutor.js"></script>
-
-    <!-- Параметрические классы -->
-    <script src="js/parametric/ParametricOperation.js"></script>
-    <script src="js/parametric/ParametricModel.js"></script>
-
-    <script src="js/ui/HistoryPanel.js"></script>
-    <script src="js/ui/NavigationCube.js"></script>
-    <script src="js/camera/CameraManager.js"></script>
-    <script src="js/ui/ThemeManager.js"></script>
-
-<!--    Генераторы-->
-
-    <script src="js/generators/gear-generator.js"></script>
-    <script src="js/generators/thread-generator.js"></script>
-
-
-    <script src="js/drag-manager.js"></script>
-    <script src="js/tools/tool.js"></script>
-    <script src="js/tools/tool-manager.js"></script>
-    <script src="js/tools/select-tool.js"></script>
-    <script src="js/tools/transform-tool-base.js"></script>
-    <script src="js/tools/move-tool.js"></script>
-    <script src="js/tools/rotate-tool.js"></script>
-    <script src="js/tools/scale-tool.js"></script>
-
-    <script src="js/tools/workplane-tool.js"></script>
-    <script src="js/tools/gear-tool.js"></script>
-    <script src="js/tools/thread-tool.js"></script>
-    <script src="js/tools/text3d-tool.js"></script>
-
-    <script src="js/tools/ruler-tool.js"></script>
-    <script src="js/tools/boolean-tool2.js"></script>
-    <script src="js/tools/split-tool.js"></script>
-    <script src="js/tools/mirror-tool.js"></script>
-    <script src="js/tools/ungroup-tool.js"></script>
-    <script src="js/tools/group-tool.js"></script>
-    <script src="js/tools/repair-tool.js"></script>
-    <script src="js/tools/decimate-tool.js"></script>
-    <script src="js/tools/image-tool.js"></script>
-
-<!--    CREATE-->
-    <script src="js/tools/create/FigureNode.js"></script>
-    <script src="js/tools/create/FigureManager3.js"></script>
-    <script src="js/tools/create/operation-manager.js"></script>
-    <script src="js/tools/create/revolve-manager.js"></script>
-    <script src="js/tools/create/revolve-tool.js"></script>
-    <script src="js/tools/create/extrude-tool.js"></script>
-    <script src="js/tools/create/extrude-manager.js"></script>
-
-<!--    фаска-->
-    <script src="js/tools/fillet-chamfer-tool.js"></script>
-
-
-
-<!--    СКЕТЧ-->
-    <script src="js/tools/sketch/utils/snap-helper.js"></script>
-    <script src="js/tools/sketch/utils/sketch-utils.js"></script>
-
-    <script src="js/tools/sketch/sketch-tools/sketch-tool-base.js"></script>
-    <script src="js/tools/sketch/sketch-tools/circle-tool.js"></script>
-
-    <script src="js/tools/sketch/sketch-tools/line-base-tool.js"></script>
-    <script src="js/tools/sketch/sketch-tools/line-tool.js"></script>
-    <script src="js/tools/sketch/sketch-tools/curve-tool.js"></script>
-    <script src="js/tools/sketch/sketch-tools/polygon-tool.js"></script>
-    <script src="js/tools/sketch/sketch-tools/polyline-tool.js"></script>
-    <script src="js/tools/sketch/sketch-tools/rectangle-tool.js"></script>
-    <script src="js/tools/sketch/sketch-tools/select-tool.js"></script>
-<!--    <script src="js/tools/sketch/sketch-tools/text-tool.js"></script>-->
-    <script src="js/tools/sketch/sketch-tools/mirror-tool.js"></script>
-    <script src="js/tools/sketch/sketch-tools/oval-tool.js"></script>
-    <script src="js/tools/sketch/sketch-tools/stadium-tool.js"></script>
-    <script src="js/tools/sketch/sketch-tools/arc-tool.js"></script>
-    <script src="js/tools/sketch/sketch-tools/ruler-tool.js"></script>
-    <script src="js/tools/sketch/sketch-tools/dimension-tool.js"></script>
-    <script src="js/tools/sketch/sketch-tools/dashed-line-tool.js"></script>
-    <script src="js/tools/sketch/sketch-tools/helpers/sketch-arrow-helper.js"></script>
-    <script src="js/tools/sketch/sketch-tools/transform-sketch-toolbase.js"></script>
-    <script src="js/tools/sketch/sketch-tools/sketch-rotate-tool.js"></script>
-    <script src="js/tools/sketch/sketch-tools/sketch-move-tool.js"></script>
-
-    <script src="js/tools/sketch/managers/sketch-region-manager.js"></script>
-    <script src="js/tools/sketch/managers/sketch-tool-manager.js"></script>
-    <script src="js/tools/sketch/managers/sketch-element-manager.js"></script>
-    <script src="js/tools/sketch/managers/sketch-view-manager.js"></script>
-    <script src="js/tools/sketch/managers/sketch-dimension-manager.js"></script>
-    <script src="js/tools/sketch/managers/sketch-outline-manager.js"></script>
-    <script src="js/tools/sketch/managers/sketch-import-manager.js"></script>
-    <script src="js/tools/sketch/managers/sketch-export-manager.js"></script>
-
-
-
-    <script src="js/tools/sketch/sketch-manager.js"></script>
-    <script src="js/tools/sketch/sketch-tool.js"></script>
-    <script src="js/ui/translator.js"></script>
-    <script src="js/app.js"></script>
-
-
-
-    <script src="js/ui/ui-manager.js"></script>
-
-
-
 </body>
 </html>

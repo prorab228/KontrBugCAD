@@ -1,1 +1,0 @@
-class ParametricExecutor{constructor(e){this.editor=e}execute(e,r){throw new Error("Метод execute должен быть переопределён")}update(e,r){console.warn(`Обновление не поддерживается для типа ${e.type}`)}}

@@ -1,1 +1,0 @@
-class MoveMultipleExecutor extends ParametricExecutor{execute(e,t){const{objects:o}=e.parameters;for(const e of o){const o=t.objectMap.get(e.uuid);o&&o.position.fromArray(e.position)}return null}}

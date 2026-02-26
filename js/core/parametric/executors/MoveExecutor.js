@@ -1,0 +1,1 @@
+import*as THREE from"three";import{ParametricExecutor}from"./ParametricExecutor.js";export class MoveExecutor extends ParametricExecutor{execute(r,e){const{target:t,position:o}=r.parameters,a=e.objectMap.get(t);if(!a)throw new Error(`Move: объект ${t} не найден`);return a.position.fromArray(o),null}}

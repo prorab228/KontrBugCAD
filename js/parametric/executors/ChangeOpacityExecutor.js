@@ -1,1 +1,0 @@
-class ChangeOpacityExecutor extends ParametricExecutor{execute(a,e){const{target:t,opacity:r}=a.parameters,i=e.objectMap.get(t);if(!i)throw new Error(`ChangeOpacityExecutor: объект с UUID ${t} не найден`);return i.material&&(i.material.opacity=r,i.material.transparent=r<1,i.userData.originalMaterial=i.material,i.material.needsUpdate=!0),[]}}

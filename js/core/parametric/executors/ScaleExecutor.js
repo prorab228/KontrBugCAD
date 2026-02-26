@@ -1,0 +1,1 @@
+import{ParametricExecutor}from"./ParametricExecutor.js";export class ScaleExecutor extends ParametricExecutor{execute(r,e){const{target:t,scale:a}=r.parameters,c=e.objectMap.get(t);if(!c)throw new Error(`Scale: объект ${t} не найден`);return c.scale.fromArray(a),null}}

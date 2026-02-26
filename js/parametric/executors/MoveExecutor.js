@@ -1,1 +1,0 @@
-class MoveExecutor extends ParametricExecutor{execute(e,r){const{target:t,position:o}=e.parameters,a=r.objectMap.get(t);if(!a)throw new Error(`Move: объект ${t} не найден`);return a.position.fromArray(o),null}}
