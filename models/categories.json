@@ -1,5 +1,10 @@
 [
   {
+    "id": "all",
+    "name": "Все",
+    "children": ["primitive", "components", "stl_model", "KontrBugTech"]
+  },
+  {
     "id": "primitive",
     "name": "Примитивы",
     "path": "models/primitive"

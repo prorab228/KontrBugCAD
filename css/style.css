@@ -689,32 +689,7 @@ a:hover {
     position: relative;
 }
 
-/* Кнопка переключения панели */
-.panel-toggle-btn {
-    position: absolute;
-    top: 50%;
-    transform: translateY(-50%);
-    right: 0;                /* по умолчанию (панель скрыта) */
-    width: 32px;
-    height: 40px;
-    background: var(--bg-secondary);
-    border: 1px solid var(--border-primary);
-    border-radius: 4px 0 0 4px;
-    color: var(--text-primary);
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 16px;
-    z-index: 20;
-    transition: right 0.2s ease;
-    padding: 0;
-    margin: 0;
-}
 
-.panel-toggle-btn:hover {
-    background: var(--primary-color);
-}
 
 
 /* Панель свойств */
@@ -761,7 +736,7 @@ a:hover {
     transform: translateY(-50%);
     right: 0;               /* будет сдвигаться вместе с контейнером */
     width: 32px;
-    height: 40px;
+    height: 70px;
     background: var(--bg-secondary);
     border: 1px solid var(--border-primary);
     border-radius: 4px 0 0 4px;
@@ -1831,7 +1806,7 @@ input:checked + .toggle-slider:before {
     max-height: 66%;
     overflow-y: auto;
     overflow-x: clip;
-    max-height: 55vh;
+    max-height: 58vh;
 }
 
 .library-item {
@@ -1955,8 +1930,7 @@ input:checked + .toggle-slider:before {
 
 
 .library-item-img {
-    width: 70px;
-    height: 70px;
+    width: 100%;
     object-fit: contain;
 }
 .library-item-author {
