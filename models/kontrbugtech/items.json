@@ -1,0 +1,12 @@
+[
+  {
+    "id": "zero",
+    "name": "КонтрБаг ZERO",
+    "type": "components",
+    "category": "KontrBugTech",
+    "icon": "zero.png",
+    "modelPath": "models/kontrbugtech/zero.stl",
+    "color": "0x77FF44",
+    "author": "КонтрБагТех"
+  }
+]

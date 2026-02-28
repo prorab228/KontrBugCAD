@@ -1,0 +1,11 @@
+[
+  {
+    "id": "bob",
+    "name": "Боб",
+    "type": "stl_model",
+    "category": "mechanical",
+    "icon": "bob.png",
+    "modelPath": "models/community/bob.stl",
+    "author": "Миша"
+  }
+]

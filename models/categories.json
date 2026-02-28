@@ -1,0 +1,22 @@
+[
+  {
+    "id": "primitive",
+    "name": "Примитивы",
+    "path": "models/primitive"
+  },
+  {
+    "id": "components",
+    "name": "Электронные компоненты",
+    "path": "models/components"
+  },
+  {
+    "id": "community",
+    "name": "Сообщество",
+    "path": "models/community"
+  },
+  {
+    "id": "KontrBugTech",
+    "name": "КонтрБагТех",
+    "path": "models/kontrbugtech"
+  }
+]

@@ -1,0 +1,42 @@
+[
+  {
+    "id": "nano1",
+    "name": "Нано",
+    "type": "components",
+    "category": "components",
+    "icon": "nano1.png",
+    "modelPath": "models/components/nano1.stl",
+    "color": "0x5555FF",
+    "author": ""
+  },
+  {
+    "id": "nano2",
+    "name": "Нано",
+    "type": "components",
+    "category": "components",
+    "icon": "nano2.png",
+    "modelPath": "models/components/nano2.stl",
+    "color": "0x5555FF",
+    "author": ""
+  },
+  {
+    "id": "uno",
+    "name": "Uno",
+    "type": "components",
+    "category": "components",
+    "icon": "uno.png",
+    "modelPath": "models/components/uno.stl",
+    "color": "0x8BC3FF",
+    "author": ""
+  },
+  {
+    "id": "watersensor",
+    "name": "Датчик воды",
+    "type": "components",
+    "category": "components",
+    "icon": "watersensor.png",
+    "modelPath": "models/components/watersensor.stl",
+    "color": "0x800000",
+    "author": ""
+  }
+]

@@ -113,7 +113,7 @@ body {
 
 .theme-btn {
     background: var(--hover-overlay);
-    border: 1px solid var(--border-primary);
+    border: 0;
     color: var(--text-primary);
     padding: 8px 12px;
     border-radius: 4px;
@@ -499,9 +499,11 @@ a:hover {
 .sketch-tool,
 .view-btn-compact,
 .view-controls button,
+.filter-btn,
 .camera-controls button {
     background: var(--hover-overlay);
-    border: 1px solid var(--border-primary);
+    /*border: 1px solid var(--border-primary);*/
+    border: 0;
     color: var(--text-primary);
     border-radius: var(--border-radius);
     cursor: pointer;
@@ -1807,10 +1809,6 @@ input:checked + .toggle-slider:before {
 .filter-btn {
     flex: 1;
     padding: 8px 12px;
-    background: var(--bg-tertiary);
-    border: 1px solid #333;
-    border-radius: 4px;
-    color: var(--text-primary);
     font-size: 12px;
     cursor: pointer;
     transition: all 0.2s;
@@ -1828,26 +1826,25 @@ input:checked + .toggle-slider:before {
 
 .library-grid {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(3, 1fr);
     gap: 12px;
     max-height: 66%;
     overflow-y: auto;
     overflow-x: clip;
-    padding: 5px;
     max-height: 55vh;
 }
 
 .library-item {
    /* display: flex;*/
     align-items: center;
-    padding: 12px;
+    padding: 5px;
     background: var(--bg-tertiary);
-    border: 1px solid #333;
     border-radius: 8px;
     cursor: move;
     transition: all 0.2s;
     position: relative;
     color: var(--text-primary);
+    font-size: 80%;
 }
 
 .library-item:hover {
@@ -1889,12 +1886,16 @@ input:checked + .toggle-slider:before {
     font-weight: 600;
     color: var(--text-primary);
     margin-bottom: 4px;
-    white-space: nowrap;
+  /*  white-space: nowrap;
     overflow: hidden;
-    text-overflow: ellipsis;
+    text-overflow: ellipsis;*/
+    text-wrap: wrap;
+      word-break: break-word;
+  width: 100%;
 }
 
 .library-item-category {
+    display:none;
     font-size: 11px;
     color: #888;
     text-transform: uppercase;
@@ -1903,8 +1904,8 @@ input:checked + .toggle-slider:before {
 
 .library-item-badge {
     position: absolute;
-    top: -8px;
-    right: -8px;
+    top: 0px;
+    right: 0px;
     width: 20px;
     height: 20px;
     background: #00c853;
@@ -1914,12 +1915,8 @@ input:checked + .toggle-slider:before {
     justify-content: center;
     font-size: 10px;
     color: white;
-    border: 2px solid #1a1a1a;
 }
 
-.library-item-badge i {
-    font-size: 8px;
-}
 
 .library-info {
     margin-top: 20px;
@@ -1958,8 +1955,8 @@ input:checked + .toggle-slider:before {
 
 
 .library-item-img {
-    width: 90px;
-    height: 90px;
+    width: 70px;
+    height: 70px;
     object-fit: contain;
 }
 .library-item-author {

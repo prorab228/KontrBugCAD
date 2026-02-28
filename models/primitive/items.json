@@ -1,0 +1,106 @@
+[
+  {
+    "id": "cube",
+    "name": "Куб",
+    "type": "primitive",
+    "category": "basic",
+    "icon": "cube.png",
+    "author": ""
+  },
+  {
+    "id": "sphere",
+    "name": "Сфера",
+    "type": "primitive",
+    "category": "basic",
+    "icon": "sphere.png",
+    "author": ""
+  },
+  {
+    "id": "cylinder",
+    "name": "Цилиндр",
+    "type": "primitive",
+    "category": "basic",
+    "icon": "cylinder.png",
+    "author": ""
+  },
+  {
+    "id": "hexagon",
+    "name": "Шестиугольник",
+    "type": "primitive",
+    "category": "basic",
+    "icon": "hexagon.png",
+    "author": ""
+  },
+  {
+    "id": "cone",
+    "name": "Конус",
+    "type": "primitive",
+    "category": "basic",
+    "icon": "cone.png",
+    "author": ""
+  },
+  {
+    "id": "torus",
+    "name": "Тор",
+    "type": "primitive",
+    "category": "basic",
+    "icon": "torus.png",
+    "author": ""
+  },
+  {
+    "id": "plane",
+    "name": "Плоскость",
+    "type": "primitive",
+    "category": "basic",
+    "icon": "plane.png",
+    "author": ""
+  },
+  {
+    "id": "pyramid",
+    "name": "Пирамида",
+    "type": "primitive",
+    "category": "shapes",
+    "icon": "pyramid.png",
+    "author": ""
+  },
+  {
+    "id": "tube",
+    "name": "Труба",
+    "type": "stl_model",
+    "category": "primitive",
+    "icon": "tube.png",
+    "modelPath": "models/primitive/tube.stl",
+    "color": "0xffdc28",
+    "author": ""
+  },
+  {
+    "id": "wedge",
+    "name": "Клин",
+    "type": "stl_model",
+    "category": "primitive",
+    "icon": "wedge.png",
+    "modelPath": "models/primitive/wedge.stl",
+    "color": "0x6080ff",
+    "author": ""
+  },
+  {
+    "id": "roof",
+    "name": "Крыша",
+    "type": "stl_model",
+    "category": "primitive",
+    "icon": "roof.png",
+    "modelPath": "models/primitive/roof.stl",
+    "color": "0x6dff4b",
+    "author": ""
+  },
+  {
+    "id": "round_roof",
+    "name": "Круглая крыша",
+    "type": "stl_model",
+    "category": "primitive",
+    "icon": "round_roof.png",
+    "modelPath": "models/primitive/round_roof.stl",
+    "color": "0xff3b36",
+    "author": ""
+  }
+]
