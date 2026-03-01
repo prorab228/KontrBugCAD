@@ -430,7 +430,6 @@ a:hover {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  margin-right: 100px;
  }
 
  .status {
@@ -444,6 +443,10 @@ a:hover {
   box-shadow: 0 2px 8px rgba(0, 200, 83, 0.3);
   position: absolute;
   right: 10px;
+  top: 10px;
+  text-wrap: nowrap;
+  pointer-events: auto;
+  opacity:0.9;
 }
 
 
@@ -764,7 +767,6 @@ a:hover {
     padding: 10px 15px;
     border-radius: 8px;
     font-size: 12px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
     width: 300px;
 
 }

@@ -2,7 +2,7 @@
   {
     "id": "all",
     "name": "Все",
-    "children": ["primitive", "components", "stl_model", "KontrBugTech"]
+    "children": ["primitive", "components", "community", "KontrBugTech"]
   },
   {
     "id": "primitive",
