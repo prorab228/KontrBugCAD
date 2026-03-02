@@ -1758,10 +1758,11 @@ input:checked + .toggle-slider:before {
 .property-row-library{
     display: flex;
     gap: 5px;
-    margin-bottom: 10px;
+
 }
 .search-box {
     position: relative;
+    margin-bottom: 10px;
 }
 
 .search-box input {

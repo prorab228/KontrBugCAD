@@ -1,9 +1,9 @@
 {
   "name": "kontrbugcad",
-  "version": "0.9.8",
+  "version": "0.9.9",
   "description": "Простой 3D САПР",
   "author": "Лунев Валерий Константинович",
-  "license": "UNLICENSED",
+  "license": "SEE LICENSE IN LICENSE.md",
   "main": "main.js",
   "scripts": {
     "build": "node build.js",
@@ -11,6 +11,9 @@
     "dist": "electron-builder",
     "dist:all": "electron-builder -mwl",
     "pack": "electron-builder --dir"
+  },
+  "dependencies": {
+    "uuid": "^9.0.1"
   },
   "devDependencies": {
     "electron": "^28.0.0",
@@ -36,15 +39,18 @@
       "!**/{test,tests,example,examples,assets,docs}",
       "!**/*.js.map",
       "!build.js",
-      "!terser.config.json"
+      "!terser.config.json",
+      "LICENSE.md"
     ],
     "win": {
       "target": "nsis",
-      "icon": "build/icon.ico"
+      "icon": "build/icon.ico",
+      "license": "LICENSE.md"
     },
     "mac": {
       "target": "dmg",
-      "icon": "build/icon.icns"
+      "icon": "build/icon.icns",
+      "license": "LICENSE.md"
     },
     "linux": {
       "target": "AppImage"
