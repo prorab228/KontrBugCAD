@@ -44,13 +44,23 @@
     ],
     "win": {
       "target": "nsis",
-      "icon": "build/icon.ico",
-      "license": "LICENSE.md"
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "license": "LICENSE.md",
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
     },
     "mac": {
       "target": "dmg",
-      "icon": "build/icon.icns",
-      "license": "LICENSE.md"
+      "icon": "build/icon.icns"
+    },
+    "dmg": {
+      "license": "LICENSE.md",
+      "title": "${productName} ${version}",
+      "icon": "build/icon.icns"
     },
     "linux": {
       "target": "AppImage"
