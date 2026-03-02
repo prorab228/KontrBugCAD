@@ -1,6 +1,6 @@
 {
   "name": "kontrbugcad",
-  "version": "0.9.8",
+  "version": "0.9.9",
   "description": "Простой 3D САПР",
   "author": "Лунев Валерий Константинович",
   "license": "SEE LICENSE IN LICENSE.md",
@@ -51,7 +51,8 @@
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
-      "createStartMenuShortcut": true
+      "createStartMenuShortcut": true,
+      "unicode": true
     },
     "mac": {
       "target": "dmg",
