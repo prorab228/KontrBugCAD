@@ -1754,9 +1754,14 @@ input:checked + .toggle-slider:before {
     margin-bottom: 20px;
 }
 
+
+.property-row-library{
+    display: flex;
+    gap: 5px;
+    margin-bottom: 10px;
+}
 .search-box {
     position: relative;
-    margin-bottom: 10px;
 }
 
 .search-box input {
@@ -1804,18 +1809,18 @@ input:checked + .toggle-slider:before {
 .library-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 12px;
-    max-height: 66%;
+    gap: 10px;
+   /* max-height: 66%;*/
     overflow-y: auto;
     overflow-x: clip;
-    max-height: 58vh;
+    max-height: 65vh;
 }
 
 .library-item {
    /* display: flex;*/
     align-items: center;
     padding: 5px;
-    background: var(--bg-tertiary);
+    background: var(--hover-overlay);
     border-radius: 8px;
     cursor: move;
     transition: all 0.2s;
@@ -1894,7 +1899,7 @@ input:checked + .toggle-slider:before {
     color: white;
 }
 
-
+/*
 .library-info {
     margin-top: 20px;
     padding: 12px;
@@ -1910,7 +1915,7 @@ input:checked + .toggle-slider:before {
     color: #00c853;
     margin-right: 8px;
 }
-
+*/
 /* Прокрутка для библиотеки */
 .library-grid::-webkit-scrollbar {
     width: 6px;
