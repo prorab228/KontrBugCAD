@@ -1,6 +1,6 @@
 {
   "name": "kontrbugcad",
-  "version": "0.9.9",
+  "version": "0.9.10",
   "description": "Простой 3D САПР",
   "author": "Лунев Валерий Константинович",
   "license": "SEE LICENSE IN LICENSE.md",
@@ -36,7 +36,6 @@
       "!**/._*",
       "!**/{.DS_Store,.git,.hg,.svn,CVS,RCS,SCCS,.gitignore,.gitattributes}",
       "!**/{__pycache__,thumbs.db,.flowconfig,.idea,.vs,.nyc_output}",
-      "!**/{test,tests,example,examples,assets,docs}",
       "!**/*.js.map",
       "!build.js",
       "!terser.config.json",
@@ -47,7 +46,7 @@
       "icon": "build/icon.ico"
     },
     "nsis": {
-      "license": "LICENSE.md",
+      "license": "LICENSE.win.md",
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
