@@ -1,7 +1,7 @@
 const { app, BrowserWindow, Menu, shell, ipcMain, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs').promises;
-const { v4: uuidv4 } = require('uuid'); // npm install uuid
+const { v4: uuidv4 } = require('uuid');
 
 function getIconPath() {
   const isWindows = process.platform === 'win32';
@@ -14,28 +14,58 @@ function getIconPath() {
   return undefined;
 }
 
-// ---- IPC обработчики ----
-ipcMain.handle('add-model-to-library', async (event, { fileName, fileData, modelName, category, color }) => {
+ipcMain.handle('add-model-to-library', async (event, { fileName, fileData, modelName, category, color, previewData }) => {
+  console.log('=== ADD MODEL TO LIBRARY ===');
+  console.log('Received params:', { fileName, modelName, category, color, hasPreview: !!previewData });
+  console.log('fileData length:', fileData?.length);
+
   try {
-    // Определяем целевую категорию (по умолчанию 'user')
     const targetCategory = category || 'user';
     const modelsDir = path.join(__dirname, 'models', targetCategory);
-    await fs.mkdir(modelsDir, { recursive: true });
+    const iconsDir = path.join(modelsDir, 'icons');
 
-    // Сохраняем STL-файл с уникальным именем
+    console.log('Creating directories:', modelsDir, iconsDir);
+    await fs.mkdir(modelsDir, { recursive: true });
+    await fs.mkdir(iconsDir, { recursive: true });
+    console.log('Directories created/verified');
+
     const ext = path.extname(fileName);
     const uniqueName = `${Date.now()}_${uuidv4()}${ext}`;
     const filePath = path.join(modelsDir, uniqueName);
-    await fs.writeFile(filePath, Buffer.from(fileData));
+    console.log('STL file path:', filePath);
 
-    // Обновляем items.json в этой категории
+    // Преобразуем массив чисел обратно в Buffer
+    const buffer = Buffer.from(fileData);
+    console.log('Buffer size:', buffer.length);
+
+    if (buffer.length === 0) {
+      throw new Error('Buffer is empty');
+    }
+
+    await fs.writeFile(filePath, buffer);
+    console.log('STL file written, size:', (await fs.stat(filePath)).size);
+
+    let iconRelativePath = '';
+    if (previewData) {
+      const base64Data = previewData.split(',')[1];
+      const iconFileName = `${path.basename(uniqueName, ext)}.png`;
+      const iconFullPath = path.join(iconsDir, iconFileName);
+      await fs.writeFile(iconFullPath, Buffer.from(base64Data, 'base64'));
+      iconRelativePath = `icons/${iconFileName}`;
+      console.log('Icon saved:', iconFullPath, 'size:', (await fs.stat(iconFullPath)).size);
+    }
+
+    // Работа с items.json
     const itemsPath = path.join(modelsDir, 'items.json');
+    console.log('Items.json path:', itemsPath);
+
     let items = [];
     try {
       const itemsContent = await fs.readFile(itemsPath, 'utf8');
       items = JSON.parse(itemsContent);
+      console.log('Existing items count:', items.length);
     } catch (e) {
-      // файла нет - создаём пустой массив
+      console.log('No existing items.json, will create new');
     }
 
     const newItem = {
@@ -43,24 +73,29 @@ ipcMain.handle('add-model-to-library', async (event, { fileName, fileData, model
       name: modelName || fileName.replace(/\.[^/.]+$/, ''),
       type: 'stl_model',
       category: targetCategory,
-      icon: '', // иконка не требуется
-      modelPath: uniqueName,
+      icon: iconRelativePath ? `models/${targetCategory}/${iconRelativePath}` : '',
+      modelPath: `models/${targetCategory}/${uniqueName}`,
       color: color || '0x8BC34A',
       author: 'Пользователь'
     };
     items.push(newItem);
-    await fs.writeFile(itemsPath, JSON.stringify(items, null, 2));
+    console.log('New item to save:', newItem);
 
-    // Проверяем, есть ли категория 'user' в корневом categories.json
+    const itemsJson = JSON.stringify(items, null, 2);
+    console.log('Writing items.json, content length:', itemsJson.length);
+    await fs.writeFile(itemsPath, itemsJson, 'utf8');
+    console.log('items.json written, size:', (await fs.stat(itemsPath)).size);
+
+    // Обновление categories.json (добавляем категорию user, если её нет)
     const categoriesPath = path.join(__dirname, 'models', 'categories.json');
     let categories = [];
     try {
       const categoriesContent = await fs.readFile(categoriesPath, 'utf8');
       categories = JSON.parse(categoriesContent);
     } catch (e) {
-      // если нет, создаём базовый набор категорий
+      console.log('categories.json not found, creating default');
       categories = [
-        { id: 'all', name: 'Все', children: ['primitive', 'components', 'community', 'KontrBugTech', 'user'] },
+        { id: 'all', name: 'Все', children: ['primitive', 'components', 'community', 'KontrBugTech'] },
         { id: 'primitive', name: 'Примитивы', path: 'models/primitive' },
         { id: 'components', name: 'Электронные компоненты', path: 'models/components' },
         { id: 'community', name: 'Сообщество', path: 'models/community' },
@@ -68,20 +103,20 @@ ipcMain.handle('add-model-to-library', async (event, { fileName, fileData, model
       ];
     }
 
-    // Если категории 'user' ещё нет, добавляем её
     if (!categories.some(c => c.id === 'user')) {
+      console.log('Adding user category to categories.json');
       categories.push({ id: 'user', name: 'Пользовательские', path: 'models/user' });
-      // Также добавляем её в children категории 'all', если она существует
       const allCat = categories.find(c => c.id === 'all');
       if (allCat && allCat.children) {
         allCat.children.push('user');
       }
       await fs.writeFile(categoriesPath, JSON.stringify(categories, null, 2));
+      console.log('categories.json updated');
     }
 
     return { success: true, item: newItem };
   } catch (error) {
-    console.error('Ошибка добавления модели:', error);
+    console.error('ERROR in add-model-to-library:', error);
     return { success: false, error: error.message };
   }
 });
@@ -100,10 +135,8 @@ ipcMain.handle('open-file-dialog', async () => {
   return null;
 });
 
-// ---- Меню ----
 function createMenu() {
   const isMac = process.platform === 'darwin';
-
   const template = [
     {
       label: 'Файл',

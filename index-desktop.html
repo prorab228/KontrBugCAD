@@ -16,6 +16,8 @@
 <!--                "clipper-lib": "https://cdn.jsdelivr.net/npm/clipper-lib@6.4.2/clipper.js",-->
 <!--                "fflate": "https://unpkg.com/fflate@0.8.2/esm/browser.js",-->
 <!--                "jszip": "https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"-->
+<!--                    "core/": "./core/",-->
+<!--                "generators/": "./generators/",-->
 <!--            }-->
 <!--        }-->
 <!--    </script>-->
@@ -24,17 +26,22 @@
         {
 
             "imports": {
-                "three": "/lib/three@0.182.0/build/three.module.js",
-                "three/addons/": "/lib/three@0.182.0/examples/jsm/",
-                "@tweenjs/tween.js": "/lib/tween.esm.js",
-                "opentype.js": "/lib/opentype.module.js",
-                "clipper-lib": "/lib/clipper.js",
-                "fflate": "/lib/browser.js",
-                "jszip": "https://esm.sh/jszip"
+                "three": "./lib/three@0.182.0/build/three.module.js",
+                "three/addons/": "./lib/three@0.182.0/examples/jsm/",
+                "@tweenjs/tween.js": "./lib/tween.esm.js",
+                "opentype.js": "./lib/opentype.module.js",
+                "clipper-lib": "./lib/clipper.js",
+                "fflate": "./lib/browser.js",
+                "jszip": "https://esm.sh/jszip",
+                "core/": "./js/core/",
+                "generators/": "./js/generators/",
+                 "tools/": "./js/tools/",
+                 "utils/": "./js/utils/"
             }
         }
     </script>
 
+<!--    <script type="module" src="js/app.js"></script>-->
     <script type="module" src="js/app-desktop.js"></script>
     <script src="lib/clipper.js"></script>
     <script src="js/utils/hollow-text-helper.js"></script>
@@ -199,12 +206,7 @@
                                 <a href="#" data-tool="boolean-intersect"  title="останется только пересечение двух фигур">
                                     <span class="cad-icon icon-intersect"></span> Пересечение
                                 </a>
-                                <a href="#" data-tool="repair" title="Ремонт геометрии">
-                                    <i class="fas fa-tools"></i>Ремонт геометрии
-                                </a>
-<!--                                <a href="#" data-tool="decimate" title="Уменьшить полигоны">-->
-<!--                                    <i class="fas fa-compress-alt"></i>Уменьшить полигоны-->
-<!--                                </a>-->
+
                             </div>
                         </div>
 
@@ -224,6 +226,12 @@
                                 <a href="#" data-tool="mirror" title="Отражение (Ctrl+Shift+M)">
                                     <span class="cad-icon icon-mirror"></span> Отражение
                                 </a>
+                                <a href="#" data-tool="repair" title="Ремонт геометрии">
+                                    <i class="fas fa-tools"></i>Ремонт геометрии
+                                </a>
+<!--                                <a href="#" data-tool="decimate" title="Уменьшить полигоны">-->
+<!--                                    <i class="fas fa-compress-alt"></i>Уменьшить полигоны-->
+<!--                                </a>-->
                                 <a href="#" data-tool="group" title="Группировать (Ctrl+G)">
                                     <span class="cad-icon icon-group"></span> Группировать
                                 </a>
@@ -525,11 +533,9 @@
                     </div>
                     <!-- Оставляем как есть - фильтры будут создаваться динамически -->
                     <div class="filter-tabs">
-
                         <!-- Фильтры будут добавлены JavaScript -->
                     </div>
                 </div>
-
                 <div class="library-grid" id="libraryGrid">
                     <!-- Библиотечные элементы будут добавляться здесь -->
                 </div>
@@ -539,23 +545,6 @@
             </div>
 
             <div class="panel-content" id="propertiesContent">
-                <div class="property-group" data-type="center" style="display: none;">
-                    <h4><i class="fas fa-bullseye"></i> Центрирование</h4>
-                    <div class="property-row center-buttons">
-                        <button id="centerX" class="btn-small" title="Центрировать по X">
-                            <i class="fas fa-arrows-alt-h"></i> X
-                        </button>
-                        <button id="centerY" class="btn-small" title="Центрировать по Y">
-                            <i class="fas fa-arrows-alt-v"></i> Y
-                        </button>
-                        <button id="centerZ" class="btn-small" title="Центрировать по Z">
-                            <i class="fas fa-arrows-alt"></i> Z
-                        </button>
-                        <button id="centerAll" class="btn-small" title="Центрировать по всем осям">
-                            <i class="fas fa-bullseye"></i> Все
-                        </button>
-                    </div>
-                </div>
 
                 <div class="property-group" data-type="appearance" style="display: none;">
                     <h4><i class="fas fa-palette"></i> Внешний вид</h4>
@@ -741,6 +730,37 @@
                  <p><strong>© 2026 КонтрБагТех</strong></p>
             </div>
         </div>
+    </div>
+
+    <div id="addModelModal" class="modal-overlay">
+      <div class="modal-content" style="width: 400px;">
+        <div class="modal-header">
+          <h3><i class="fas fa-plus-circle"></i> Добавить модель в библиотеку</h3>
+          <button class="close-modal">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="modal-section">
+            <label>Название модели:</label>
+            <input type="text" id="modelNameInput" class="modal-input" placeholder="Моя модель">
+          </div>
+          <div class="modal-section">
+            <label>Категория:</label>
+            <select id="modelCategorySelect" class="modal-select">
+              <option value="user">Пользовательские</option>
+              <option value="mechanical">Механика</option>
+              <option value="components">Электронные компоненты</option>
+            </select>
+          </div>
+          <div class="modal-section">
+            <label>Цвет (hex):</label>
+            <input type="color" id="modelColorInput" value="#8BC34A" class="modal-input">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button id="cancelAddModel" class="btn-secondary">Отмена</button>
+          <button id="confirmAddModel" class="btn-primary">Добавить</button>
+        </div>
+      </div>
     </div>
 </body>
 </html>
