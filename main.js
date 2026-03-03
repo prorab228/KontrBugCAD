@@ -155,15 +155,14 @@ function createMenu() {
     {
       label: 'Правка',
       submenu: [
-        { label: 'Отменить', accelerator: 'CmdOrCtrl+Z', role: 'undo' },
-        { label: 'Повторить', accelerator: 'CmdOrCtrl+Y', role: 'redo' },
+        { label: 'Отменить', accelerator: 'CmdOrCtrl+Z', click: () => BrowserWindow.getFocusedWindow()?.webContents.send('menu-event', 'undo')},
+        { label: 'Повторить', accelerator: 'CmdOrCtrl+Y', click: () => BrowserWindow.getFocusedWindow()?.webContents.send('menu-event', 'redo')},
         { type: 'separator' },
-        { label: 'Вырезать', accelerator: 'CmdOrCtrl+X', role: 'cut' },
-        { label: 'Копировать', accelerator: 'CmdOrCtrl+C', role: 'copy' },
-        { label: 'Вставить', accelerator: 'CmdOrCtrl+V', role: 'paste' },
-        { label: 'Удалить', accelerator: 'Delete', role: 'delete' },
+        { label: 'Копировать', accelerator: 'CmdOrCtrl+C', click: () => BrowserWindow.getFocusedWindow()?.webContents.send('menu-event', 'copy')},
+        { label: 'Вставить', accelerator: 'CmdOrCtrl+V', click: () => BrowserWindow.getFocusedWindow()?.webContents.send('menu-event', 'paste')},
+        { label: 'Удалить', accelerator: 'Delete', click: () => BrowserWindow.getFocusedWindow()?.webContents.send('menu-event', 'delete')},
         { type: 'separator' },
-        { label: 'Выделить всё', accelerator: 'CmdOrCtrl+A', role: 'selectAll' },
+        { label: 'Выделить всё', accelerator: 'CmdOrCtrl+A', click: () => BrowserWindow.getFocusedWindow()?.webContents.send('menu-event', 'selectAll') },
         { label: 'Дублировать', accelerator: 'CmdOrCtrl+D', click: () => BrowserWindow.getFocusedWindow()?.webContents.send('menu-event', 'duplicate') }
       ]
     },
@@ -214,6 +213,7 @@ function createWindow() {
     width: 1400,
     height: 900,
     icon: getIconPath(),
+    show: false, // скрываем до готовности
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -221,12 +221,15 @@ function createWindow() {
     }
   });
 
-  win.loadFile('index-desktop.html');
+  win.loadFile('index-desktop.html').then(() => {
+    win.maximize(); // разворачиваем на весь экран
+    win.show();
+  });
+
   // win.webContents.openDevTools();
 
   createMenu();
 }
-
 app.whenReady().then(() => {
   createWindow();
   app.on('activate', () => {

@@ -2,7 +2,13 @@
   {
     "id": "all",
     "name": "Все",
-    "children": ["primitive", "components", "community", "KontrBugTech"]
+    "children": [
+      "primitive",
+      "components",
+      "community",
+      "KontrBugTech",
+      "user"
+    ]
   },
   {
     "id": "primitive",
@@ -23,5 +29,10 @@
     "id": "KontrBugTech",
     "name": "КонтрБагТех",
     "path": "models/kontrbugtech"
+  },
+  {
+    "id": "user",
+    "name": "Пользовательские",
+    "path": "models/user"
   }
 ]
