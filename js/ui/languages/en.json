@@ -1,5 +1,5 @@
 {
-    "КонтрБагCAD": "KontrBugCAD",
+    "КонтрБагCAD": "CounterBugCAD",
     "Без названия": "Untitled",
     "Готов": "Ready",
     "Файл": "File",
@@ -62,6 +62,7 @@
     "Библиотека": "Library",
     "Библиотека моделей": "Model Library",
     "Поиск примитивов...": "Search primitives...",
+    "Примитивы":"Primitives",
     "Перетащите элемент в 3D окно для создания": "Drag element to 3D window to create",
     "Свойства": "Properties",
     "Центрирование": "Centering",
@@ -169,7 +170,6 @@
     "КонтрБагТех": "KontrBugTech",
     "Крепеж": "Fasteners",
     "Создание примитива": "Create primitive",
-    "Импорт STL": "Import STL",
     "Перемещение": "Move",
     "Выдавливание": "Extrude",
     "Группировка": "Group",
@@ -177,5 +177,15 @@
     "Создание рабочей плоскости": "Create workplane",
     "Скетч": "Sketch",
     "Импорт объекта": "Import object",
-    "Удаление объектов": "Delete objects"
+    "Удаление объектов": "Delete objects",
+    "ВЫТЯГИВАНИЕ": "EXTRUDE",
+    "Высота (мм):":"Height (mm)",
+    "Направление:":"Direction",
+    "Операция:":"Operation",
+    "Кликните по региону для выбора":"Click on the region to select",
+    "Описание:":"Description",
+    "Поддержать проект": "Support the project",
+    "КонтрБагCAD это полноценный online-редактор для твердотельного 3D-моделирования.":"CounterBugCAD is a full-fledged online editor for solid-state 3D modeling.",
+    "Этот инструмент создает объемное тело путем линейного вытягивания плоского эскиза в перпендикулярном ему направлении.• Клик по фигуре: выделить/снять выделение• Перетаскивайте стрелку для изменения высоты• Escape для отмены, Enter для подтверждения":"This tool creates a three-dimensional body by linearly stretching a flat sketch in a perpendicular direction.• Click on the shape: select/deselect• Drag the arrow to change the height• Escape to cancel, Enter to confirm"
+
 }
