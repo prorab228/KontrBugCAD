@@ -66,41 +66,50 @@
   {
     "id": "tube",
     "name": "Труба",
-    "type": "stl_model",
+    "type": "primitive",
     "category": "primitive",
     "icon": "tube.png",
-    "modelPath": "models/primitive/tube.stl",
-    "color": "0xffdc28",
+    "author": "Z"
+  },
+  {
+    "id": "frustum",
+    "name": "Усеченный конус",
+    "type": "primitive",
+    "category": "primitive",
+    "icon": "frustum.png",
     "author": ""
   },
   {
     "id": "wedge",
     "name": "Клин",
-    "type": "stl_model",
+    "type": "primitive",
     "category": "primitive",
     "icon": "wedge.png",
-    "modelPath": "models/primitive/wedge.stl",
-    "color": "0x6080ff",
     "author": ""
   },
   {
-    "id": "roof",
+    "id": "gableRoof",
     "name": "Крыша",
-    "type": "stl_model",
+    "type": "primitive",
     "category": "primitive",
     "icon": "roof.png",
-    "modelPath": "models/primitive/roof.stl",
-    "color": "0x6dff4b",
     "author": ""
   },
   {
-    "id": "round_roof",
+    "id": "halfRoundRoof",
     "name": "Круглая крыша",
-    "type": "stl_model",
+    "type": "primitive",
     "category": "primitive",
     "icon": "round_roof.png",
-    "modelPath": "models/primitive/round_roof.stl",
-    "color": "0xff3b36",
+    "author": ""
+  },
+  {
+    "id": "hemisphere",
+    "name": "Полусфера",
+    "type": "primitive",
+    "category": "primitive",
+    "icon": "hemisphere.png",
     "author": ""
   }
+
 ]

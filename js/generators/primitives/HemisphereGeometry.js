@@ -1,0 +1,1 @@
+import*as THREE from"three";export class HemisphereGeometry extends THREE.BufferGeometry{constructor(e=12.5,t=32,r=16){super(),this.type="HemisphereGeometry",this.parameters={radius:e,widthSegments:t,heightSegments:r};const s=new THREE.SphereGeometry(e,t,r,0,2*Math.PI,0,Math.PI/2);this.copy(s),this.translate(0,-e/2,0)}}
