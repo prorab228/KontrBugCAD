@@ -825,7 +825,7 @@ a:hover {
     padding: 10px;
     overflow-y: auto;
     min-height: 0;
-    max-height: 100vh;
+    height: 100%;
 }
 
 .panel-content.active {
