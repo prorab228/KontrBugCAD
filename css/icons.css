@@ -143,6 +143,10 @@
     mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%2024%2024%27%3E%3Cpath%20d%3D%27M5.63604%2014.1238L7.05026%2015.538M8.46447%2011.2953L9.87868%2012.7096M11.2929%208.46691L12.7071%209.88113M14.1213%205.63849L15.5355%207.0527M2.80762%2016.9522L7.05026%2021.1948L21.1924%207.0527L16.9498%202.81006L2.80762%2016.9522Z%27%20fill%3D%27none%27%20stroke%3D%27%23000%27%20stroke-width%3D%272%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27/%3E%3C/svg%3E");
     }
 
+.icon-chamfer {
+    mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%2024%2024%27%3E%3Cpath%20d%3D%27M4%2C4%20L16%2C4%20L20%2C8%20L20%2C20%20L4%2C20%20Z%27%20fill%3D%27none%27%20stroke%3D%27%23000%27%20stroke-width%3D%272.5%27%20stroke-linejoin%3D%27round%27/%3E%3C/svg%3E");
+}
+
 /* Булевы операции */
 .icon-union {
     mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%2016%2016%27%3E%3Cpath%20d%3D%27M0%202a2%202%200%200%201%202-2h8a2%202%200%200%201%202%202v2h2a2%202%200%200%201%202%202v8a2%202%200%200%201-2%202H6a2%202%200%200%201-2-2v-2H2a2%202%200%200%201-2-2V2z%27/%3E%3C/svg%3E");
@@ -210,6 +214,8 @@
 .icon-history {
     mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.25 2.52.77-1.28-3.52-2.09V8z'/%3E%3C/svg%3E");
 }
+
+
 
 /* Размеры для кнопок тулбара */
 .tool-btn .cad-icon {
