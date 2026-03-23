@@ -3,7 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>КонтрБагCAD - ПК версия</title>
+    <title>КонтрБагCAD - 3D САПР online</title>
+
+    <meta name="description" content="КонтрБагКАД — бесплатный онлайн 3D редактор для редактирования STL моделей, работы с чертежами и 3D моделирования. Поддержка OBJ, 3MF, булевы операции, экспорт в популярные форматы.">
+    <meta name="keywords" content="КонтрБагКАД, КонтрБагCAD, 3D редактор онлайн, САПР онлайн, STL редактор, редактирование STL, 3D моделирование, бесплатная САПР, трехмерное моделирование, чертежи онлайн">
+    <meta name="author" content="Лунев Валерий Константинович">
+    <meta name="robots" content="index, follow">
+
+    <!-- Open Graph (для соцсетей, ВК, Facebook) -->
+    <meta property="og:title" content="КонтрБагCAD (КонтрБагКАД) — 3D редактор онлайн">
+    <meta property="og:description" content="Бесплатный онлайн редактор 3D моделей: правка STL, создание чертежей, булевы операции. Работает в браузере.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://cad.контрбагтех.рф">
+    <meta property="og:site_name" content="КонтрБагCAD">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="КонтрБагCAD (КонтрБагКАД) — 3D редактор онлайн">
+    <meta name="twitter:description" content="Редактируйте STL и создавайте чертежи прямо в браузере. Бесплатно.">
+
 
 <!--   <script type="importmap">-->
 <!--        {-->
@@ -32,15 +50,18 @@
                 "opentype.js": "./lib/opentype.module.js",
                 "clipper-lib": "./lib/clipper.js",
                 "fflate": "./lib/browser.js",
-                "jszip": "https://esm.sh/jszip",
+
                 "core/": "./js/core/",
                 "generators/": "./js/generators/",
                  "tools/": "./js/tools/",
-                 "utils/": "./js/utils/"
+                 "utils/": "./js/utils/",
+                 "lib/": "./lib/"
             }
         }
     </script>
+    <script src="/lib/jszip.min.js"></script>
 
+<!--                    "jszip": "https://esm.sh/jszip",-->
 <!--    <script type="module" src="js/app.js"></script>-->
     <script type="module" src="js/app-desktop.js"></script>
     <script src="lib/clipper.js"></script>
@@ -147,10 +168,10 @@
                 <div class="tool-section">
                     <div class="tool-group">
 
-<!--                        <button class="btn tool-btn" data-tool="chamfer"  title="Фаска">-->
-<!--                            <i class="fas fa-angle-double-right"></i>-->
+                        <button class="btn tool-btn" data-tool="chamfer" title="Фаска">
+                            <span class="cad-icon icon-chamfer"></span>
 <!--                            <span class="tooltip">Фаска</span>-->
-<!--                        </button>-->
+                        </button>
 
                         <div class="dropdown">
                             <button class="tool-btn dropdown-toggle" title="Копирование">
@@ -712,7 +733,7 @@
             <div class="modal-body">
                 <div class="modal-section">
                     <h4>КонтрБагCAD</h4>
-                    <p><strong>Версия:</strong> 0.8.0 Beta</p>
+                    <p><strong>Версия:</strong> 0.9.x Beta</p>
                     <p><strong>Разработчик:</strong>© 2025 КонтрБагТех, Лунев Валерий Константинович</p>
                     <p><strong>Описание:</strong><br> КонтрБагCAD это полноценный online-редактор для твердотельного 3D-моделирования.
                         <br>Разработан как доступная альтернатива TinkerCAD и Fusion360<br>
