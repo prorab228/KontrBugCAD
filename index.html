@@ -477,10 +477,16 @@
                                 <!-- Настройки сетки: -->
                                 <div class="dropdown-section">
                                     <div class="environment-controls">
-                                        <label>Единицы сетки:</label>
+                                        <label>Единицы измерения:</label>
                                         <select id="mainGridUnit" >
                                             <option value="mm">мм</option>
                                             <option value="inch">дюймы</option>
+                                        </select>
+                                    </div>
+                                    <div class="environment-controls">
+                                        <label>Шаг привязки:</label>
+                                        <select id="moveSnapStep" >
+                                            <!-- Заполнится JavaScript -->
                                         </select>
                                     </div>
                                     <div class="environment-controls">
@@ -489,6 +495,7 @@
                                             <!-- Заполнится JavaScript -->
                                         </select>
                                     </div>
+
                                 </div>
                                 <button id="resetEnvironment" class="btn-small">
                                     <i class="fas fa-redo"></i> Сбросить
