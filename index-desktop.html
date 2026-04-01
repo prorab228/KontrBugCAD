@@ -55,11 +55,12 @@
                 "generators/": "./js/generators/",
                  "tools/": "./js/tools/",
                  "utils/": "./js/utils/",
-                 "lib/": "./lib/"
+                 "lib/": "app://lib/"
             }
         }
     </script>
-    <script src="/lib/jszip.min.js"></script>
+    <script src="lib/jszip.min.js"></script>
+    <script src="lib/earcut.min.js"></script>
 
 <!--                    "jszip": "https://esm.sh/jszip",-->
 <!--    <script type="module" src="js/app.js"></script>-->
@@ -300,6 +301,9 @@
                         <button class="tool-btn" data-tool="rulerTool" id="rulerTool" title="Линейка (Ctrl+M)">
                             <span class="cad-icon icon-ruler"></span>
                         </button>
+<!--                        <button data-tool="sectionByPlane" title="Сечение по плоскости">-->
+<!--                            <i class="fas fa-cut"></i>-->
+<!--                        </button>-->
                     </div>
                 </div>
 
@@ -476,10 +480,16 @@
                                 <!-- Настройки сетки: -->
                                 <div class="dropdown-section">
                                     <div class="environment-controls">
-                                        <label>Единицы сетки:</label>
+                                        <label>Единицы измерения:</label>
                                         <select id="mainGridUnit" >
                                             <option value="mm">мм</option>
                                             <option value="inch">дюймы</option>
+                                        </select>
+                                    </div>
+                                    <div class="environment-controls">
+                                        <label>Шаг привязки:</label>
+                                        <select id="moveSnapStep" >
+                                            <!-- Заполнится JavaScript -->
                                         </select>
                                     </div>
                                     <div class="environment-controls">
@@ -488,6 +498,7 @@
                                             <!-- Заполнится JavaScript -->
                                         </select>
                                     </div>
+
                                 </div>
                                 <button id="resetEnvironment" class="btn-small">
                                     <i class="fas fa-redo"></i> Сбросить
@@ -617,7 +628,7 @@
             </div>
         </div>
         <div class="right-panel-elements">
-            <div class="status" id="status">Готов</div>
+            <div class="status" id="status">Загрузка редактора, ожидайте...</div>
             <div class="controls-hint">
                 Управление: ЛКМ - выделение, ПКМ - вращение, Колесико - перемещение камеры S - масштабирование R - вращение<br>
             </div>
@@ -688,19 +699,12 @@
                     <label>Описание:</label>
                     <textarea id="projectDescription" rows="3" class="modal-input" placeholder="Описание проекта"></textarea>
                 </div>
-                <div class="modal-section">
-                    <label>Сохраненные проекты:</label>
-                    <div id="savedProjects" class="projects-list">
-                        <!-- Список проектов -->
-                    </div>
-                </div>
-                <div class="modal-section">
-                    <label>
-                        <input type="checkbox" id="saveHistoryCheckbox" checked>
-                        Сохранить историю действий
-                        <small>(увеличивает размер файла сохранения)</small>
-                    </label>
-                </div>
+<!--                <div class="modal-section">-->
+<!--                    <label>Сохраненные проекты:</label>-->
+<!--                    <div id="savedProjects" class="projects-list">-->
+<!--                        &lt;!&ndash; Список проектов &ndash;&gt;-->
+<!--                    </div>-->
+<!--                </div>-->
             </div>
             <div class="modal-footer">
                 <button id="cancelSave" class="btn-secondary">Отмена</button>

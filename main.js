@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Menu, shell, ipcMain, dialog } = require('electron');
+const { app, BrowserWindow, Menu, shell, ipcMain, dialog,protocol  } = require('electron');
 const path = require('path');
 const fs = require('fs').promises;
 const { v4: uuidv4 } = require('uuid');
@@ -135,6 +135,20 @@ ipcMain.handle('open-file-dialog', async () => {
   return null;
 });
 
+
+//Костылина чертова
+ipcMain.on('focus-window', () => {
+  const win = BrowserWindow.getFocusedWindow();
+  if (win) {
+    win.blur();
+    win.hide();
+    win.show();
+    win.focus();
+  }
+});
+
+
+
 function createMenu() {
   const isMac = process.platform === 'darwin';
   const template = [
@@ -226,11 +240,74 @@ function createWindow() {
     win.show();
   });
 
+      // Ждём, когда страница будет готова, затем показываем и фокусируем окно
+  win.once('ready-to-show', () => {
+    win.maximize();             // разворачиваем на весь экран
+    win.show();
+    win.focus();                // <-- явно даём фокус окну
+  });
   // win.webContents.openDevTools();
 
   createMenu();
 }
+
+// Регистрируем схему как привилегированную
+protocol.registerSchemesAsPrivileged([
+  {
+    scheme: 'app',
+    privileges: {
+      standard: true,
+      secure: true,
+      supportFetchAPI: true,
+      corsEnabled: true,
+      stream: true
+    }
+  }
+]);
+function registerAppProtocol() {
+  protocol.handle('app', async (request) => {
+    const url = request.url;
+    // Убираем 'app://' и любой ведущий слеш
+    let filePath = url.slice('app://'.length);
+    if (filePath.startsWith('/')) filePath = filePath.slice(1);
+    const fullPath = path.join(__dirname, filePath);
+    console.log(`[app] Request: ${url} -> ${fullPath}`);
+
+    // Проверка безопасности: только внутри папки проекта
+    if (!fullPath.startsWith(__dirname)) {
+      console.warn(`[app] Forbidden: ${fullPath}`);
+      return new Response('Forbidden', { status: 403 });
+    }
+
+    try {
+      const data = await fs.readFile(fullPath);
+      const ext = path.extname(fullPath);
+      const contentType = {
+        '.js': 'application/javascript',
+        '.wasm': 'application/wasm',
+        '.json': 'application/json',
+        '.css': 'text/css',
+        '.html': 'text/html',
+        '.png': 'image/png',
+        '.jpg': 'image/jpeg'
+      }[ext] || 'application/octet-stream';
+      return new Response(data, {
+        status: 200,
+        headers: {
+          'Content-Type': contentType,
+          'Cross-Origin-Resource-Policy': 'cross-origin',
+          'Access-Control-Allow-Origin': '*'
+        }
+      });
+    } catch (err) {
+      console.error(`[app] Error serving ${fullPath}: ${err.message}`);
+      return new Response('Not Found', { status: 404 });
+    }
+  });
+}
+
 app.whenReady().then(() => {
+registerAppProtocol();   // регистрируем протокол до создания окна
   createWindow();
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
@@ -240,3 +317,4 @@ app.whenReady().then(() => {
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
 });
+
