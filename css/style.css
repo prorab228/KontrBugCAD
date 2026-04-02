@@ -1031,7 +1031,7 @@ a:hover {
 
 .modal-content {
     background: var(--bg-secondary);
-    border-radius: 12px;
+    border-radius: 6px;
     width: 90%;
     max-width: 500px;
     max-height: 90vh;
@@ -1047,7 +1047,7 @@ a:hover {
 
 .modal-header {
     background: var(--bg-tertiary);
-    padding: 20px;
+    padding: 10px 20px;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -1102,7 +1102,7 @@ a:hover {
 }
 
 .modal-footer {
-    padding: 20px;
+    padding: 10px 20px;
     background: var(--bg-tertiary);
     border-top: 1px solid var(--border-primary);
     display: flex;
