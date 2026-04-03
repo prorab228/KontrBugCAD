@@ -412,6 +412,11 @@ a:hover {
     background-color: rgba(244, 67, 54, 0.1);
 }
 
+/* Индикатор, что история не в конце */
+.panel-tab[data-tab="history"].has-future {
+    color: #ff9800;
+}
+
 /*project-info*/
 .project-info {
   display: flex;
