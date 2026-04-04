@@ -1800,6 +1800,7 @@ input:checked + .toggle-slider:before {
     font-size: 12px;
     cursor: pointer;
     transition: all 0.2s;
+    margin-bottom: 10px;
 }
 
 .filter-btn:hover {
