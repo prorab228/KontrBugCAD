@@ -3,23 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>КонтрБагCAD - 3D САПР online</title>
+    <title>КонтрCAD - 3D САПР online</title>
 
-    <meta name="description" content="КонтрБагКАД — бесплатный онлайн 3D редактор для редактирования STL моделей, работы с чертежами и 3D моделирования. Поддержка OBJ, 3MF, булевы операции, экспорт в популярные форматы.">
-    <meta name="keywords" content="КонтрБагКАД, КонтрБагCAD, 3D редактор онлайн, САПР онлайн, STL редактор, редактирование STL, 3D моделирование, бесплатная САПР, трехмерное моделирование, чертежи онлайн">
+    <meta name="description" content="КонтрКАД — бесплатный онлайн 3D редактор для редактирования STL моделей, работы с чертежами и 3D моделирования. Поддержка OBJ, 3MF, булевы операции, экспорт в популярные форматы.">
+    <meta name="keywords" content="КонтрCAD, КонтрКАД, КонтрБагКАД, КонтрБагCAD, 3D редактор онлайн, САПР онлайн, STL редактор, редактирование STL, 3D моделирование, бесплатная САПР, трехмерное моделирование, чертежи онлайн">
     <meta name="author" content="Лунев Валерий Константинович">
     <meta name="robots" content="index, follow">
 
     <!-- Open Graph (для соцсетей, ВК, Facebook) -->
-    <meta property="og:title" content="КонтрБагCAD (КонтрБагКАД) — 3D редактор онлайн">
+    <meta property="og:title" content="КонтрCAD (КонтрКАД) — 3D редактор онлайн">
     <meta property="og:description" content="Бесплатный онлайн редактор 3D моделей: правка STL, создание чертежей, булевы операции. Работает в браузере.">
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://cad.контрбагтех.рф">
-    <meta property="og:site_name" content="КонтрБагCAD">
+    <meta property="og:site_name" content="КонтрCAD">
 
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="КонтрБагCAD (КонтрБагКАД) — 3D редактор онлайн">
+    <meta name="twitter:title" content="КонтрCAD (КонтрКАД) — 3D редактор онлайн">
     <meta name="twitter:description" content="Редактируйте STL и создавайте чертежи прямо в браузере. Бесплатно.">
 
 
@@ -59,6 +59,26 @@
             }
         }
     </script>
+
+<!--    <script type="importmap">-->
+<!--        {-->
+
+<!--            "imports": {-->
+<!--                "three": "./lib/three@0.182.0/build/three.module.js",-->
+<!--                "three/addons/": "./lib/three@0.182.0/examples/jsm/",-->
+<!--                "@tweenjs/tween.js": "./lib/tween.esm.js",-->
+<!--                "opentype.js": "./lib/opentype.module.js",-->
+<!--                "clipper-lib": "./lib/clipper.js",-->
+<!--                "fflate": "./lib/browser.js",-->
+
+<!--                "core/": "./js/core/",-->
+<!--                "generators/": "./js/generators/",-->
+<!--                 "tools/": "./js/tools/",-->
+<!--                 "utils/": "./js/utils/",-->
+<!--                 "lib/": "./lib/"-->
+<!--            }-->
+<!--        }-->
+<!--    </script>-->
     <script src="lib/jszip.min.js"></script>
     <script src="lib/earcut.min.js"></script>
 
@@ -85,7 +105,7 @@
 <!--            <i class="fas fa-cube"></i>-->
 <!--            <span class="cad-icon icon-logo">-->
             <img style="height: 40px; padding-right: 5px" src="css/Logo.png">
-            <span> КонтрБагCAD</span>
+            <span> КонтрCAD</span>
         </div>
 
         <div class="toolbar-container">
@@ -478,31 +498,61 @@
                                     </div>
                                 </div>
                                 <!-- Настройки сетки: -->
-                                <div class="dropdown-section">
-                                    <div class="environment-controls">
-                                        <label>Единицы измерения:</label>
-                                        <select id="mainGridUnit" >
-                                            <option value="mm">мм</option>
-                                            <option value="inch">дюймы</option>
-                                        </select>
-                                    </div>
-                                    <div class="environment-controls">
-                                        <label>Шаг привязки:</label>
-                                        <select id="moveSnapStep" >
-                                            <!-- Заполнится JavaScript -->
-                                        </select>
-                                    </div>
-                                    <div class="environment-controls">
-                                        <label>Шаг сетки:</label>
-                                        <select id="mainGridStep" >
-                                            <!-- Заполнится JavaScript -->
-                                        </select>
-                                    </div>
 
+                                <div class="dropdown-section">
+                                    <h4>Единицы</h4>
+                                    <div class="environment-controls">
+                                        <div class="color-picker-group">
+                                            <label>Единицы измерения:</label>
+                                            <select id="mainGridUnit" >
+                                                <option value="mm">мм</option>
+                                                <option value="inch">дюймы</option>
+                                            </select>
+                                        </div>
+                                        <div class="color-picker-group">
+                                            <label>Шаг привязки:</label>
+                                            <select id="moveSnapStep" >
+                                                <!-- Заполнится JavaScript -->
+                                            </select>
+                                        </div>
+
+                                        <div class="color-picker-group">
+                                            <label>Шаг сетки:</label>
+                                            <select id="mainGridStep" >
+                                                <!-- Заполнится JavaScript -->
+                                            </select>
+                                        </div>
+                                        <div class="color-picker-group">
+                                            <label>Размеры сетки ширина/длинна:</label>
+                                            <div style="display: flex; align-items: center; gap: 10px;">
+                                                <input type="number" id="gridSizeX" value="500" step="100" min="100" max="2000">
+                                                <input type="number" id="gridSizeZ" value="500" step="100" min="100" max="2000">
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
-                                <button id="resetEnvironment" class="btn-small">
-                                    <i class="fas fa-redo"></i> Сбросить
-                                </button>
+
+
+
+
+<!--                                <div class="property-row">-->
+<!--                                    <div class="environment-controls">-->
+<!--                                        <label class="switch">-->
+<!--                                            <input type="checkbox" id="selectEdgesEnableCheckbox" checked>-->
+<!--                                            <span class="slider"></span>-->
+<!--                                            <span class="switch-label">Выделение ребер </span>-->
+<!--                                        </label>-->
+<!--                                    <br>-->
+<!--                                    </div>-->
+<!--                                </div>-->
+
+
+
+                                <div class="property-row">
+                                    <button id="openGraphicsSettings" class="btn-small" style="width: 100%; margin-top: 8px;">
+                                        <i class="fas fa-tachometer-alt"></i> Настройки графики
+                                    </button>
+                                </div>
                             </div>
                         </div>
 
@@ -723,7 +773,7 @@
         <div class="status-right">
             <span id="fpsCounter"><i class="fas fa-tachometer-alt"></i> FPS: 60</span>
             <span class="separator">|</span>
-            <span id="version"><i class="fas fa-memory"></i> Версия: --</span>  <span> Cледить за обновлениями: <a href="https://t.me/KontrBugTech"> в ТГ</a> <a href="https://vk.com/kontrbugtech"> в ВК</a> </span>  <a href="https://3dtoday.ru/blogs/envalid/lyogkii-perexod-s-tinkercad-na-kontrbagcad">Гайд на 3dtoday.ru</a>
+            <span id="version"><i class="fas fa-memory"></i> Версия: --</span>  <span> Cледить за обновлениями: <a href="https://t.me/KontrBugTech"> в ТГ</a> <a href="https://vk.com/kontrbugtech"> в ВК</a> </span>  <a href="https://3dtoday.ru/blogs/envalid/lyogkii-perexod-s-tinkercad-na-kontrbagcad">Гайд на 3dtoday.ru</a> <a href="https://counterbugtech.gitverse.site/kontrbugcad/">Зеркало</a>
         </div>
     </div>
 
@@ -756,6 +806,46 @@
             </div>
             <div class="modal-footer" style="justify-content: center;">
                  <p><strong>© 2026 КонтрБагТех</strong></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно настроек графики -->
+    <div id="graphicsSettingsModal" class="modal-overlay">
+        <div class="modal-content" style="width: 450px;">
+            <div class="modal-header">
+                <h3><i class="fas fa-tachometer-alt"></i> Настройки графики</h3>
+                <button class="close-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="modal-section">
+                    <label>Дальность обзора:</label>
+                    <input type="range" id="graphicsMaxDistance" min="100" max="50000" step="100" value="1000">
+                    <span id="maxDistanceValue">1000</span>
+                </div>
+                <div class="modal-section">
+                    <label>
+                        <input type="checkbox" id="graphicsAntialias"> Сглаживание (антиалиасинг)
+                    </label>
+                    <label><small>Требует перезагрузки страницы</small></label>
+                </div>
+                <div class="modal-section" >
+                    <label>Качество теней:</label>
+                    <select id="graphicsShadowQuality">
+                        <option value="512">Низкое (512x512)</option>
+                        <option value="1024" selected>Среднее (1024x1024)</option>
+                        <option value="2048">Высокое (2048x2048)</option>
+                    </select>
+                </div>
+                <div class="modal-section">
+                    <label>
+                        <input type="checkbox" id="graphicsShadows" checked> Включить тени
+                    </label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="cancelGraphicsSettings" class="btn-secondary">Отмена</button>
+                <button id="applyGraphicsSettings" class="btn-primary">Применить</button>
             </div>
         </div>
     </div>
