@@ -82,6 +82,8 @@ body {
 .theme-controls .dropdown-menu {
     min-width: 250px;
     padding: 10px;
+    max-height: 95vh;
+  overflow-y: auto;
 }
 
 .dropdown-section {
