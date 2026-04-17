@@ -1,11 +1,20 @@
 [
   {
     "id": "bob",
-    "name": "Боб",
+    "name": "Боб (сломанный)",
     "type": "stl_model",
     "category": "mechanical",
     "icon": "bob.png",
     "modelPath": "models/community/bob.stl",
+    "author": "Миша"
+  },
+  {
+    "id": "bob2",
+    "name": "Боб",
+    "type": "stl_model",
+    "category": "mechanical",
+    "icon": "bob.png",
+    "modelPath": "models/community/Bob2.stl",
     "author": "Миша"
   }
 ]
