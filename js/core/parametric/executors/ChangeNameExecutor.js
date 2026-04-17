@@ -1,0 +1,1 @@
+export class ChangeNameExecutor{constructor(e){this.editor=e}execute(e,t){const{target:a,name:r}=e.parameters,c=t.objectMap.get(a);return c&&(c.userData.name=r),null}}
