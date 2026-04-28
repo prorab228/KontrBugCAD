@@ -1,6 +1,6 @@
 {
   "name": "kontrbugcad",
-  "version": "0.9.26",
+  "version": "0.9.31",
   "description": "Простой 3D САПР",
   "author": "Лунев Валерий Константинович",
   "license": "SEE LICENSE IN LICENSE.md",
@@ -22,7 +22,7 @@
   },
   "build": {
     "appId": "com.kontrbugtech.cad",
-    "productName": "КонтрБагCAD",
+    "productName": "КонтрCAD",
     "directories": {
       "output": "dist"
     },
