@@ -1,1 +1,1 @@
-export class ChangeNameExecutor{constructor(e){this.editor=e}execute(e,t){const{target:a,name:r}=e.parameters,c=t.objectMap.get(a);return c&&(c.userData.name=r),null}}
+export class ChangeNameExecutor{constructor(e){this.editor=e}execute(e,t){const{target:a,name:r}=e.parameters,n=t.objectMap.get(a);return n&&(n.userData.name=r,"sketch_plane"===n.userData?.type&&this.editor.planesManager&&this.editor.planesManager.updateSketchPlaneName(n,r)),null}}

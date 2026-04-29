@@ -577,7 +577,7 @@
         <div class="viewport-container">
             <div id="viewport"></div>
             <!-- Координаты -->
-            <div class="coordinates">
+            <div class="coordinates" style="cursor: pointer;" onclick="this.style.display='none'" title="Кликните чтобы скрыть">
                 <span id="coords">X: 0.00, Y: 0.00, Z: 0.00</span>
             </div>
         </div>
@@ -680,7 +680,7 @@
         </div>
         <div class="right-panel-elements">
             <div class="status" id="status">Загрузка редактора, ожидайте...</div>
-            <div class="controls-hint">
+            <div class="controls-hint" style="cursor: pointer;" onclick="this.style.display='none'" title="Кликните чтобы скрыть">
                 Управление: ЛКМ - выделение, ПКМ - вращение, Колесико - перемещение камеры S - масштабирование R - вращение<br>
             </div>
              <button class="panel-toggle-btn" id="togglePanelBtn">
