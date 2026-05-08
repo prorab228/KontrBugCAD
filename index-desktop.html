@@ -87,7 +87,7 @@
     <script type="module" src="js/app-desktop.js"></script>
     <script src="lib/clipper.js"></script>
     <script src="js/utils/hollow-text-helper.js"></script>
-    <script src="js/ui/ui-manager.js"></script>
+    <script src="js/ui/ui-helper.js"></script>
 
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/sketch-extended.css">
@@ -258,7 +258,7 @@
                         <!-- Операции -->
                         <div class="dropdown">
                             <button class="tool-btn dropdown-toggle" title="Операции">
-                                <i class="fas fa-cogs"></i>
+                                <i class="fas fa-tools"></i>
                                 <i class="fas fa-caret-down"></i>
                             </button>
                             <div class="dropdown-menu">
@@ -286,15 +286,6 @@
 
                             </div>
                         </div>
-                    </div>
-                </div>
-
-                <div class="divider"></div>
-
-                <!-- Создание объектов -->
-                <div class="tool-section">
-                    <div class="tool-group">
-
 
                         <!-- Генераторы -->
                         <div class="dropdown">
@@ -317,9 +308,26 @@
                                  </a>
                             </div>
                         </div>
+                    </div>
+                </div>
+
+                <div class="divider"></div>
+
+                <!-- Создание объектов -->
+                <div class="tool-section">
+                    <div class="tool-group">
+
+
+
 
                         <button class="tool-btn" data-tool="rulerTool" id="rulerTool" title="Линейка (Ctrl+M)">
                             <span class="cad-icon icon-ruler"></span>
+                        </button>
+                        <button class="tool-btn" data-tool="dimensionTool" title="Показать размеры">
+                            <i class="fas fa-ruler-combined"></i>
+                        </button>
+                        <button class="tool-btn" id="toggleWireframe" title="Каркас">
+                            <i class="fas fa-border-style"></i>
                         </button>
 <!--                        <button data-tool="sectionByPlane" title="Сечение по плоскости">-->
 <!--                            <i class="fas fa-cut"></i>-->
@@ -338,9 +346,7 @@
                         <button class="tool-btn" id="toggleAxes" title="Оси">
                             <i class="fas fa-crosshairs"></i>
                         </button>
-                        <button class="tool-btn" id="toggleWireframe" title="Каркас">
-                            <i class="fas fa-border-style"></i>
-                        </button>
+
                     </div>
                 </div>
 
