@@ -80,7 +80,7 @@
         }
     </script>
     <script src="lib/jszip.min.js"></script>
-    <script src="lib/earcut.min.js"></script>
+
 
 <!--                    "jszip": "https://esm.sh/jszip",-->
     <script type="module" src="js/app.js"></script>
@@ -367,9 +367,6 @@
                         <button class="tool-btn sketch-tool-btn"  data-sketch-tool="dashedline" title="Пунктирная линия">
                             <span class="cad-icon icon-dashedline"></span>
                         </button>
-                        <button class="tool-btn sketch-tool-btn" data-sketch-tool="polyline" title="Кривая">
-                            <span class="cad-icon icon-polyline"></span>
-                        </button>
                         <button class="tool-btn sketch-tool-btn" data-sketch-tool="curve" title="Сглаженная кривая">
                             <span class="cad-icon icon-bezier"></span>
                         </button>
@@ -382,20 +379,33 @@
                         <button class="tool-btn sketch-tool-btn" data-sketch-tool="polygon" title="Многоугольник">
                             <span class="cad-icon icon-polygon"></span>
                         </button>
-                        <button class="tool-btn sketch-tool-btn" data-sketch-tool="oval" title="Овал">
-                            <span class="cad-icon icon-oval"></span>
-                        </button>
+
                         <button class="tool-btn sketch-tool-btn"  data-sketch-tool="arc" title="Дуга">
                             <span class="cad-icon icon-arc"></span>
                         </button>
 
-<!--                        <button class="tool-btn sketch-tool-btn"  data-sketch-tool="stadium" title="Стадион">-->
-<!--                            <span class="cad-icon icon-stadion"></span>-->
-<!--                        </button>-->
 
-                        <button class="tool-btn sketch-tool-btn" data-sketch-tool="text" title="Текст">
-                            <span class="cad-icon icon-text"></span>
-                        </button>
+
+                        <div class="dropdown">
+                            <button class="tool-btn dropdown-toggle" title="Другие фигуры">
+                                <span class="cad-icon icon-more-shapes"></span>
+                                <i class="fas fa-caret-down"></i>
+                            </button>
+                            <div class="dropdown-menu">
+                                <a href="#" class="sketch-tool-btn" data-sketch-tool="polyline" title="Кривая">
+                                    <span class="cad-icon icon-polyline"></span>Кривая
+                                </a>
+                                <a href="#" class="sketch-tool-btn"  data-sketch-tool="oval" title="Овал">
+                                    <span class="cad-icon icon-oval"></span>Овал
+                                </a>
+                                <a href="#" class="sketch-tool-btn"  data-sketch-tool="stadium" title="Стадион">
+                                    <span class="cad-icon icon-stadion"></span>Стадион
+                                </a>
+                                <a href="#" class="sketch-tool-btn"  data-sketch-tool="text" title="Текст">
+                                    <span class="cad-icon icon-text"></span>Текст
+                                </a>
+                            </div>
+                       </div>
 
                         <div class="divider"></div>
 
@@ -414,9 +424,59 @@
                         <button class="tool-btn  sketch-tool-btn" data-sketch-tool="rotate" title="Вращение">
                             <i class="fas fa-sync-alt"></i>
                         </button>
-<!--                        <button class="tool-btn  sketch-tool-btn" data-sketch-tool="scissors" title="Ножницы (обрезка)">-->
-<!--                            <i class="fas fa-cut"></i>-->
-<!--                        </button>-->
+                        <button class="tool-btn  sketch-tool-btn" data-sketch-tool="scissors" title="Ножницы (обрезка)">
+                            <i class="fas fa-cut"></i>
+                        </button>
+
+                        <div class="dropdown">
+                            <button class="tool-btn dropdown-toggle" title="Ограничения">
+                                <span class="cad-icon icon-constraint"></span>
+                                <i class="fas fa-caret-down"></i>
+                            </button>
+                            <div class="dropdown-menu">
+                                <a href="#" id="constraintHorizontal">
+                                    <span class="cad-icon icon-horizontal"></span> Горизонтальность
+                                </a>
+                                <a href="#" id="constraintVertical">
+                                    <span class="cad-icon icon-vertical"></span> Вертикальность
+                                </a>
+                                <a href="#" id="constraintParallel">
+                                    <span class="cad-icon icon-parallel"></span> Параллельность
+                                </a>
+                                <a href="#" id="constraintAngle">
+                                    <span class="cad-icon icon-angle"></span> Угол
+                                </a>
+                                <a href="#" id="constraintEquality">
+                                    <i class="fas fa-equals"></i> Равенство длин
+                                </a>
+                                <a href="#" id="constraintPerpendicular">
+                                    <span class="cad-icon icon-perpendicular"></span> Перпендикулярность
+                                </a>
+                                <a href="#" id="constraintCoincident">
+                                    <span class="cad-icon icon-coincident"></span> Совпадение
+                                </a>
+                                <a href="#" id="constraintPointOnCurve">
+                                    <span class="cad-icon icon-coincident"></span>Точка на окружности
+                                </a>
+                                <a href="#" id="constraintPointOnLine">
+                                    <span class="cad-icon icon-coincident"></span> Точка на линии
+                                </a>
+                                <a href="#" id="constraintDistance">
+                                    <span class="cad-icon icon-distance"></span> Расстояние
+                                </a>
+
+                                <div class="dropdown-divider"></div>
+                                <a href="#" id="constraintDeleteSelectedEntities" >
+                                    Удалить ограничения выделенных
+                                </a>
+<!--                                <a href="#" id="fixEntitiesBtn" title="Зафиксировать выделенные объекты">-->
+<!--                                    <i class="fas fa-anchor"></i>-->
+<!--                                </a>-->
+<!--                               <a href="#" id="unfixEntitiesBtn" title="Открепить выделенные объекты">-->
+<!--                                    <i class="fas fa-unlink"></i>-->
+<!--                                </a>-->
+                            </div>
+                        </div>
 
 
                         <div class="divider"></div>
@@ -430,8 +490,6 @@
                         <button class="tool-btn" id="exitSketchBtn" title="Выйти из режима скетча">
                             <span class="cad-icon icon-exit"></span>
                         </button>
-
-
 
 
                     </div>
