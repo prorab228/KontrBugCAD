@@ -1,7 +1,7 @@
 {
   "name": "kontrbugcad",
-  "version": "0.9.37",
-  "description": "Простой 3D САПР",
+  "version": "0.9.39",
+  "description": "Простой и мощный параметрический 3D-САПР, с параметрическими эскизами и экспортом в STL",
   "author": "Лунев Валерий Константинович",
   "license": "SEE LICENSE IN LICENSE.md",
   "main": "main.js",
