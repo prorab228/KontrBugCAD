@@ -1,7 +1,7 @@
 /* КонтрБагCAD - Иконки инструментов */
 :root {
     --icon-color: currentColor;
-    --icon-size: 20px;
+    --icon-size: 22px;
 }
 
 /* Общий класс для иконок */
@@ -110,6 +110,19 @@
 .icon-polygon {
     mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%2016%2016%27%20fill%3D%27none%27%20stroke%3D%27%23000%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%20stroke-width%3D%271.5%27%3E%3Cpolygon%20points%3D%271.75%204.75%2C8%201.25%2C14.25%204.75%2C14.25%2011.25%2C8%2014.75%2C1.75%2011.25%27/%3E%3C/svg%3E");
     -webkit-mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%2016%2016%27%20fill%3D%27none%27%20stroke%3D%27%23000%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%20stroke-width%3D%271.5%27%3E%3Cpolygon%20points%3D%271.75%204.75%2C8%201.25%2C14.25%204.75%2C14.25%2011.25%2C8%2014.75%2C1.75%2011.25%27/%3E%3C/svg%3E");
+}
+
+/* === Вписанный многоугольник (толстый многоугольник внутри тонкого круга) === */
+/* === Вписанный многоугольник (вершины на окружности) — увеличен, тонкая линия === */
+.icon-polygon-inscribed {
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10.5' /%3E%3Cpolygon points='12,2 21,7.5 21,16.5 12,22 3,16.5 3,7.5' /%3E%3C/svg%3E");
+    -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10.5' /%3E%3Cpolygon points='12,2 21,7.5 21,16.5 12,22 3,16.5 3,7.5' /%3E%3C/svg%3E");
+}
+
+/* === Описанный многоугольник (стороны касаются окружности) — увеличен, тонкая линия === */
+.icon-polygon-circumscribed {
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='7' /%3E%3Cpolygon points='12,1.5 22.5,7.5 22.5,16.5 12,22.5 1.5,16.5 1.5,7.5' /%3E%3C/svg%3E");
+    -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='7' /%3E%3Cpolygon points='12,1.5 22.5,7.5 22.5,16.5 12,22.5 1.5,16.5 1.5,7.5' /%3E%3C/svg%3E");
 }
 
 .icon-text {
@@ -314,16 +327,4 @@
     -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='7' y='12' width='10' height='9' rx='2' fill='none' stroke='black' stroke-width='2'/%3E%3Cpath d='M9 12 V9 A3 3 0 0 1 15 9 V12' fill='none' stroke='black' stroke-width='2'/%3E%3C/svg%3E");
 }
 
-/* Размеры для кнопок тулбара */
-.tool-btn .cad-icon {
-    width: 18px;
-    height: 18px;
-}
 
-/* Адаптивные размеры */
-@media (max-width: 768px) {
-    .tool-btn .cad-icon {
-        width: 16px;
-        height: 16px;
-    }
-}

@@ -90,7 +90,7 @@
     <script src="js/ui/ui-helper.js"></script>
 
     <link rel="stylesheet" href="css/style.css">
-    <link rel="stylesheet" href="css/sketch-extended.css">
+<!--    <link rel="stylesheet" href="css/sketch-extended.css">-->
 <!--    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">-->
     <link rel="stylesheet" href="lib/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="css/icons.css">
@@ -376,9 +376,10 @@
                         <button class="tool-btn sketch-tool-btn" data-sketch-tool="circle" title="Окружность">
                             <span class="cad-icon icon-circle"></span>
                         </button>
-                        <button class="tool-btn sketch-tool-btn" data-sketch-tool="polygon" title="Многоугольник">
+                        <button class="tool-btn sketch-tool-btn" data-sketch-tool="polygon" title="Вписанный многоугольник">
                             <span class="cad-icon icon-polygon"></span>
                         </button>
+
 
                         <button class="tool-btn sketch-tool-btn"  data-sketch-tool="arc" title="Дуга">
                             <span class="cad-icon icon-arc"></span>
@@ -392,6 +393,9 @@
                                 <i class="fas fa-caret-down"></i>
                             </button>
                             <div class="dropdown-menu">
+                                <a href="#" class="sketch-tool-btn" data-sketch-tool="polygon_inscribed" title="Описанный многоугольник">
+                                    <span class="cad-icon icon-polygon"></span> Описанный многоугольник
+                                </a>
                                 <a href="#" class="sketch-tool-btn" data-sketch-tool="polyline" title="Кривая">
                                     <span class="cad-icon icon-polyline"></span>Кривая
                                 </a>
@@ -458,17 +462,27 @@
                                 <a href="#" id="constraintPointOnCurve">
                                     <span class="cad-icon icon-coincident"></span>Точка на окружности
                                 </a>
+                                <a href="#" id="constraintLineTangentToCircle">
+                                    <span class="cad-icon icon-coincident"></span>Касательная к окружности
+                                </a>
                                 <a href="#" id="constraintPointOnLine">
                                     <span class="cad-icon icon-coincident"></span> Точка на линии
+                                </a>
+                                <a href="#" id="constraintPointToMidpoint">
+                                    <span class="cad-icon icon-coincident"></span> Точка центре на линии
                                 </a>
                                 <a href="#" id="constraintDistance">
                                     <span class="cad-icon icon-distance"></span> Расстояние
                                 </a>
 
                                 <div class="dropdown-divider"></div>
+<!--                                <a href="#" id="autoConstraintSelectedEntities" >-->
+<!--                                    Автоматические ограничения выделенных-->
+<!--                                </a>-->
                                 <a href="#" id="constraintDeleteSelectedEntities" >
                                     Удалить ограничения выделенных
                                 </a>
+
 <!--                                <a href="#" id="fixEntitiesBtn" title="Зафиксировать выделенные объекты">-->
 <!--                                    <i class="fas fa-anchor"></i>-->
 <!--                                </a>-->
