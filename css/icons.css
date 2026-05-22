@@ -112,17 +112,34 @@
     -webkit-mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%2016%2016%27%20fill%3D%27none%27%20stroke%3D%27%23000%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%20stroke-width%3D%271.5%27%3E%3Cpolygon%20points%3D%271.75%204.75%2C8%201.25%2C14.25%204.75%2C14.25%2011.25%2C8%2014.75%2C1.75%2011.25%27/%3E%3C/svg%3E");
 }
 
-/* === Вписанный многоугольник (толстый многоугольник внутри тонкого круга) === */
-/* === Вписанный многоугольник (вершины на окружности) — увеличен, тонкая линия === */
+/* === Вписанный многоугольник: шестиугольник ещё меньше === */
 .icon-polygon-inscribed {
-    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10.5' /%3E%3Cpolygon points='12,2 21,7.5 21,16.5 12,22 3,16.5 3,7.5' /%3E%3C/svg%3E");
-    -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10.5' /%3E%3Cpolygon points='12,2 21,7.5 21,16.5 12,22 3,16.5 3,7.5' /%3E%3C/svg%3E");
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='11' /%3E%3Cpolygon points='12,3.5 20.5,7.8 20.5,16.2 12,20.5 3.5,16.2 3.5,7.8' stroke-width='2.5' /%3E%3C/svg%3E");
+    -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='11' /%3E%3Cpolygon points='12,3.5 20.5,7.8 20.5,16.2 12,20.5 3.5,16.2 3.5,7.8' stroke-width='2.5' /%3E%3C/svg%3E");
 }
 
-/* === Описанный многоугольник (стороны касаются окружности) — увеличен, тонкая линия === */
+/* === Описанный многоугольник: стороны касаются окружности, многоугольник толще (2.5), окружность тонкая (1) === */
 .icon-polygon-circumscribed {
-    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='7' /%3E%3Cpolygon points='12,1.5 22.5,7.5 22.5,16.5 12,22.5 1.5,16.5 1.5,7.5' /%3E%3C/svg%3E");
-    -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='7' /%3E%3Cpolygon points='12,1.5 22.5,7.5 22.5,16.5 12,22.5 1.5,16.5 1.5,7.5' /%3E%3C/svg%3E");
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='7' /%3E%3Cpolygon points='12,1.7 22,7.5 22,16.5 12,22.3 2,16.5 2,7.5' stroke-width='2.5' /%3E%3C/svg%3E");
+    -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='7' /%3E%3Cpolygon points='12,1.7 22,7.5 22,16.5 12,22.3 2,16.5 2,7.5' stroke-width='2.5' /%3E%3C/svg%3E");
+}
+
+/* === Линейный массив (только 3 круга, без линий) === */
+.icon-array-linear {
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='4' cy='12' r='3.5' /%3E%3Ccircle cx='12' cy='12' r='3.5' /%3E%3Ccircle cx='20' cy='12' r='3.5' /%3E%3C/svg%3E");
+    -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='4' cy='12' r='3.5' /%3E%3Ccircle cx='12' cy='12' r='3.5' /%3E%3Ccircle cx='20' cy='12' r='3.5' /%3E%3C/svg%3E");
+}
+
+/* === Круговой массив (3 круга по дуге) === */
+.icon-array-circular {
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='4.5' r='3.2' /%3E%3Ccircle cx='5.5' cy='16.5' r='3.2' /%3E%3Ccircle cx='18.5' cy='16.5' r='3.2' /%3E%3C/svg%3E");
+    -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='4.5' r='3.2' /%3E%3Ccircle cx='5.5' cy='16.5' r='3.2' /%3E%3Ccircle cx='18.5' cy='16.5' r='3.2' /%3E%3C/svg%3E");
+}
+
+/* === Другие инструменты (звёздочка / шестерёнка) === */
+.icon-more-tools {
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 2 L13.5 9 L20.5 9 L15 13 L17.5 20 L12 16 L6.5 20 L9 13 L3.5 9 L10.5 9 Z' /%3E%3C/svg%3E");
+    -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 2 L13.5 9 L20.5 9 L15 13 L17.5 20 L12 16 L6.5 20 L9 13 L3.5 9 L10.5 9 Z' /%3E%3C/svg%3E");
 }
 
 .icon-text {
