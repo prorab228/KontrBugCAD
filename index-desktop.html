@@ -379,9 +379,8 @@
                             <span class="cad-icon icon-circle"></span>
                         </button>
                         <button class="tool-btn sketch-tool-btn" data-sketch-tool="polygon" title="Вписанный многоугольник">
-                            <span class="cad-icon icon-polygon"></span>
+                            <span class="cad-icon icon-polygon-inscribed"></span>
                         </button>
-
 
                         <button class="tool-btn sketch-tool-btn"  data-sketch-tool="arc" title="Дуга">
                             <span class="cad-icon icon-arc"></span>
@@ -396,7 +395,7 @@
                             </button>
                             <div class="dropdown-menu">
                                 <a href="#" class="sketch-tool-btn" data-sketch-tool="polygon_inscribed" title="Описанный многоугольник">
-                                    <span class="cad-icon icon-polygon"></span> Описанный многоугольник
+                                    <span class="cad-icon icon-polygon-circumscribed"></span> Описанный многоугольник
                                 </a>
                                 <a href="#" class="sketch-tool-btn" data-sketch-tool="polyline" title="Кривая">
                                     <span class="cad-icon icon-polyline"></span>Кривая
@@ -410,6 +409,15 @@
                                 <a href="#" class="sketch-tool-btn"  data-sketch-tool="text" title="Текст">
                                     <span class="cad-icon icon-text"></span>Текст
                                 </a>
+                               <a href="#" class="sketch-tool-btn" data-sketch-tool="linear_array" title="Создает копии выделенных объектов по линии">
+                                    <span class="cad-icon icon-array-linear"></span> Линейный массив
+                                </a>
+
+
+                                <a href="#" class="sketch-tool-btn"  data-sketch-tool="circular_array" title="Создает копии выделенных объектов по окружности">
+                                    <span class="cad-icon icon-array-circular "></span> Круговой массив
+                                </a>
+
                             </div>
                        </div>
 
@@ -482,7 +490,7 @@
 <!--                                    Автоматические ограничения выделенных-->
 <!--                                </a>-->
                                 <a href="#" id="constraintDeleteSelectedEntities" >
-                                    Удалить ограничения выделенных
+                                    <span class="cad-icon icon-delete"> </span>Удалить ограничения выделенных
                                 </a>
 
                                 <a href="#" id="fixEntitiesBtn" title="Зафиксировать выделенные объекты">
@@ -528,7 +536,7 @@
                                 <i class="fas fa-cog"></i>
                                 <i class="fas fa-caret-down"></i>
                             </button>
-                            <div class="dropdown-menu">
+                            <div class="dropdown-menu dropdown-click-show">
                                 <div class="dropdown-section">
                                     <h4>Настройки</h4>
                                     <div class="property-row">
