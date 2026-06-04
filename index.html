@@ -453,44 +453,45 @@
                                 <i class="fas fa-caret-down"></i>
                             </button>
                             <div class="dropdown-menu">
-                                <a href="#" id="constraintHorizontal">
-                                    <span class="cad-icon-dropdown icon-horizontal"></span> Горизонтальность
-                                </a>
-                                <a href="#" id="constraintVertical">
-                                    <span class="cad-icon-dropdown icon-vertical"></span> Вертикальность
-                                </a>
-                                <a href="#" id="constraintParallel">
-                                    <span class="cad-icon-dropdown icon-parallel"></span> Параллельность
-                                </a>
-                                <a href="#" id="constraintAngle">
-                                    <span class="cad-icon-dropdown icon-angle"></span> Угол
-                                </a>
-                                <a href="#" id="constraintEquality">
-                                    <i class="fas fa-equals"></i> Равенство
-                                </a>
-                                <a href="#" id="constraintPerpendicular">
-                                    <span class="cad-icon-dropdown icon-perpendicular"></span> Перпендикулярность
-                                </a>
-                                <a href="#" id="constraintCoincident">
+                                 <a href="#" id="constraintCoincident"  title="Связывает точки между собой">
                                     <span class="cad-icon-dropdown icon-coincident"></span> Совпадение
                                 </a>
-                                <a href="#" id="constraintPointOnCurve">
+                                <a href="#" id="constraintEquality" title="Устанавливает равные размеры для выделенных элементов">
+                                    <i class="fas fa-equals"></i> Равенство
+                                </a>
+                                <a href="#" id="constraintHorizontal" title="Линия будет держать горизонтальное положение">
+                                    <span class="cad-icon-dropdown icon-horizontal"></span> Горизонтальность
+                                </a>
+                                <a href="#" id="constraintVertical" title="Линия будет держать вертикальное положение">
+                                    <span class="cad-icon-dropdown icon-vertical"></span> Вертикальность
+                                </a>
+                                <a href="#" id="constraintParallel" title="Выделенные линии станут параллельны друг другу">
+                                    <span class="cad-icon-dropdown icon-parallel"></span> Параллельность
+                                </a>
+                                <a href="#" id="constraintPerpendicular" title="Выделенные линии станут перпендикулярны друг другу">
+                                    <span class="cad-icon-dropdown icon-perpendicular"></span> Перпендикулярность
+                                </a>
+                                <a href="#" id="constraintAngle" title="Обеспечивает сохранение угла между двумя линиями">
+                                    <span class="cad-icon-dropdown icon-angle"></span> Угол
+                                </a>
+
+                                <a href="#" id="constraintPointOnCurve" title="Заставляет точку лежать точно на окружности (или дуге)">
                                     <span class="cad-icon-dropdown icon-point-on-circle"></span>Точка на окружности
                                 </a>
-                                <a href="#" id="constraintLineTangentToCircle">
+                                <a href="#" id="constraintLineTangentToCircle" title="Линия становится касательной к окружности (или дуге)">
                                     <span class="cad-icon-dropdown icon-tangent-to-circle"></span>Касательная
                                 </a>
-                                <a href="#" id="constraintPointOnLine">
-                                    <span class="cad-icon-dropdown icon-point-on-line"></span> Точка на линии
+                                <a href="#" id="constraintPointOnLine" title="Точка будет лежать на прямой">
+                                    <span class="cad-icon-dropdown icon-point-on-line"></span> Точка на прямой
                                 </a>
-                                <a href="#" id="constraintPointToMidpoint">
-                                    <span class="cad-icon-dropdown icon-point-on-midpoint"></span> Точка центре на линии
+                                <a href="#" id="constraintPointToMidpoint" title="Точка совмещается с серединой заданного отрезка">
+                                    <span class="cad-icon-dropdown icon-point-on-midpoint"></span> Точка на середине отрезка
                                 </a>
 <!--                                <a href="#" id="constraintDistance">-->
 <!--                                    <span class="cad-icon-dropdown icon-distance"></span> Расстояние-->
 <!--                                </a>-->
 
-                                <a href="#" id="constraintCircleTangent">
+                                <a href="#" id="constraintCircleTangent" title="Две окружности (или дуги) будут касаться друг друга">
                                     <span class="cad-icon-dropdown icon-tangent-circles"></span> Касание окружностей
                                 </a>
 <!--                                <a href="#" id="constraintSymmetry">-->
@@ -502,7 +503,7 @@
 <!--                                    Автоматические ограничения выделенных-->
 <!--                                </a>-->
                                 <a href="#" id="constraintDeleteSelectedEntities" >
-                                    <span class="cad-icon-dropdown icon-delete"> </span>Удалить ограничения выделенных
+                                    <span class="cad-icon-dropdown icon-delete"> </span>Удалить у выделенных объектов
                                 </a>
 
                                 <a href="#" id="fixEntitiesBtn" title="Зафиксировать выделенные объекты">
