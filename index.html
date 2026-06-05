@@ -138,7 +138,10 @@
                             <a href="#" id="exportBtn"><i class="fas fa-download"></i> Экспорт</a>
                             <div class="dropdown-divider"></div>
                             <a href="#" id="importSketchSVG" class="sketch-only" style="display: none;"><i class="fas fa-file-import"></i> Импорт SVG</a>
-                            <a href="#" id="exportSketchSVG" class="sketch-only" style="display: none;"><i class="fas fa-file-export"></i> Экспорт скетча в SVG</a>
+                            <a href="#" id="importSketchDXF" class="sketch-only" style="display: none;"><i class="fas fa-file-import"></i> Импорт DXF (экспериментальное)</a>
+                            <a href="#" id="exportSketchSVG" class="sketch-only" style="display: none;"><i class="fas fa-file-export"></i> Экспорт в SVG</a>
+                            <a href="#" id="exportSketchDXF" class="sketch-only" style="display: none;"><i class="fas fa-file-export"></i> Экспорт в DXF (экспериментальное)</a>
+
                         </div>
                     </div>
                 </div>
@@ -176,17 +179,18 @@
                         <button class="tool-btn" data-tool="sketch"   title="Чертеж (Скетч)">
                             <span class="cad-icon icon-sketch"></span>
                         </button>
-                        <button class="tool-btn" data-tool="extrude"   title="Вытягивание">
+                        <button class="tool-btn" data-tool="extrude"   title="Выдавливание">
                             <span class="cad-icon icon-extrude"></span>
                         </button>
                         <button class="tool-btn" data-tool="revolve"   title="Создать тело вращения">
-                             <i class="fas fa-sync-alt"></i>
+<!--                             <i class="fas fa-sync-alt"></i>-->
+                            <span class="cad-icon icon-revolve"></span>
                          </button>
 
                         <!-- Генераторы -->
                         <div class="dropdown">
-                            <button class="tool-btn dropdown-toggle" title="Генераторы">
-                                <i class="fas fa-cog"></i>
+                            <button class="tool-btn dropdown-toggle" title="Создать">
+                                <i class="fas fa-screwdriver"></i>
                                 <i class="fas fa-caret-down"></i>
                             </button>
                             <div class="dropdown-menu">

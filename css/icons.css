@@ -192,10 +192,27 @@
 }
 
 /* 3D операции */
+/*
 .icon-extrude {
     mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%2032%2032%27%3E%3Cpath%20d%3D%27M16%2C4l-8.3%2C8.3C7.1%2C12.9%2C7.5%2C14%2C8.4%2C14H13v13c0%2C0.6%2C0.4%2C1%2C1%2C1h4c0.6%2C0%2C1-0.4%2C1-1V14h4.6c0.9%2C0%2C1.3-1.1%2C0.7-1.7L16%2C4z%27%20fill%3D%27none%27%20stroke%3D%27%23000%27%20stroke-width%3D%272%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%20stroke-miterlimit%3D%2710%27/%3E%3C/svg%3E");
     -webkit-mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%2032%2032%27%3E%3Cpath%20d%3D%27M16%2C4l-8.3%2C8.3C7.1%2C12.9%2C7.5%2C14%2C8.4%2C14H13v13c0%2C0.6%2C0.4%2C1%2C1%2C1h4c0.6%2C0%2C1-0.4%2C1-1V14h4.6c0.9%2C0%2C1.3-1.1%2C0.7-1.7L16%2C4z%27%20fill%3D%27none%27%20stroke%3D%27%23000%27%20stroke-width%3D%272%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%20stroke-miterlimit%3D%2710%27/%3E%3C/svg%3E");
 }
+*/
+/* === Вытягивание (Extrude) — увеличенная === */
+.icon-extrude {
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cg transform='matrix(1.2,0,0,1.2,-2.4,-2.4)'%3E%3Cpath d='M21 12.353v4.294a.6.6 0 0 1-.309.525l-8.4 4.666a.6.6 0 0 1-.582 0l-8.4-4.666A.6.6 0 0 1 3 16.647v-4.294a.6.6 0 0 1 .309-.524l8.4-4.667a.6.6 0 0 1 .582 0l8.4 4.667a.6.6 0 0 1 .309.524Z'/%3E%3Cpath d='m3.528 12.294 8.18 4.544a.6.6 0 0 0 .583 0l8.209-4.56M12 21.5V17m0-5V2m0 0 2.5 2.5M12 2 9.5 4.5'/%3E%3C/g%3E%3C/svg%3E");
+    -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cg transform='matrix(1.2,0,0,1.2,-2.4,-2.4)'%3E%3Cpath d='M21 12.353v4.294a.6.6 0 0 1-.309.525l-8.4 4.666a.6.6 0 0 1-.582 0l-8.4-4.666A.6.6 0 0 1 3 16.647v-4.294a.6.6 0 0 1 .309-.524l8.4-4.667a.6.6 0 0 1 .582 0l8.4 4.667a.6.6 0 0 1 .309.524Z'/%3E%3Cpath d='m3.528 12.294 8.18 4.544a.6.6 0 0 0 .583 0l8.209-4.56M12 21.5V17m0-5V2m0 0 2.5 2.5M12 2 9.5 4.5'/%3E%3C/g%3E%3C/svg%3E");
+}
+
+
+/* === Вращение (Revolve) — две круговые стрелки === */
+.icon-revolve {
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 14'%3E%3Cpath fill='black' fill-rule='evenodd' d='M7.75.75a.75.75 0 0 0-1.5 0v12.5a.75.75 0 0 0 1.5 0V9.983c1.2-.06 2.52-.257 3.62-.6c.665-.209 1.29-.483 1.762-.842C13.603 8.18 14 7.67 14 7c0-.56-.28-1.002-.623-1.325c-.338-.317-.774-.559-1.203-.744a7 7 0 0 0-.355-.141l.244-1.011a.625.625 0 0 0-.822-.734c-.77.28-1.552.802-2.069 1.416a.63.63 0 0 0-.13.543c.18.782.638 1.603 1.197 2.203a.625.625 0 0 0 1.065-.279l.22-.913q.078.03.156.064c.363.157.652.33.84.507c.183.172.23.306.23.414c0 .126-.068.311-.376.547c-.309.235-.78.455-1.377.642c-.963.302-2.15.484-3.247.542zM1.727 5.601a.625.625 0 0 1-.117.876c-.29.222-.36.397-.36.524c0 .125.066.306.364.537a.625.625 0 1 1-.766.987C.386 8.167 0 7.661 0 7.001c0-.68.41-1.18.851-1.517a.625.625 0 0 1 .876.117m2.72-.11A.625.625 0 0 0 4.24 4.26c-.318.052-.756.14-1.227.267a.625.625 0 1 0 .327 1.206c.422-.114.82-.193 1.106-.24M5.447 9.31a.625.625 0 0 1-.705.532q-.255-.035-.505-.078a13 13 0 0 1-1.225-.268a.625.625 0 0 1 .328-1.207c.35.095.724.176 1.11.243q.23.039.465.072c.341.048.58.364.532.706' clip-rule='evenodd'/%3E%3C/svg%3E");
+    -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 14'%3E%3Cpath fill='black' fill-rule='evenodd' d='M7.75.75a.75.75 0 0 0-1.5 0v12.5a.75.75 0 0 0 1.5 0V9.983c1.2-.06 2.52-.257 3.62-.6c.665-.209 1.29-.483 1.762-.842C13.603 8.18 14 7.67 14 7c0-.56-.28-1.002-.623-1.325c-.338-.317-.774-.559-1.203-.744a7 7 0 0 0-.355-.141l.244-1.011a.625.625 0 0 0-.822-.734c-.77.28-1.552.802-2.069 1.416a.63.63 0 0 0-.13.543c.18.782.638 1.603 1.197 2.203a.625.625 0 0 0 1.065-.279l.22-.913q.078.03.156.064c.363.157.652.33.84.507c.183.172.23.306.23.414c0 .126-.068.311-.376.547c-.309.235-.78.455-1.377.642c-.963.302-2.15.484-3.247.542zM1.727 5.601a.625.625 0 0 1-.117.876c-.29.222-.36.397-.36.524c0 .125.066.306.364.537a.625.625 0 1 1-.766.987C.386 8.167 0 7.661 0 7.001c0-.68.41-1.18.851-1.517a.625.625 0 0 1 .876.117m2.72-.11A.625.625 0 0 0 4.24 4.26c-.318.052-.756.14-1.227.267a.625.625 0 1 0 .327 1.206c.422-.114.82-.193 1.106-.24M5.447 9.31a.625.625 0 0 1-.705.532q-.255-.035-.505-.078a13 13 0 0 1-1.225-.268a.625.625 0 0 1 .328-1.207c.35.095.724.176 1.11.243q.23.039.465.072c.341.048.58.364.532.706' clip-rule='evenodd'/%3E%3C/svg%3E");
+}
+
+
+
 
 .icon-plane {
     mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%2032%2032%27%3E%3Cpath%20d%3D%27M28%2024v4h-4v-1h-16v1h-4v-4h1v-16h-1v-4h4v1h16v-1h4v4h-1v16h1zM5%2027h2v-2h-2v2zM7%205h-2v2h2v-2zM24%207h-16v1h-1v16h1v1h16v-1h1v-16h-1v-1zM27%205h-2v2h2v-2zM25%2025v2h2v-2h-2z%27/%3E%3C/svg%3E");
@@ -395,3 +412,5 @@
     mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='7' cy='12' r='5' /%3E%3Ccircle cx='17' cy='12' r='5' /%3E%3C/svg%3E");
     -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='7' cy='12' r='5' /%3E%3Ccircle cx='17' cy='12' r='5' /%3E%3C/svg%3E");
 }
+
+
