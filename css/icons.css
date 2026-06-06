@@ -116,9 +116,16 @@
     -webkit-mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%2048%2048%27%3E%3Cpath%20d%3D%27M42%208H6C4.89543%208%204%208.89543%204%2010V38C4%2039.1046%204.89543%2040%206%2040H42C43.1046%2040%2044%2039.1046%2044%2038V10%2C44%208.89543%2043.1046%208%2042%208Z%27%20fill%3D%27none%27%20stroke%3D%27%23000%27%20stroke-width%3D%274%27/%3E%3C/svg%3E");
 }
 
+
+.icon-rectangle-center{
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48' fill='none' stroke='black' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='4' y='8' width='40' height='32' /%3E%3Ccircle cx='24' cy='24' r='3' fill='black' stroke='none' /%3E%3Cpath d='M24 24 L4 8' stroke-dasharray='4 3' stroke-width='1.5' /%3E%3Cpath d='M24 24 L44 8' stroke-dasharray='4 3' stroke-width='1.5' /%3E%3Cpath d='M24 24 L4 40' stroke-dasharray='4 3' stroke-width='1.5' /%3E%3Cpath d='M24 24 L44 40' stroke-dasharray='4 3' stroke-width='1.5' /%3E%3C/svg%3E");
+    -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48' fill='none' stroke='black' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='4' y='8' width='40' height='32' /%3E%3Ccircle cx='24' cy='24' r='3' fill='black' stroke='none' /%3E%3Cpath d='M24 24 L4 8' stroke-dasharray='4 3' stroke-width='1.5' /%3E%3Cpath d='M24 24 L44 8' stroke-dasharray='4 3' stroke-width='1.5' /%3E%3Cpath d='M24 24 L4 40' stroke-dasharray='4 3' stroke-width='1.5' /%3E%3Cpath d='M24 24 L44 40' stroke-dasharray='4 3' stroke-width='1.5' /%3E%3C/svg%3E");
+}
+
+/* Круг с центральной точкой */
 .icon-circle {
-    mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%2024%2024%27%3E%3Ccircle%20cx%3D%2712%27%20cy%3D%2712%27%20r%3D%2710%27%20fill%3D%27none%27%20stroke%3D%27%23000%27%20stroke-width%3D%271%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27miter%27/%3E%3C/svg%3E");
-    -webkit-mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%2024%2024%27%3E%3Ccircle%20cx%3D%2712%27%20cy%3D%2712%27%20r%3D%2710%27%20fill%3D%27none%27%20stroke%3D%27%23000%27%20stroke-width%3D%271%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27miter%27/%3E%3C/svg%3E");
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='10' fill='none' stroke='black' stroke-width='1' stroke-linecap='round' stroke-linejoin='miter' /%3E%3Ccircle cx='12' cy='12' r='2' fill='black' stroke='none' /%3E%3C/svg%3E");
+    -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='10' fill='none' stroke='black' stroke-width='1' stroke-linecap='round' stroke-linejoin='miter' /%3E%3Ccircle cx='12' cy='12' r='2' fill='black' stroke='none' /%3E%3C/svg%3E");
 }
 
 .icon-polygon {
@@ -186,10 +193,38 @@
     -webkit-mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%2056%2056%27%3E%3Cpath%20d%3D%27M%200%2029.1449%20C%200%2041.5941%208.6930%2049.9436%2021.9149%2049.9436%20L%2034.0636%2049.9436%20C%2047.2857%2049.9436%2056%2041.5941%2056%2029.1449%20C%2056%2016.6957%2047.2857%208.3461%2034.0636%208.3461%20L%2021.9149%208.3461%20C%208.6930%208.3461%200%2016.6957%200%2029.1449%20Z%20M%203.4557%2029.1449%20C%203.4557%2018.7777%2010.5174%2011.8448%2021.2710%2011.8448%20L%2034.7075%2011.8448%20C%2045.4609%2011.8448%2052.5229%2018.7777%2052.5229%2029.1449%20C%2052.5229%2039.4906%2045.4609%2046.4450%2034.7075%2046.4450%20L%2021.2710%2046.4450%20C%2010.5174%2046.4450%203.4557%2039.4906%203.4557%2029.1449%20Z%27/%3E%3C/svg%3E");
 }
 
+/* Стадион (скруглённый прямоугольник) с центрами дуг */
+.icon-stadion-2p {
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 56 56'%3E%3Cpath d='M 0 29.1449 C 0 41.5941 8.6930 49.9436 21.9149 49.9436 L 34.0636 49.9436 C 47.2857 49.9436 56 41.5941 56 29.1449 C 56 16.6957 47.2857 8.3461 34.0636 8.3461 L 21.9149 8.3461 C 8.6930 8.3461 0 16.6957 0 29.1449 Z' fill='none' stroke='black' stroke-width='4' stroke-linecap='round' stroke-linejoin='round' /%3E%3Ccircle cx='14' cy='29.1449' r='4' fill='black' stroke='none' /%3E%3Ccircle cx='42' cy='29.1449' r='4' fill='black' stroke='none' /%3E%3C/svg%3E");
+    -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 56 56'%3E%3Cpath d='M 0 29.1449 C 0 41.5941 8.6930 49.9436 21.9149 49.9436 L 34.0636 49.9436 C 47.2857 49.9436 56 41.5941 56 29.1449 C 56 16.6957 47.2857 8.3461 34.0636 8.3461 L 21.9149 8.3461 C 8.6930 8.3461 0 16.6957 0 29.1449 Z' fill='none' stroke='black' stroke-width='4' stroke-linecap='round' stroke-linejoin='round' /%3E%3Ccircle cx='14' cy='29.1449' r='4' fill='black' stroke='none' /%3E%3Ccircle cx='42' cy='29.1449' r='4' fill='black' stroke='none' /%3E%3C/svg%3E");
+}
+
 .icon-mirror {
     mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%2016%2016%27%3E%3Cpath%20d%3D%27M7%202.5a.5.5%200%200%200-.939-.24l-6%2011A.5.5%200%200%200%20.5%2014h6a.5.5%200%200%200%20.5-.5v-11zm2.376-.484a.5.5%200%200%201%20.563.245l6%2011A.5.5%200%200%201%2015.5%2014h-6a.5.5%200%200%201-.5-.5v-11a.5.5%200%200%201%20.376-.484zM10%204.46V13h4.658L10%204.46z%27/%3E%3C/svg%3E");
     -webkit-mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%2016%2016%27%3E%3Cpath%20d%3D%27M7%202.5a.5.5%200%200%200-.939-.24l-6%2011A.5.5%200%200%200%20.5%2014h6a.5.5%200%200%200%20.5-.5v-11zm2.376-.484a.5.5%200%200%201%20.563.245l6%2011A.5.5%200%200%201%2015.5%2014h-6a.5.5%200%200%201-.5-.5v-11a.5.5%200%200%201%20.376-.484zM10%204.46V13h4.658L10%204.46z%27/%3E%3C/svg%3E");
 }
+
+
+/* Дуга по трём точкам — три точки лежат на дуге */
+.icon-arc-3points {
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 28 28' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 25 A20 20 0 0 1 25 5' /%3E%3Ccircle cx='5' cy='25' r='2.5' fill='black' stroke='none' /%3E%3Ccircle cx='25' cy='5' r='2.5' fill='black' stroke='none' /%3E%3Ccircle cx='9.9' cy='11.9' r='2.5' fill='black' stroke='none' /%3E%3C/svg%3E");
+    -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 28 28' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 25 A20 20 0 0 1 25 5' /%3E%3Ccircle cx='5' cy='25' r='2.5' fill='black' stroke='none' /%3E%3Ccircle cx='25' cy='5' r='2.5' fill='black' stroke='none' /%3E%3Ccircle cx='9.9' cy='11.9' r='2.5' fill='black' stroke='none' /%3E%3C/svg%3E");
+}
+
+.icon-arc-center {
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 28 28' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 25 A20 20 0 0 1 25 5' /%3E%3Ccircle cx='5' cy='25' r='2.5' fill='black' stroke='none' /%3E%3Ccircle cx='25' cy='5' r='2.5' fill='black' stroke='none' /%3E%3Ccircle cx='25' cy='25' r='2.5' fill='black' stroke='none' /%3E%3C/svg%3E");
+    -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 28 28' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 25 A20 20 0 0 1 25 5' /%3E%3Ccircle cx='5' cy='25' r='2.5' fill='black' stroke='none' /%3E%3Ccircle cx='25' cy='5' r='2.5' fill='black' stroke='none' /%3E%3Ccircle cx='25' cy='25' r='2.5' fill='black' stroke='none' /%3E%3C/svg%3E");
+}
+
+
+
+/* Окружность по трём точкам — три точки лежат на окружности */
+/* Окружность по трём точкам (как в Чертеж(40)) */
+.icon-circle-3points {
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 28 28' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='14' cy='14' r='12' /%3E%3Ccircle cx='2' cy='14' r='3' fill='black' stroke='none' /%3E%3Ccircle cx='14' cy='2' r='3' fill='black' stroke='none' /%3E%3Ccircle cx='26' cy='14' r='3' fill='black' stroke='none' /%3E%3C/svg%3E");
+    -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 28 28' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='14' cy='14' r='12' /%3E%3Ccircle cx='2' cy='14' r='3' fill='black' stroke='none' /%3E%3Ccircle cx='14' cy='2' r='3' fill='black' stroke='none' /%3E%3Ccircle cx='26' cy='14' r='3' fill='black' stroke='none' /%3E%3C/svg%3E");
+}
+
 
 /* 3D операции */
 /*
