@@ -501,7 +501,7 @@ a:hover {
     width: 1px;
     height: 30px;
     background: var(--border-primary);
-    margin: 0 15px;
+    margin: 0 7px;
     flex-shrink: 0;
 }
 
@@ -537,6 +537,22 @@ a:hover {
     font-size: 18px;
 }
 
+.sketch-tool-menu
+{
+    display: flex;
+}
+
+.sketch-tool-menu .tool-btn
+{
+    width: 30px;
+      border-radius: 6px 0 0 6px;
+}
+.sketch-tool-menu .dropdown-toggle
+{
+    width: 15px;
+  border-radius: 0 6px 6px 0;
+}
+
 .view-btn-compact {
     width: 32px;
     height: 32px;
@@ -564,7 +580,9 @@ a:hover {
 
 .tool-btn.active,
 .sketch-tool.active,
+.dropdown-tool-btn.active,
 .view-btn-compact.active,
+.sketch-tool-btn.active,
 [data-tool].active.tool-btn {
     background: var(--primary-color);
     border-color: var(--primary-color);
