@@ -138,7 +138,10 @@
                             <a href="#" id="exportBtn"><i class="fas fa-download"></i> Экспорт</a>
                             <div class="dropdown-divider"></div>
                             <a href="#" id="importSketchSVG" class="sketch-only" style="display: none;"><i class="fas fa-file-import"></i> Импорт SVG</a>
-                            <a href="#" id="exportSketchSVG" class="sketch-only" style="display: none;"><i class="fas fa-file-export"></i> Экспорт скетча в SVG</a>
+                            <a href="#" id="importSketchDXF" class="sketch-only" style="display: none;"><i class="fas fa-file-import"></i> Импорт DXF (экспериментальное)</a>
+                            <a href="#" id="exportSketchSVG" class="sketch-only" style="display: none;"><i class="fas fa-file-export"></i> Экспорт в SVG</a>
+                            <a href="#" id="exportSketchDXF" class="sketch-only" style="display: none;"><i class="fas fa-file-export"></i> Экспорт в DXF (экспериментальное)</a>
+
                         </div>
                     </div>
                 </div>
@@ -176,30 +179,31 @@
                         <button class="tool-btn" data-tool="sketch"   title="Чертеж (Скетч)">
                             <span class="cad-icon icon-sketch"></span>
                         </button>
-                        <button class="tool-btn" data-tool="extrude"   title="Вытягивание">
+                        <button class="tool-btn" data-tool="extrude"   title="Выдавливание">
                             <span class="cad-icon icon-extrude"></span>
                         </button>
                         <button class="tool-btn" data-tool="revolve"   title="Создать тело вращения">
-                             <i class="fas fa-sync-alt"></i>
+<!--                             <i class="fas fa-sync-alt"></i>-->
+                            <span class="cad-icon icon-revolve"></span>
                          </button>
 
                         <!-- Генераторы -->
                         <div class="dropdown">
-                            <button class="tool-btn dropdown-toggle" title="Генераторы">
-                                <i class="fas fa-cog"></i>
+                            <button class="tool-btn dropdown-toggle" title="Создать">
+                                <i class="fas fa-screwdriver"></i>
                                 <i class="fas fa-caret-down"></i>
                             </button>
                             <div class="dropdown-menu">
-                                <a href="#" data-tool="gearGenerator" id="gearGenerator" title="Шестерня">
+                                <a href="#" class="dropdown-tool-btn" data-tool="gearGenerator" id="gearGenerator" title="Шестерня">
                                     <i class="fas fa-cog"></i> Генератор шестерней
                                 </a>
-                                <a href="#" data-tool="threadGenerator" id="threadGenerator" title="Резьба">
+                                <a href="#" class="dropdown-tool-btn" data-tool="threadGenerator" id="threadGenerator" title="Резьба">
                                     <i class="fas fa-screwdriver"></i> Генератор резьбы
                                 </a>
-                                <a href="#" data-tool="text3dTool" title="3D Текст">
+                                <a href="#" class="dropdown-tool-btn" data-tool="text3dTool" title="3D Текст">
                                     <i class="fas fa-font"></i>3D Текст
                                 </a>
-                                <a href="#"  data-tool="imageTool" title="Изображение">
+                                <a href="#" class="dropdown-tool-btn"  data-tool="imageTool" title="Изображение">
                                     <i class="fas fa-image"></i>Изображение
                                  </a>
                             </div>
@@ -224,15 +228,15 @@
                                 <i class="fas fa-caret-down"></i>
                             </button>
                             <div class="dropdown-menu">
-                                <a href="#" id="copyObject" title="Копировать (Ctrl+C)">
+                                <a href="#" class="dropdown-tool-btn" id="copyObject" title="Копировать (Ctrl+C)">
                                     <i class="fas fa-copy"></i>Копировать (Ctrl+C)
                                 </a>
 
-                                <a href="#" id="pasteObject" title="Вставить (Ctrl+V)">
+                                <a href="#" class="dropdown-tool-btn" id="pasteObject" title="Вставить (Ctrl+V)">
                                     <i class="fas fa-paste"></i>Вставить (Ctrl+V)
                                 </a>
 
-                                <a href="#" id="duplicateObject"  title="Дублировать (Ctrl+D)">
+                                <a href="#" class="dropdown-tool-btn" id="duplicateObject"  title="Дублировать (Ctrl+D)">
                                     <i class="fas fa-clone"></i>Дублировать (Ctrl+D)
                                 </a>
                             </div>
@@ -244,16 +248,16 @@
                                 <i class="fas fa-caret-down"></i>
                             </button>
                             <div class="dropdown-menu">
-                                <a href="#" data-tool="move" title="Перемещение (W)">
+                                <a href="#" class="dropdown-tool-btn" data-tool="move" title="Перемещение (W)">
                                     <span class="cad-icon icon-move"></span> Перемещение (W)
                                 </a>
-                                <a href="#" data-tool="rotate" title="Вращение (R)">
+                                <a href="#" class="dropdown-tool-btn" data-tool="rotate" title="Вращение (R)">
                                     <span class="cad-icon icon-rotate"></span> Вращение (R)
                                 </a>
-                                <a href="#" data-tool="scale" title="Масштаб (S)">
+                                <a href="#" class="dropdown-tool-btn" data-tool="scale" title="Масштаб (S)">
                                     <span class="cad-icon icon-scale"></span> Масштаб (S)
                                 </a>
-                                <a href="#" data-tool="align" title="Выравнивание (Ctrl+Shift+A)">
+                                <a href="#" class="dropdown-tool-btn" data-tool="align" title="Выравнивание (Ctrl+Shift+A)">
                                     <i class="fas fa-arrows-alt"></i> Выравнивание
                                 </a>
                             </div>
@@ -266,13 +270,13 @@
                                 <i class="fas fa-caret-down"></i>
                             </button>
                             <div class="dropdown-menu">
-                                <a href="#" data-tool="boolean-union"  title="фигуры объединятся в одну">
+                                <a href="#" class="dropdown-tool-btn" data-tool="boolean-union"  title="фигуры объединятся в одну">
                                     <span class="cad-icon icon-union"></span> Объединение
                                 </a>
-                                <a href="#" data-tool="boolean-subtract"  title="из первой фигуры вычитается вторая">
+                                <a href="#" class="dropdown-tool-btn" data-tool="boolean-subtract"  title="из первой фигуры вычитается вторая">
                                     <span class="cad-icon icon-subtract"></span> Вычитание
                                 </a>
-                                <a href="#" data-tool="boolean-intersect"  title="останется только пересечение двух фигур">
+                                <a href="#" class="dropdown-tool-btn" data-tool="boolean-intersect"  title="останется только пересечение двух фигур">
                                     <span class="cad-icon icon-intersect"></span> Пересечение
                                 </a>
 
@@ -286,25 +290,25 @@
                                 <i class="fas fa-caret-down"></i>
                             </button>
                             <div class="dropdown-menu">
-                                <a href="#" data-tool="workplane" title="Создать рабочую плоскость">
+                                <a href="#" class="dropdown-tool-btn" data-tool="workplane" title="Создать рабочую плоскость">
                                     <span class="cad-icon icon-plane"></span> Создать рабочую плоскость
                                 </a>
-                                <a href="#" data-tool="split" title="Разрезать по плоскости (Ctrl+Shift+S)">
+                                <a href="#" class="dropdown-tool-btn" data-tool="split" title="Разрезать по плоскости (Ctrl+Shift+S)">
                                     <span class="cad-icon icon-split"></span> Разрезать
                                 </a>
-                                <a href="#" data-tool="mirror" title="Отражение (Ctrl+Shift+M)">
+                                <a href="#" class="dropdown-tool-btn" data-tool="mirror" title="Отражение (Ctrl+Shift+M)">
                                     <span class="cad-icon icon-mirror"></span> Отражение
                                 </a>
-                                <a href="#" data-tool="repair" title="Ремонт геометрии">
+                                <a href="#" class="dropdown-tool-btn" data-tool="repair" title="Ремонт геометрии">
                                     <i class="fas fa-tools"></i>Ремонт геометрии
                                 </a>
 <!--                                <a href="#" data-tool="decimate" title="Уменьшить полигоны">-->
 <!--                                    <i class="fas fa-compress-alt"></i>Уменьшить полигоны-->
 <!--                                </a>-->
-                                <a href="#" data-tool="group" title="Группировать (Ctrl+G)">
+                                <a href="#" class="dropdown-tool-btn" data-tool="group" title="Группировать (Ctrl+G)">
                                     <span class="cad-icon icon-group"></span> Группировать
                                 </a>
-                                <a href="#" data-tool="ungroup" title="Разгруппировать (Ctrl+Shift+G)">
+                                <a href="#" class="dropdown-tool-btn" data-tool="ungroup" title="Разгруппировать (Ctrl+Shift+G)">
                                     <span class="cad-icon icon-ungroup"></span> Разгруппировать
                                 </a>
 
@@ -360,33 +364,122 @@
             <!-- Инструменты скетча (скрыты по умолчанию) -->
                 <div class="tool-section" >
                     <div class="tool-group">
-                        <button class="tool-btn sketch-tool-btn" data-sketch-tool="select" title="Выделение скетча">
-                            <span class="cad-icon icon-select"></span>
-                        </button>
-                        <button class="tool-btn sketch-tool-btn" data-sketch-tool="line" title="Линия">
-                            <span class="cad-icon icon-line"></span>
-                        </button>
-                        <button class="tool-btn sketch-tool-btn"  data-sketch-tool="dashedline" title="Пунктирная линия">
+                        <button class="tool-btn" id="toggleAuxiliaryModeBtn" title="Включить вспомогательные построения (пунктирные фигуры)">
                             <span class="cad-icon icon-dashedline"></span>
                         </button>
-                        <button class="tool-btn sketch-tool-btn" data-sketch-tool="curve" title="Сглаженная кривая">
-                            <span class="cad-icon icon-bezier"></span>
+                        <div class="divider"></div>
+                        <button class="tool-btn sketch-tool-btn" data-sketch-tool="select" title="Инструмент выделения">
+                            <span class="cad-icon icon-select"></span>
                         </button>
-                        <button class="tool-btn sketch-tool-btn" data-sketch-tool="rectangle" title="Прямоугольник">
-                            <span class="cad-icon icon-rectangle"></span>
-                        </button>
-                        <button class="tool-btn sketch-tool-btn" data-sketch-tool="circle" title="Окружность">
-                            <span class="cad-icon icon-circle"></span>
-                        </button>
-                        <button class="tool-btn sketch-tool-btn" data-sketch-tool="polygon" title="Вписанный многоугольник">
-                            <span class="cad-icon icon-polygon-inscribed"></span>
-                        </button>
-
-                        <button class="tool-btn sketch-tool-btn"  data-sketch-tool="arc" title="Дуга">
-                            <span class="cad-icon icon-arc"></span>
+                        <button class="tool-btn sketch-tool-btn" data-sketch-tool="line" title="Создать линию">
+                            <span class="cad-icon icon-line"></span>
                         </button>
 
 
+
+                        <div class=" sketch-tool-menu">
+                            <button class="tool-btn sketch-tool-btn" data-sketch-tool="rectangle" title="Создать прямоугольник по двум точкам">
+                                <span class="cad-icon icon-rectangle"></span>
+                            </button>
+                            <div class="dropdown">
+                                <button class="tool-btn dropdown-toggle" title="Другие фигуры">
+                                    <i class="fas fa-caret-down"></i>
+                                </button>
+                                <div class="dropdown-menu">
+                                    <a class="sketch-tool-btn" data-sketch-tool="rectangle_center" title="Создать прямоугольник по центру и угловой точке">
+                                        <span class="cad-icon icon-rectangle-center"></span> Прямоугольник по центру
+                                    </a>
+
+                                </div>
+                            </div>
+                        </div>
+
+
+                        <div class=" sketch-tool-menu">
+                            <button class="tool-btn sketch-tool-btn" data-sketch-tool="circle" title="Создать окружность по центру">
+                                <span class="cad-icon icon-circle"></span>
+                            </button>
+                            <div class="dropdown">
+                                <button class="tool-btn dropdown-toggle" title="Другие фигуры">
+                                    <i class="fas fa-caret-down"></i>
+                                </button>
+                                <div class="dropdown-menu">
+                                    <a class="sketch-tool-btn" data-sketch-tool="circle_3p" title="Создать окружность по трем точкам">
+                                        <span class="cad-icon icon-circle-3points"></span> Окружность по трем точкам
+                                    </a>
+                                    <a href="#" class="sketch-tool-btn"  data-sketch-tool="oval" title="Создать овал от центра">
+                                        <span class="cad-icon icon-oval"></span>Овал от центра
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+
+
+                        <div class=" sketch-tool-menu">
+                            <button class="tool-btn sketch-tool-btn" data-sketch-tool="polygon" title="Создать правильный вписанный многоугольник">
+                                <span class="cad-icon icon-polygon-inscribed"></span>
+                            </button>
+                            <div class="dropdown">
+                                <button class="tool-btn dropdown-toggle" title="Другие фигуры">
+                                    <i class="fas fa-caret-down"></i>
+                                </button>
+                                <div class="dropdown-menu">
+                                    <a href="#" class="sketch-tool-btn" data-sketch-tool="polygon_inscribed" title="Создать правильный описанный многоугольник">
+                                        <span class="cad-icon icon-polygon-circumscribed"></span> Описанный многоугольник
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+
+
+                        <div class=" sketch-tool-menu">
+                            <button class="tool-btn sketch-tool-btn"  data-sketch-tool="arc" title="Создать дугу по центру и её конечным точкам" >
+                                <span class="cad-icon icon-arc-center "></span>
+                            </button>
+                            <div class="dropdown">
+                                <button class="tool-btn dropdown-toggle" title="Другие фигуры">
+                                    <i class="fas fa-caret-down"></i>
+                                </button>
+                                <div class="dropdown-menu">
+                                    <a class="sketch-tool-btn"  data-sketch-tool="arc_3p" title="Создать дугу по трем точкам">
+                                        <span class="cad-icon icon-arc-3points"></span> Дуга по трем точкам
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class=" sketch-tool-menu">
+                            <button href="#" class="tool-btn sketch-tool-btn"  data-sketch-tool="stadium_2p" title="Создать стадион по двум центральным точкам и радиусу">
+                                <span class="cad-icon icon-stadion-2p"></span>
+                            </button>
+                            <div class="dropdown">
+                                <button class="tool-btn dropdown-toggle" title="Другие фигуры">
+                                    <i class="fas fa-caret-down"></i>
+                                </button>
+                                <div class="dropdown-menu">
+                                    <a href="#" class="sketch-tool-btn"  data-sketch-tool="stadium" title="Создать стадион по длине и ширине">
+                                        <span class="cad-icon icon-stadion"></span>Стадион от угла
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+
+
+                        <div class=" sketch-tool-menu">
+                            <button class="tool-btn sketch-tool-btn" data-sketch-tool="curve" title="Создать/редактировать сглаженную кривую">
+                                <span class="cad-icon icon-bezier"></span>
+                            </button>
+                            <div class="dropdown">
+                                <button class="tool-btn dropdown-toggle" title="Другие фигуры">
+                                    <i class="fas fa-caret-down"></i>
+                                </button>
+                                <div class="dropdown-menu">
+                                    <a href="#" class="sketch-tool-btn" data-sketch-tool="polyline" title="Создать/редактировать кривую">
+                                        <span class="cad-icon icon-polyline"></span>Кривая
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
 
                         <div class="dropdown">
                             <button class="tool-btn dropdown-toggle" title="Другие фигуры">
@@ -394,25 +487,16 @@
                                 <i class="fas fa-caret-down"></i>
                             </button>
                             <div class="dropdown-menu">
-                                <a href="#" class="sketch-tool-btn" data-sketch-tool="polygon_inscribed" title="Описанный многоугольник">
-                                    <span class="cad-icon icon-polygon-circumscribed"></span> Описанный многоугольник
-                                </a>
-                                <a href="#" class="sketch-tool-btn" data-sketch-tool="polyline" title="Кривая">
-                                    <span class="cad-icon icon-polyline"></span>Кривая
-                                </a>
-                                <a href="#" class="sketch-tool-btn"  data-sketch-tool="oval" title="Овал">
-                                    <span class="cad-icon icon-oval"></span>Овал
-                                </a>
-                                <a href="#" class="sketch-tool-btn"  data-sketch-tool="stadium" title="Стадион">
-                                    <span class="cad-icon icon-stadion"></span>Стадион
-                                </a>
-                                <a href="#" class="sketch-tool-btn"  data-sketch-tool="text" title="Текст">
+
+                                <a href="#" class="sketch-tool-btn"  data-sketch-tool="text" title="Создать текст (полилиния)">
                                     <span class="cad-icon icon-text"></span>Текст
+                                </a>
+                                <a class="sketch-tool-btn"  data-sketch-tool="mirror" title="Создать симметричную копию выделенных объектов">
+                                    <span class="cad-icon icon-mirror"></span> Симметрия
                                 </a>
                                <a href="#" class="sketch-tool-btn" data-sketch-tool="linear_array" title="Создает копии выделенных объектов по линии">
                                     <span class="cad-icon icon-array-linear"></span> Линейный массив
                                 </a>
-
 
                                 <a href="#" class="sketch-tool-btn"  data-sketch-tool="circular_array" title="Создает копии выделенных объектов по окружности">
                                     <span class="cad-icon icon-array-circular "></span> Круговой массив
@@ -433,9 +517,6 @@
                         <button class="tool-btn sketch-tool-btn" data-sketch-tool="dimension" title="Размеры (Ctrl + D)">
                             <i class="fas fa-ruler-combined"></i>
                         </button>
-                        <button class="tool-btn sketch-tool-btn"  data-sketch-tool="mirror" title="Симметрия">
-                            <span class="cad-icon icon-mirror"></span>
-                        </button>
                         <button class="tool-btn  sketch-tool-btn" data-sketch-tool="move" title="Перемещение">
                             <i class="fas fa-arrows-alt"></i>
                         </button>
@@ -453,44 +534,45 @@
                                 <i class="fas fa-caret-down"></i>
                             </button>
                             <div class="dropdown-menu">
-                                <a href="#" id="constraintHorizontal">
-                                    <span class="cad-icon-dropdown icon-horizontal"></span> Горизонтальность
-                                </a>
-                                <a href="#" id="constraintVertical">
-                                    <span class="cad-icon-dropdown icon-vertical"></span> Вертикальность
-                                </a>
-                                <a href="#" id="constraintParallel">
-                                    <span class="cad-icon-dropdown icon-parallel"></span> Параллельность
-                                </a>
-                                <a href="#" id="constraintAngle">
-                                    <span class="cad-icon-dropdown icon-angle"></span> Угол
-                                </a>
-                                <a href="#" id="constraintEquality">
-                                    <i class="fas fa-equals"></i> Равенство
-                                </a>
-                                <a href="#" id="constraintPerpendicular">
-                                    <span class="cad-icon-dropdown icon-perpendicular"></span> Перпендикулярность
-                                </a>
-                                <a href="#" id="constraintCoincident">
+                                 <a href="#" id="constraintCoincident"  title="Связывает точки между собой">
                                     <span class="cad-icon-dropdown icon-coincident"></span> Совпадение
                                 </a>
-                                <a href="#" id="constraintPointOnCurve">
+                                <a href="#" id="constraintEquality" title="Устанавливает равные размеры для выделенных элементов">
+                                    <i class="fas fa-equals"></i> Равенство
+                                </a>
+                                <a href="#" id="constraintHorizontal" title="Линия будет держать горизонтальное положение">
+                                    <span class="cad-icon-dropdown icon-horizontal"></span> Горизонтальность
+                                </a>
+                                <a href="#" id="constraintVertical" title="Линия будет держать вертикальное положение">
+                                    <span class="cad-icon-dropdown icon-vertical"></span> Вертикальность
+                                </a>
+                                <a href="#" id="constraintParallel" title="Выделенные линии станут параллельны друг другу">
+                                    <span class="cad-icon-dropdown icon-parallel"></span> Параллельность
+                                </a>
+                                <a href="#" id="constraintPerpendicular" title="Выделенные линии станут перпендикулярны друг другу">
+                                    <span class="cad-icon-dropdown icon-perpendicular"></span> Перпендикулярность
+                                </a>
+                                <a href="#" id="constraintAngle" title="Обеспечивает сохранение угла между двумя линиями">
+                                    <span class="cad-icon-dropdown icon-angle"></span> Угол
+                                </a>
+
+                                <a href="#" id="constraintPointOnCurve" title="Заставляет точку лежать точно на окружности (или дуге)">
                                     <span class="cad-icon-dropdown icon-point-on-circle"></span>Точка на окружности
                                 </a>
-                                <a href="#" id="constraintLineTangentToCircle">
+                                <a href="#" id="constraintLineTangentToCircle" title="Линия становится касательной к окружности (или дуге)">
                                     <span class="cad-icon-dropdown icon-tangent-to-circle"></span>Касательная
                                 </a>
-                                <a href="#" id="constraintPointOnLine">
-                                    <span class="cad-icon-dropdown icon-point-on-line"></span> Точка на линии
+                                <a href="#" id="constraintPointOnLine" title="Точка будет лежать на прямой">
+                                    <span class="cad-icon-dropdown icon-point-on-line"></span> Точка на прямой
                                 </a>
-                                <a href="#" id="constraintPointToMidpoint">
-                                    <span class="cad-icon-dropdown icon-point-on-midpoint"></span> Точка центре на линии
+                                <a href="#" id="constraintPointToMidpoint" title="Точка совмещается с серединой заданного отрезка">
+                                    <span class="cad-icon-dropdown icon-point-on-midpoint"></span> Точка на середине отрезка
                                 </a>
 <!--                                <a href="#" id="constraintDistance">-->
 <!--                                    <span class="cad-icon-dropdown icon-distance"></span> Расстояние-->
 <!--                                </a>-->
 
-                                <a href="#" id="constraintCircleTangent">
+                                <a href="#" id="constraintCircleTangent" title="Две окружности (или дуги) будут касаться друг друга">
                                     <span class="cad-icon-dropdown icon-tangent-circles"></span> Касание окружностей
                                 </a>
 <!--                                <a href="#" id="constraintSymmetry">-->
@@ -502,7 +584,7 @@
 <!--                                    Автоматические ограничения выделенных-->
 <!--                                </a>-->
                                 <a href="#" id="constraintDeleteSelectedEntities" >
-                                    <span class="cad-icon-dropdown icon-delete"> </span>Удалить ограничения выделенных
+                                    <span class="cad-icon-dropdown icon-delete"> </span>Удалить у выделенных объектов
                                 </a>
 
                                 <a href="#" id="fixEntitiesBtn" title="Зафиксировать выделенные объекты">
@@ -517,13 +599,13 @@
 
                         <div class="divider"></div>
 
-                        <button class="tool-btn" id="sketchDeleteBtn" title="Удалить элемент скетча">
+                        <button class="tool-btn" id="sketchDeleteBtn" title="Удалить элемент чертежа">
                             <span class="cad-icon icon-delete"></span>
                         </button>
-                        <button class="tool-btn" id="sketchClearBtn"  title="Очистить скетч">
+                        <button class="tool-btn" id="sketchClearBtn"  title="Очистить чертеж">
                             <span class="cad-icon icon-clean"></span>
                         </button>
-                        <button class="tool-btn" id="exitSketchBtn" title="Выйти из режима скетча">
+                        <button class="tool-btn" id="exitSketchBtn" title="Выйти из режима чертежа">
                             <span class="cad-icon icon-exit"></span>
                         </button>
 
