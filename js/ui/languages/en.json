@@ -1,9 +1,9 @@
 {
-    "КонтрБагCAD": "CounterBugCAD",
+    "КонтрCAD": "CounterCAD",
     "Без названия": "Untitled",
     "Готов": "Ready",
     "Файл": "File",
-    "Новый проект (Ctrl+N)": "New Project (Ctrl+N)",
+    "Новый проект (Ctrl+F)": "New Project (Ctrl+N)",
     "Открыть проект": "Open Project",
     "Сохранить проект (Ctrl+S)": "Save Project (Ctrl+S)",
     "Импорт/Экспорт": "Import/Export",
