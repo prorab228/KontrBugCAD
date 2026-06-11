@@ -120,10 +120,13 @@
                             <i class="fas fa-caret-down"></i>
                         </button>
                         <div class="dropdown-menu">
-                            <a href="#" id="newProject"><span class="cad-icon icon-new"></span> Новый проект (Ctrl+N)</a>
-                            <a href="#" id="openProject"><i class="fas fa-folder-open"></i></span> Открыть проект</a>
-                            <a href="#" id="importProjectBtn"><i class="fas fa-file-import"></i> Импорт проекта</a>
-                            <a href="#" id="saveProject"><i class="fas fa-save"></i></span> Сохранить проект (Ctrl+S)</a>
+                            <a href="#" id="newProject"><span class="cad-icon icon-new"></span> Новый проект (Ctrl+F)</a>
+                            <a href="#" id="openProject"><i class="fas fa-folder-open"></i></span> Открыть проект (Ctrl+O)</a>
+                            <a href="#" id="importProjectBtn"><i class="fas fa-file-import"></i> Импорт проекта (Ctrl+I)</a>
+                            <a href="#" id="saveProject"><i class="fas fa-save"></i></span> Сохранить проект в файл (Ctrl+S)</a>
+                            <div class="dropdown-divider" ></div>
+                            <a href="#" id="saveProjectToDb"><i class="fas fa-database"></i> Сохранить проект (локально)</a>
+                            <a href="#" id="openProjectManager"><i class="fas fa-list"></i> Мои проекты</a>
                         </div>
                     </div>
 
@@ -133,10 +136,9 @@
                             <i class="fas fa-caret-down"></i>
                         </button>
                         <div class="dropdown-menu">
-                            <a href="#" id="importBtn"><i class="fas fa-file-import"></i> Импорт</a>
-                            <div class="dropdown-divider"></div>
-                            <a href="#" id="exportBtn"><i class="fas fa-download"></i> Экспорт</a>
-                            <div class="dropdown-divider"></div>
+                            <a href="#" id="importBtn"><i class="fas fa-file-import"></i> Импорт 3D модели</a>
+                            <a href="#" id="exportBtn"><i class="fas fa-download"></i> Экспорт 3D модели</a>
+                            <div class="dropdown-divider sketch-only" ></div>
                             <a href="#" id="importSketchSVG" class="sketch-only" style="display: none;"><i class="fas fa-file-import"></i> Импорт SVG</a>
                             <a href="#" id="importSketchDXF" class="sketch-only" style="display: none;"><i class="fas fa-file-import"></i> Импорт DXF (экспериментальное)</a>
                             <a href="#" id="exportSketchSVG" class="sketch-only" style="display: none;"><i class="fas fa-file-export"></i> Экспорт в SVG</a>
@@ -305,6 +307,10 @@
 <!--                                <a href="#" data-tool="decimate" title="Уменьшить полигоны">-->
 <!--                                    <i class="fas fa-compress-alt"></i>Уменьшить полигоны-->
 <!--                                </a>-->
+
+<!--                                <a href="#" data-tool="paintTool" id="paintTool" title="Покраска">-->
+<!--                                    <span class="cad-icon icon-ruler"></span> Покраска-->
+<!--                                </a>-->
                                 <a href="#" class="dropdown-tool-btn" data-tool="group" title="Группировать (Ctrl+G)">
                                     <span class="cad-icon icon-group"></span> Группировать
                                 </a>
@@ -322,9 +328,6 @@
                 <!-- Создание объектов -->
                 <div class="tool-section">
                     <div class="tool-group">
-
-
-
 
                         <button class="tool-btn" data-tool="rulerTool" id="rulerTool" title="Линейка (Ctrl+M)">
                             <span class="cad-icon icon-ruler"></span>
@@ -475,7 +478,7 @@
                                 </button>
                                 <div class="dropdown-menu">
                                     <a href="#" class="sketch-tool-btn" data-sketch-tool="polyline" title="Создать/редактировать кривую">
-                                        <span class="cad-icon icon-polyline"></span>Кривая
+                                        <span class="cad-icon icon-polyline"></span>Ломаная
                                     </a>
                                 </div>
                             </div>
@@ -514,13 +517,13 @@
                         <button class="tool-btn sketch-tool-btn" data-sketch-tool="ruler" title="Линейка (Ctrl + M)">
                             <i class="fas fa-ruler"></i>
                         </button>
-                        <button class="tool-btn sketch-tool-btn" data-sketch-tool="dimension" title="Размеры (Ctrl + D)">
+                        <button class="tool-btn sketch-tool-btn" data-sketch-tool="dimension" title="Размеры (D)">
                             <i class="fas fa-ruler-combined"></i>
                         </button>
                         <button class="tool-btn  sketch-tool-btn" data-sketch-tool="move" title="Перемещение">
                             <i class="fas fa-arrows-alt"></i>
                         </button>
-                        <button class="tool-btn  sketch-tool-btn" data-sketch-tool="rotate" title="Вращение">
+                        <button class="tool-btn  sketch-tool-btn" data-sketch-tool="rotate" title="Поворот">
                             <i class="fas fa-sync-alt"></i>
                         </button>
                         <button class="tool-btn  sketch-tool-btn" data-sketch-tool="scissors" title="Ножницы (обрезка)">
@@ -936,6 +939,12 @@
                     <label>Описание:</label>
                     <textarea id="projectDescription" rows="3" class="modal-input" placeholder="Описание проекта"></textarea>
                 </div>
+                <div class="modal-section">
+                    <label>
+                        <input type="checkbox" id="compactFile" checked>
+                        Компактный формат проекта
+                    </label>
+                </div>
 <!--                <div class="modal-section">-->
 <!--                    <label>Сохраненные проекты:</label>-->
 <!--                    <div id="savedProjects" class="projects-list">-->
@@ -986,9 +995,10 @@
                     <p><strong>ВК:</strong><a href="https://vk.com/kontrbugtech">КонтрБагТех</a> </p>
                     <p><strong>Оф. сайт:</strong> <a href="https://www.КонтрБагТех.рф">КонтрБагТех.рф</a> </p>
                     <p><strong>Гайд:</strong> <a href="https://www.контрбагтех.рф/контркад/гайд">КонтрБагТех.рф</a> </p>
-                    <br><p><h3> <a href="https://boosty.to/kontrbugtech/donate">Поддержать проект</a> </h3></p>
+                    <br><p><h3> <a href="https://boosty.to/kontrbugtech/donate">Поддержать проект на Boosty</a> </h3></p>
+                    <br><p><h3> <a href="https://vk.com/kontrbugtech?analytics_screen=group&source=donut_banner&w=donut_payment-230044992">Поддержать проект во ВКонтакте</a> </h3></p>
                     <br><hr>
-                    <p><strong>Обратите внимание! Редактор находится на стадии активной разработки, и не все функции работают в полной мере. Но ваше тестирование поможет улучшить его работу. Буду благодарен за обратную связь, сообщения об ошибках и предложения по развитию.</strong></p>
+                    <p><strong>Редактор разработан (и продолжает разрабатываться) одним человеком исключительно при поддержке сообщества (за что я очень благодарен!).<br><br> Буду благодарен за обратную связь, сообщения об ошибках и предложения по развитию.</strong></p>
                 </div>
             </div>
             <div class="modal-footer" style="justify-content: center;">
@@ -1033,6 +1043,30 @@
             <div class="modal-footer">
                 <button id="cancelGraphicsSettings" class="btn-secondary">Отмена</button>
                 <button id="applyGraphicsSettings" class="btn-primary">Применить</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно менеджера проектов -->
+    <div id="projectManagerModal" class="modal-overlay">
+        <div class="modal-content" style="width: 800px; max-width: 90%;">
+            <div class="modal-header">
+                <h3><i class="fas fa-database"></i> Мои проекты</h3>
+                <button class="close-modal" data-modal="projectManagerModal">&times;</button>
+            </div>
+            <div class="modal-body" style="max-height: 60vh; overflow-y: auto;">
+                <table id="projectsTable" style="width: 100%; border-collapse: collapse;">
+                    <thead>
+                        <tr><th></th><th>Название</th><th>Описание</th><th>Дата</th><th></th></tr>
+                    </thead>
+                    <tbody id="projectsList"></tbody>
+                </table>
+            </div>
+            <div class="modal-footer">
+                <div id="storageInfo" ></div>
+               <button id="saveCurrentAsProjectBtn" class="btn-primary">
+                        <i class="fas fa-save"></i> Сохранить текущий проект
+                </button>
             </div>
         </div>
     </div>

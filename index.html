@@ -123,7 +123,10 @@
                             <a href="#" id="newProject"><span class="cad-icon icon-new"></span> Новый проект (Ctrl+F)</a>
                             <a href="#" id="openProject"><i class="fas fa-folder-open"></i></span> Открыть проект (Ctrl+O)</a>
                             <a href="#" id="importProjectBtn"><i class="fas fa-file-import"></i> Импорт проекта (Ctrl+I)</a>
-                            <a href="#" id="saveProject"><i class="fas fa-save"></i></span> Сохранить проект (Ctrl+S)</a>
+                            <a href="#" id="saveProject"><i class="fas fa-save"></i></span> Сохранить проект в файл (Ctrl+S)</a>
+                            <div class="dropdown-divider" ></div>
+                            <a href="#" id="saveProjectToDb"><i class="fas fa-database"></i> Сохранить проект (локально)</a>
+                            <a href="#" id="openProjectManager"><i class="fas fa-list"></i> Мои проекты</a>
                         </div>
                     </div>
 
@@ -304,6 +307,10 @@
 <!--                                <a href="#" data-tool="decimate" title="Уменьшить полигоны">-->
 <!--                                    <i class="fas fa-compress-alt"></i>Уменьшить полигоны-->
 <!--                                </a>-->
+
+<!--                                <a href="#" data-tool="paintTool" id="paintTool" title="Покраска">-->
+<!--                                    <span class="cad-icon icon-ruler"></span> Покраска-->
+<!--                                </a>-->
                                 <a href="#" class="dropdown-tool-btn" data-tool="group" title="Группировать (Ctrl+G)">
                                     <span class="cad-icon icon-group"></span> Группировать
                                 </a>
@@ -321,9 +328,6 @@
                 <!-- Создание объектов -->
                 <div class="tool-section">
                     <div class="tool-group">
-
-
-
 
                         <button class="tool-btn" data-tool="rulerTool" id="rulerTool" title="Линейка (Ctrl+M)">
                             <span class="cad-icon icon-ruler"></span>
@@ -935,6 +939,12 @@
                     <label>Описание:</label>
                     <textarea id="projectDescription" rows="3" class="modal-input" placeholder="Описание проекта"></textarea>
                 </div>
+                <div class="modal-section">
+                    <label>
+                        <input type="checkbox" id="compactFile" checked>
+                        Компактный формат проекта
+                    </label>
+                </div>
 <!--                <div class="modal-section">-->
 <!--                    <label>Сохраненные проекты:</label>-->
 <!--                    <div id="savedProjects" class="projects-list">-->
@@ -1033,6 +1043,30 @@
             <div class="modal-footer">
                 <button id="cancelGraphicsSettings" class="btn-secondary">Отмена</button>
                 <button id="applyGraphicsSettings" class="btn-primary">Применить</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно менеджера проектов -->
+    <div id="projectManagerModal" class="modal-overlay">
+        <div class="modal-content" style="width: 800px; max-width: 90%;">
+            <div class="modal-header">
+                <h3><i class="fas fa-database"></i> Мои проекты</h3>
+                <button class="close-modal" data-modal="projectManagerModal">&times;</button>
+            </div>
+            <div class="modal-body" style="max-height: 60vh; overflow-y: auto;">
+                <table id="projectsTable" style="width: 100%; border-collapse: collapse;">
+                    <thead>
+                        <tr><th></th><th>Название</th><th>Описание</th><th>Дата</th><th></th></tr>
+                    </thead>
+                    <tbody id="projectsList"></tbody>
+                </table>
+            </div>
+            <div class="modal-footer">
+                <div id="storageInfo" ></div>
+               <button id="saveCurrentAsProjectBtn" class="btn-primary">
+                        <i class="fas fa-save"></i> Сохранить текущий проект
+                </button>
             </div>
         </div>
     </div>

@@ -400,23 +400,44 @@ a:hover {
     opacity: 1;
 }
 
-.history-item-delete {
+.history-item-delete, .modal-mini-button, .modal-mini-button-delete {
     background: none;
     border: none;
     color: var(--text-secondary);
     cursor: pointer;
     padding: 4px;
     border-radius: 3px;
+    font-size: larger;
 }
 
-.history-item-delete:hover {
+.history-item-delete:hover, .modal-mini-button-delete:hover, .modal-mini-button-delete:hover i {
     color: #f44336;
     background-color: rgba(244, 67, 54, 0.1);
 }
 
+
+ .modal-mini-button:hover,  .modal-mini-button:hover i {
+    color: #46f336 ;
+    background-color: rgba(244, 67, 54, 0.1);
+}
 /* Индикатор, что история не в конце */
 .panel-tab[data-tab="history"].has-future {
     color: #ff9800;
+}
+
+#projectsList td
+{
+    padding: 20px;
+}
+
+.storage-line:hover
+{
+    background: var(--active-overlay);
+}
+
+.storage-info {
+    background: var(--bg-secondary, #f5f5f5);
+    color: var(--text-primary, #333);
 }
 
 /*project-info*/
