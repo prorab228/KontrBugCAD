@@ -412,27 +412,38 @@ a:hover {
 
 .history-item-delete:hover, .modal-mini-button-delete:hover, .modal-mini-button-delete:hover i {
     color: #f44336;
-    background-color: rgba(244, 67, 54, 0.1);
 }
 
 
  .modal-mini-button:hover,  .modal-mini-button:hover i {
     color: #46f336 ;
-    background-color: rgba(244, 67, 54, 0.1);
 }
 /* Индикатор, что история не в конце */
 .panel-tab[data-tab="history"].has-future {
     color: #ff9800;
 }
 
-#projectsList td
-{
-    padding: 20px;
-}
 
 .storage-line:hover
 {
     background: var(--active-overlay);
+}
+
+#projectsList td
+{
+    position: relative;
+}
+
+
+.storage-icons {
+    width: 100%;
+    position: absolute;
+}
+
+.storage-icon {
+    margin-right: 5px;
+    margin-left: 5px;
+    position: relative;
 }
 
 .storage-info {
@@ -476,6 +487,7 @@ a:hover {
   text-wrap: nowrap;
   pointer-events: auto;
   opacity:0.9;
+  z-index: 99999999;
 }
 
 
@@ -800,7 +812,7 @@ a:hover {
     height: 100%;          /* занимает всю высоту родителя */
     width: auto;
     pointer-events: none;  /* чтобы клики проходили сквозь пустые области */
-    z-index: 20;
+  /*  z-index: 20;*/
     transition: right 0.2s ease;
 }
 
@@ -1116,6 +1128,8 @@ a:hover {
     overflow: hidden;
     box-shadow: var(--shadow-lg);
     border: 1px solid var(--border-primary);
+    display: flex;
+    flex-direction: column;
 }
 
 .sketch-modal {
@@ -1164,7 +1178,7 @@ a:hover {
    /* background: var(--bg-primary);
     color: var(--text-primary);*/
     padding: 20px;
-    max-height: calc(90vh - 140px);
+    height: 100%;
     overflow-y: auto;
 }
 
@@ -2055,6 +2069,69 @@ input:checked + .toggle-slider:before {
     font-size: 14px;
     text-align: center;
     outline: none;
+}
+
+
+
+
+/* СЕТЕВЫЕ ШТУКИ*/
+
+.avatar-btn {
+    background: none;
+    border: none;
+    font-size: 28px;
+    cursor: pointer;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    color: #aaa;
+    transition: color 0.2s;
+}
+.avatar-btn:hover {
+    color: #fff;
+}
+.account-info .form-group {
+    margin-bottom: 12px;
+}
+.account-info .form-group label {
+    display: block;
+    margin-bottom: 4px;
+    font-weight: bold;
+}
+
+.avatar-btn img {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    object-fit: cover;
+ /*   border: 1px solid var(--primary-color);*/
+}
+
+.profile-avatar-large {
+    text-align: center;
+    margin-bottom: 15px;
+}
+.profile-avatar-large img {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid var(--primary-color);
+}
+.profile-avatar-large i {
+    font-size: 80px;
+    color: var(--text-secondary);
+}
+.account-info p {
+    margin: 8px 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.account-info p i {
+    width: 20px;
+    color: var(--primary-color);
 }
 
 

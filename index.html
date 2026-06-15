@@ -53,6 +53,7 @@
 <!--                "clipper-lib": "./lib/clipper.js",-->
 <!--                "fflate": "./lib/browser.js",-->
 
+<!--                 "config": "./config.js",-->
 <!--                "core/": "./js/core/",-->
 <!--                "generators/": "./js/generators/",-->
 <!--                 "tools/": "./js/tools/",-->
@@ -74,7 +75,7 @@
                 "opentype.js": "./lib/opentype.module.js",
                 "clipper-lib": "./lib/clipper.js",
                 "fflate": "./lib/browser.js",
-
+                "config": "./config.js",
                 "core/": "./js/core/",
                 "generators/": "./js/generators/",
                  "tools/": "./js/tools/",
@@ -120,13 +121,16 @@
                             <i class="fas fa-caret-down"></i>
                         </button>
                         <div class="dropdown-menu">
+                            <a href="#" id="openProjectManager"><i class="fas fa-list"></i> Мои проекты</a>
+                            <a href="#" id="saveProjectToDb"><i class="fas fa-database"></i> Сохранить проект в хранилище</a>
+                            <a href="#" id="saveProjectToGroup" style="display: none;"><i class="fas fa-users"></i> Сохранить в группу</a>
+                            <div class="dropdown-divider" ></div>
                             <a href="#" id="newProject"><span class="cad-icon icon-new"></span> Новый проект (Ctrl+F)</a>
                             <a href="#" id="openProject"><i class="fas fa-folder-open"></i></span> Открыть проект (Ctrl+O)</a>
                             <a href="#" id="importProjectBtn"><i class="fas fa-file-import"></i> Импорт проекта (Ctrl+I)</a>
                             <a href="#" id="saveProject"><i class="fas fa-save"></i></span> Сохранить проект в файл (Ctrl+S)</a>
-                            <div class="dropdown-divider" ></div>
-                            <a href="#" id="saveProjectToDb"><i class="fas fa-database"></i> Сохранить проект (локально)</a>
-                            <a href="#" id="openProjectManager"><i class="fas fa-list"></i> Мои проекты</a>
+
+
                         </div>
                     </div>
 
@@ -757,6 +761,11 @@
                 </div>
             </div>
             <span id="projectName">Без названия</span>
+            <div id="accountAvatar">
+                <button id="accountAvatarBtn" class="avatar-btn" title="Аккаунт">
+                    <i class="fas fa-user-circle"></i>
+                </button>
+            </div>
 
         </div>
     </div>
@@ -877,6 +886,19 @@
             </button>
         </div>
 
+    </div>
+
+    <!-- Модальное окно управления аккаунтом -->
+    <div id="accountModal" class="modal-overlay">
+        <div class="modal-content" style="width: 400px;">
+            <div class="modal-header">
+                <h3><i class="fas fa-user-circle"></i> КонтрCAD Облако</h3>
+                <button class="close-modal" data-modal="accountModal">&times;</button>
+            </div>
+            <div class="modal-body" id="accountModalBody">
+                <!-- Динамическое содержимое будет вставляться через AccountManager -->
+            </div>
+        </div>
     </div>
 
     <!-- Модальные окна -->
@@ -1049,12 +1071,12 @@
 
     <!-- Модальное окно менеджера проектов -->
     <div id="projectManagerModal" class="modal-overlay">
-        <div class="modal-content" style="width: 800px; max-width: 90%;">
+        <div class="modal-content" style="width: 800px; max-width: 90%; height: 90vh">
             <div class="modal-header">
-                <h3><i class="fas fa-database"></i> Мои проекты (локальное хранилище)</h3>
+                <h3><i class="fas fa-database"></i> Мои проекты</h3>
                 <button class="close-modal" data-modal="projectManagerModal">&times;</button>
             </div>
-            <div class="modal-body" style="max-height: 60vh; overflow-y: auto;">
+            <div class="modal-body" style="overflow-y: auto;">
                 <table id="projectsTable" style="width: 100%; border-collapse: collapse;">
                     <thead>
                         <tr><th></th><th>Название</th><th>Описание</th><th>Дата</th><th></th></tr>

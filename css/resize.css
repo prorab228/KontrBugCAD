@@ -276,6 +276,10 @@
         display: none;
     }
 
+    #accountAvatar.hidden {
+        display: none;
+    }
+
     .controls-hint {
         display:none;
     }
