@@ -1,7 +1,7 @@
 // config.js
 export const CONFIG = {
     // Базовый URL API сервера (без завершающего слеша)
-    API_URL: 'http://192.168.10.129:80',
+    API_URL: 'http://localhost:80',
 
     // Альтернативные URL для разных окружений (можно переключать по env)
     // API_URL: process.env.NODE_ENV === 'production' ? 'https://cloud.контрбагтех.рф' : 'http://192.168.10.129:80',
