@@ -19,7 +19,7 @@
     --bg-primary: #1e1e1e;
     --bg-secondary: #2d2d2d;
     --bg-tertiary: #1a1a1a;
-    --bg-surface: #121212;
+    --bg-surface: #2d2d2d;
 
     /* Текст */
     --text-primary: #fff;
@@ -2073,6 +2073,70 @@ input:checked + .toggle-slider:before {
     outline: none;
 }
 
+/* ========== Размерный ввод (SketchDimensionManager) ========== */
+.dimension-input-overlay {
+    position: fixed;
+    background: var(--bg-surface);
+    padding: 12px 16px;
+    border-radius: var(--border-radius);
+    font-size: 12px;
+    z-index: 10000;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    border: 1px solid var(--primary-color);
+    color: var(--text-secondary);
+}
+
+.dimension-input-overlay.active {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.dimension-input-rows {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.dimension-input-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.dimension-input-control-wrapper {
+    flex: 0 0 auto; /* не растягивается */
+}
+
+.dimension-input-control {
+    width: 80px; /* фиксированная ширина по содержимому */
+    padding: 4px 8px;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-primary);
+    outline: none;
+    box-sizing: border-box;
+}
+
+.dimension-input-control:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(0, 200, 83, 0.2);
+}
+
+.dimension-input-select {
+    width: auto;
+    min-width: 100px;
+    appearance: auto;
+}
+
+.dimension-input-hint {
+    font-size: 10px;
+    color: var(--text-tertiary);
+    margin-top: 4px;
+    text-align: right;
+    border-top: 1px solid var(--border-primary);
+    padding-top: 6px;
+}
 
 
 
