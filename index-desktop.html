@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>КонтрCAD - 3D САПР online</title>
+    <title>КонтрCAD</title>
 
     <meta name="description" content="КонтрКАД — бесплатный онлайн 3D редактор для редактирования STL моделей, работы с чертежами и 3D моделирования. Поддержка OBJ, 3MF, булевы операции, экспорт в популярные форматы.">
     <meta name="keywords" content="КонтрCAD, КонтрКАД, КонтрБагКАД, КонтрБагCAD, KBCAD, kbcad, 3D редактор онлайн, САПР онлайн, STL редактор, редактирование STL, 3D моделирование, бесплатная САПР, трехмерное моделирование, чертежи онлайн">
@@ -53,6 +53,7 @@
                 "clipper-lib": "./lib/clipper.js",
                 "fflate": "./lib/browser.js",
 
+                 "config": "./config.js",
                 "core/": "./js/core/",
                 "generators/": "./js/generators/",
                  "tools/": "./js/tools/",
@@ -74,7 +75,7 @@
 <!--                "opentype.js": "./lib/opentype.module.js",-->
 <!--                "clipper-lib": "./lib/clipper.js",-->
 <!--                "fflate": "./lib/browser.js",-->
-
+<!--                "config": "./config.js",-->
 <!--                "core/": "./js/core/",-->
 <!--                "generators/": "./js/generators/",-->
 <!--                 "tools/": "./js/tools/",-->
@@ -120,13 +121,16 @@
                             <i class="fas fa-caret-down"></i>
                         </button>
                         <div class="dropdown-menu">
+                            <a href="#" id="openProjectManager"><i class="fas fa-list"></i> Мои проекты</a>
+                            <a href="#" id="saveProjectToDb"><i class="fas fa-database"></i> Сохранить проект в хранилище</a>
+                            <a href="#" id="saveProjectToGroup" style="display: none;"><i class="fas fa-users"></i> Сохранить в группу</a>
+                            <div class="dropdown-divider" ></div>
                             <a href="#" id="newProject"><span class="cad-icon icon-new"></span> Новый проект (Ctrl+F)</a>
                             <a href="#" id="openProject"><i class="fas fa-folder-open"></i></span> Открыть проект (Ctrl+O)</a>
                             <a href="#" id="importProjectBtn"><i class="fas fa-file-import"></i> Импорт проекта (Ctrl+I)</a>
                             <a href="#" id="saveProject"><i class="fas fa-save"></i></span> Сохранить проект в файл (Ctrl+S)</a>
-                            <div class="dropdown-divider" ></div>
-                            <a href="#" id="saveProjectToDb"><i class="fas fa-database"></i> Сохранить проект (локально)</a>
-                            <a href="#" id="openProjectManager"><i class="fas fa-list"></i> Мои проекты</a>
+
+
                         </div>
                     </div>
 
@@ -374,14 +378,14 @@
                         <button class="tool-btn sketch-tool-btn" data-sketch-tool="select" title="Инструмент выделения">
                             <span class="cad-icon icon-select"></span>
                         </button>
-                        <button class="tool-btn sketch-tool-btn" data-sketch-tool="line" title="Создать линию">
+                        <button class="tool-btn sketch-tool-btn" data-sketch-tool="line" title="Создать линию (Горячая клавиша 1)">
                             <span class="cad-icon icon-line"></span>
                         </button>
 
 
 
                         <div class=" sketch-tool-menu">
-                            <button class="tool-btn sketch-tool-btn" data-sketch-tool="rectangle" title="Создать прямоугольник по двум точкам">
+                            <button class="tool-btn sketch-tool-btn" data-sketch-tool="rectangle" title="Создать прямоугольник по двум точкам (Горячая клавиша 2)">
                                 <span class="cad-icon icon-rectangle"></span>
                             </button>
                             <div class="dropdown">
@@ -389,7 +393,7 @@
                                     <i class="fas fa-caret-down"></i>
                                 </button>
                                 <div class="dropdown-menu">
-                                    <a class="sketch-tool-btn" data-sketch-tool="rectangle_center" title="Создать прямоугольник по центру и угловой точке">
+                                    <a class="sketch-tool-btn" data-sketch-tool="rectangle_center" title="Создать прямоугольник по центру и угловой точке (Горячая клавиша 2)">
                                         <span class="cad-icon icon-rectangle-center"></span> Прямоугольник по центру
                                     </a>
 
@@ -399,7 +403,7 @@
 
 
                         <div class=" sketch-tool-menu">
-                            <button class="tool-btn sketch-tool-btn" data-sketch-tool="circle" title="Создать окружность по центру">
+                            <button class="tool-btn sketch-tool-btn" data-sketch-tool="circle" title="Создать окружность по центру (Горячая клавиша 3)">
                                 <span class="cad-icon icon-circle"></span>
                             </button>
                             <div class="dropdown">
@@ -407,10 +411,10 @@
                                     <i class="fas fa-caret-down"></i>
                                 </button>
                                 <div class="dropdown-menu">
-                                    <a class="sketch-tool-btn" data-sketch-tool="circle_3p" title="Создать окружность по трем точкам">
+                                    <a class="sketch-tool-btn" data-sketch-tool="circle_3p" title="Создать окружность по трем точкам (Горячая клавиша 3)">
                                         <span class="cad-icon icon-circle-3points"></span> Окружность по трем точкам
                                     </a>
-                                    <a href="#" class="sketch-tool-btn"  data-sketch-tool="oval" title="Создать овал от центра">
+                                    <a href="#" class="sketch-tool-btn"  data-sketch-tool="oval" title="Создать овал от центра (Горячая клавиша 3)">
                                         <span class="cad-icon icon-oval"></span>Овал от центра
                                     </a>
                                 </div>
@@ -419,7 +423,7 @@
 
 
                         <div class=" sketch-tool-menu">
-                            <button class="tool-btn sketch-tool-btn" data-sketch-tool="polygon" title="Создать правильный вписанный многоугольник">
+                            <button class="tool-btn sketch-tool-btn" data-sketch-tool="polygon" title="Создать правильный вписанный многоугольник (Горячая клавиша 4)">
                                 <span class="cad-icon icon-polygon-inscribed"></span>
                             </button>
                             <div class="dropdown">
@@ -427,7 +431,7 @@
                                     <i class="fas fa-caret-down"></i>
                                 </button>
                                 <div class="dropdown-menu">
-                                    <a href="#" class="sketch-tool-btn" data-sketch-tool="polygon_inscribed" title="Создать правильный описанный многоугольник">
+                                    <a href="#" class="sketch-tool-btn" data-sketch-tool="polygon_inscribed" title="Создать правильный описанный многоугольник (Горячая клавиша 4)">
                                         <span class="cad-icon icon-polygon-circumscribed"></span> Описанный многоугольник
                                     </a>
                                 </div>
@@ -436,7 +440,7 @@
 
 
                         <div class=" sketch-tool-menu">
-                            <button class="tool-btn sketch-tool-btn"  data-sketch-tool="arc" title="Создать дугу по центру и её конечным точкам" >
+                            <button class="tool-btn sketch-tool-btn"  data-sketch-tool="arc" title="Создать дугу по центру и её конечным точкам (Горячая клавиша 5)" >
                                 <span class="cad-icon icon-arc-center "></span>
                             </button>
                             <div class="dropdown">
@@ -444,7 +448,7 @@
                                     <i class="fas fa-caret-down"></i>
                                 </button>
                                 <div class="dropdown-menu">
-                                    <a class="sketch-tool-btn"  data-sketch-tool="arc_3p" title="Создать дугу по трем точкам">
+                                    <a class="sketch-tool-btn"  data-sketch-tool="arc_3p" title="Создать дугу по трем точкам (Горячая клавиша 5)">
                                         <span class="cad-icon icon-arc-3points"></span> Дуга по трем точкам
                                     </a>
                                 </div>
@@ -452,7 +456,7 @@
                         </div>
 
                         <div class=" sketch-tool-menu">
-                            <button href="#" class="tool-btn sketch-tool-btn"  data-sketch-tool="stadium_2p" title="Создать стадион по двум центральным точкам и радиусу">
+                            <button href="#" class="tool-btn sketch-tool-btn"  data-sketch-tool="stadium_2p" title="Создать стадион по двум центральным точкам и радиусу (Горячая клавиша 6)">
                                 <span class="cad-icon icon-stadion-2p"></span>
                             </button>
                             <div class="dropdown">
@@ -460,7 +464,7 @@
                                     <i class="fas fa-caret-down"></i>
                                 </button>
                                 <div class="dropdown-menu">
-                                    <a href="#" class="sketch-tool-btn"  data-sketch-tool="stadium" title="Создать стадион по длине и ширине">
+                                    <a href="#" class="sketch-tool-btn"  data-sketch-tool="stadium" title="Создать стадион по длине и ширине (Горячая клавиша 6)">
                                         <span class="cad-icon icon-stadion"></span>Стадион от угла
                                     </a>
                                 </div>
@@ -469,7 +473,7 @@
 
 
                         <div class=" sketch-tool-menu">
-                            <button class="tool-btn sketch-tool-btn" data-sketch-tool="curve" title="Создать/редактировать сглаженную кривую">
+                            <button class="tool-btn sketch-tool-btn" data-sketch-tool="curve" title="Создать/редактировать сглаженную кривую (Горячая клавиша 7)">
                                 <span class="cad-icon icon-bezier"></span>
                             </button>
                             <div class="dropdown">
@@ -477,7 +481,7 @@
                                     <i class="fas fa-caret-down"></i>
                                 </button>
                                 <div class="dropdown-menu">
-                                    <a href="#" class="sketch-tool-btn" data-sketch-tool="polyline" title="Создать/редактировать кривую">
+                                    <a href="#" class="sketch-tool-btn" data-sketch-tool="polyline" title="Создать/редактировать кривую (Горячая клавиша 7)">
                                         <span class="cad-icon icon-polyline"></span>Ломаная
                                     </a>
                                 </div>
@@ -491,46 +495,48 @@
                             </button>
                             <div class="dropdown-menu">
 
-                                <a href="#" class="sketch-tool-btn"  data-sketch-tool="text" title="Создать текст (полилиния)">
+                                <a href="#" class="sketch-tool-btn"  data-sketch-tool="text" title="Создать текст (полилиния) (Горячая клавиша 8)">
                                     <span class="cad-icon icon-text"></span>Текст
                                 </a>
-                                <a class="sketch-tool-btn"  data-sketch-tool="mirror" title="Создать симметричную копию выделенных объектов">
+                                <a class="sketch-tool-btn"  data-sketch-tool="mirror" title="Создать симметричную копию выделенных объектов (Горячая клавиша 9)">
                                     <span class="cad-icon icon-mirror"></span> Симметрия
                                 </a>
-                               <a href="#" class="sketch-tool-btn" data-sketch-tool="linear_array" title="Создает копии выделенных объектов по линии">
+                               <a href="#" class="sketch-tool-btn" data-sketch-tool="linear_array" title="Создает копии выделенных объектов по линии (Горячая клавиша L)">
                                     <span class="cad-icon icon-array-linear"></span> Линейный массив
                                 </a>
 
-                                <a href="#" class="sketch-tool-btn"  data-sketch-tool="circular_array" title="Создает копии выделенных объектов по окружности">
+                                <a href="#" class="sketch-tool-btn"  data-sketch-tool="circular_array" title="Создает копии выделенных объектов по окружности (Горячая клавиша C)">
                                     <span class="cad-icon icon-array-circular "></span> Круговой массив
                                 </a>
 
-                                <a href="#" class="sketch-tool-btn"  data-sketch-tool="offset" title="Создает контур с равномерным отступом от выделенных объектов (эквидистанта)">
+                                <a href="#" class="sketch-tool-btn"  data-sketch-tool="offset" title="Создает контур с равномерным отступом от выделенных объектов (эквидистанта) (Горячая клавиша 0)">
                                     <span class="cad-icon icon-offset "></span> Отступ (расширение)
                                 </a>
+
 
                             </div>
                        </div>
 
                         <div class="divider"></div>
 
-                        <button class="tool-btn sketch-tool-btn" data-sketch-tool="ruler" title="Линейка (Ctrl + M)">
-                            <i class="fas fa-ruler"></i>
-                        </button>
-                        <button class="tool-btn sketch-tool-btn" data-sketch-tool="dimension" title="Размеры (D)">
-                            <i class="fas fa-ruler-combined"></i>
-                        </button>
-                        <button class="tool-btn  sketch-tool-btn" data-sketch-tool="move" title="Перемещение">
+
+                        <button class="tool-btn  sketch-tool-btn" data-sketch-tool="move" title="Перемещение (Горячая клавиша W)">
                             <i class="fas fa-arrows-alt"></i>
                         </button>
-                        <button class="tool-btn  sketch-tool-btn" data-sketch-tool="rotate" title="Поворот">
+                        <button class="tool-btn  sketch-tool-btn" data-sketch-tool="rotate" title="Поворот (Горячая клавиша R)">
                             <i class="fas fa-sync-alt"></i>
                         </button>
-                        <button class="tool-btn  sketch-tool-btn" data-sketch-tool="scissors" title="Ножницы (обрезка)">
+                        <button class="tool-btn  sketch-tool-btn" data-sketch-tool="scissors" title="Ножницы (обрезка) (Горячая клавиша S)">
                             <i class="fas fa-cut"></i>
                         </button>
+                         <button class="tool-btn sketch-tool-btn"  data-sketch-tool="fillet" title="Скругление (Fillet) Создает скругление (дугу) на углу двух линий (Горячая клавиша F)">
+                            <span class="cad-icon icon-fillet"></span>
+                        </button>
 
-
+                        <div class="divider"></div>
+                        <button class="tool-btn sketch-tool-btn" data-sketch-tool="dimension" title="Размеры (Горячая клавиша D)">
+                            <i class="fas fa-ruler-combined"></i>
+                        </button>
                         <div class="dropdown">
                             <button class="tool-btn dropdown-toggle" title="Ограничения">
                                 <span class="cad-icon icon-constraint"></span>
@@ -601,8 +607,12 @@
 
 
                         <div class="divider"></div>
+                        <button class="tool-btn sketch-tool-btn" data-sketch-tool="ruler" title="Линейка (Комбинация Ctrl + M)">
+                            <i class="fas fa-ruler"></i>
+                        </button>
+                        <div class="divider"></div>
 
-                        <button class="tool-btn" id="sketchDeleteBtn" title="Удалить элемент чертежа">
+                        <button class="tool-btn" id="sketchDeleteBtn" title="Удалить элемент чертежа (Горячая клавиша  Delete)">
                             <span class="cad-icon icon-delete"></span>
                         </button>
                         <button class="tool-btn" id="sketchClearBtn"  title="Очистить чертеж">
@@ -884,15 +894,33 @@
 
     </div>
 
+
+    <!-- Статус бар -->
+    <div class="status-bar">
+        <div class="status-left">
+            <span id="modeIndicator"><i class="fas fa-mouse-pointer"></i> Режим: Выделение</span>
+            <span class="separator">|</span>
+            <span id="selectedInfo">Выбрано: 0</span>
+        </div>
+        <div class="status-right">
+            <span id="fpsCounter"><i class="fas fa-tachometer-alt"></i> FPS: 60</span>
+            <span class="separator">|</span>
+            <span id="version"><i class="fas fa-memory"></i> Версия: --</span>  <span> Cледить за обновлениями: <a href="https://t.me/KontrBugTech"> в ТГ</a> <a href="https://vk.com/kontrbugtech"> в ВК</a> </span>  <a href="https://www.контрбагтех.рф/контркад/гайд">Гайд</a> <a href="https://counterbugtech.gitverse.site/kontrbugcad/">Зеркало</a>
+        </div>
+    </div>
+
     <!-- Модальное окно управления аккаунтом -->
     <div id="accountModal" class="modal-overlay">
         <div class="modal-content" style="width: 400px;">
             <div class="modal-header">
-                <h3><i class="fas fa-user-circle"></i> Аккаунт и синхронизация</h3>
+                <h3><i class="fas fa-user-circle"></i> КонтрCAD Облако</h3>
                 <button class="close-modal" data-modal="accountModal">&times;</button>
             </div>
             <div class="modal-body" id="accountModalBody">
                 <!-- Динамическое содержимое будет вставляться через AccountManager -->
+            </div>
+            <div class="modal-footer" style="color:red">
+                <b>ВНИМАНИЕ! <br> На данный момент КонтрКАД Облако ещё не запущено</b>
             </div>
         </div>
     </div>
@@ -977,19 +1005,6 @@
         </div>
     </div>
 
-    <!-- Статус бар -->
-    <div class="status-bar">
-        <div class="status-left">
-            <span id="modeIndicator"><i class="fas fa-mouse-pointer"></i> Режим: Выделение</span>
-            <span class="separator">|</span>
-            <span id="selectedInfo">Выбрано: 0</span>
-        </div>
-        <div class="status-right">
-            <span id="fpsCounter"><i class="fas fa-tachometer-alt"></i> FPS: 60</span>
-            <span class="separator">|</span>
-            <span id="version"><i class="fas fa-memory"></i> Версия: --</span>  <span> Cледить за обновлениями: <a href="https://t.me/KontrBugTech"> в ТГ</a> <a href="https://vk.com/kontrbugtech"> в ВК</a> </span>  <a href="https://www.контрбагтех.рф/контркад/гайд">Гайд</a> <a href="https://counterbugtech.gitverse.site/kontrbugcad/">Зеркало</a>
-        </div>
-    </div>
 
     <!-- Модальное окно "О программе" -->
     <div id="aboutModal" class="modal-overlay">
@@ -1069,7 +1084,7 @@
     <div id="projectManagerModal" class="modal-overlay">
         <div class="modal-content" style="width: 800px; max-width: 90%; height: 90vh">
             <div class="modal-header">
-                <h3><i class="fas fa-database"></i> Мои проекты (локальное хранилище)</h3>
+                <h3><i class="fas fa-database"></i> Мои проекты</h3>
                 <button class="close-modal" data-modal="projectManagerModal">&times;</button>
             </div>
             <div class="modal-body" style="overflow-y: auto;">

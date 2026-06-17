@@ -12,6 +12,7 @@
     --primary-light: #02c852;
     --secondary-color: #2979ff;
 
+
      --a-color: #02c852;;
 
     /* Фоны */
@@ -65,6 +66,7 @@ body {
     overflow: hidden;
     display: flex;
     flex-direction: column;
+    user-select: none
 }
 
 .sketch-only {
@@ -636,7 +638,7 @@ a:hover {
 }
 
 .dropdown-toggle {
-    padding-right: 8px;
+    padding-right: 4px;
 }
 
 .dropdown-toggle .fa-caret-down {
