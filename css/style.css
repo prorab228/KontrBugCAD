@@ -2085,11 +2085,13 @@ input:checked + .toggle-slider:before {
     transition: opacity 0.3s ease;
     border: 1px solid var(--primary-color);
     color: var(--text-secondary);
+    display:none;
 }
 
 .dimension-input-overlay.active {
     opacity: 1;
     pointer-events: auto;
+    display: block;
 }
 
 .dimension-input-rows {
