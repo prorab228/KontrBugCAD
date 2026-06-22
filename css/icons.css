@@ -251,7 +251,11 @@
 }
 
 
-
+/* Выдавливание по траектории (Sweep) — прямоугольник шире и ниже */
+.icon-sweep {
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='256' height='256' viewBox='0 0 24 24' fill='%23000000'%3E%3Cg fill='%23000000' fill-rule='evenodd' stroke-width='1.5' clip-rule='evenodd'%3E%3Cpath d='M17.47 2.47a.75.75 0 0 1 1.06 0l3.5 3.5a.75.75 0 0 1-.53 1.28h-2.75v9.25a.75.75 0 0 1-1.5 0V7.25H14.5a.75.75 0 0 1-.53-1.28z'/%3E%3Cpath d='M3.25 7.5a4.25 4.25 0 0 1 8.5 0v9a2.75 2.75 0 1 0 5.5 0a.75.75 0 0 1 1.5 0a4.25 4.25 0 0 1-8.5 0v-9a2.75 2.75 0 1 0-5.5 0v12a.75.75 0 0 1-1.5 0z'/%3E%3Crect x='0' y='22' width='9' height='3' rx='0.5' fill='%23000000' /%3E%3C/g%3E%3C/svg%3E");
+    -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='256' height='256' viewBox='0 0 24 24' fill='%23000000'%3E%3Cg fill='%23000000' fill-rule='evenodd' stroke-width='1.5' clip-rule='evenodd'%3E%3Cpath d='M17.47 2.47a.75.75 0 0 1 1.06 0l3.5 3.5a.75.75 0 0 1-.53 1.28h-2.75v9.25a.75.75 0 0 1-1.5 0V7.25H14.5a.75.75 0 0 1-.53-1.28z'/%3E%3Cpath d='M3.25 7.5a4.25 4.25 0 0 1 8.5 0v9a2.75 2.75 0 1 0 5.5 0a.75.75 0 0 1 1.5 0a4.25 4.25 0 0 1-8.5 0v-9a2.75 2.75 0 1 0-5.5 0v12a.75.75 0 0 1-1.5 0z'/%3E%3Crect x='0' y='22' width='9' height='3' rx='0.5' fill='%23000000' /%3E%3C/g%3E%3C/svg%3E");
+}
 
 .icon-plane {
     mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%2032%2032%27%3E%3Cpath%20d%3D%27M28%2024v4h-4v-1h-16v1h-4v-4h1v-16h-1v-4h4v1h16v-1h4v4h-1v16h1zM5%2027h2v-2h-2v2zM7%205h-2v2h2v-2zM24%207h-16v1h-1v16h1v1h16v-1h1v-16h-1v-1zM27%205h-2v2h2v-2zM25%2025v2h2v-2h-2z%27/%3E%3C/svg%3E");

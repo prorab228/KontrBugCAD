@@ -618,6 +618,7 @@ a:hover {
 .dropdown-tool-btn.active,
 .view-btn-compact.active,
 .sketch-tool-btn.active,
+.btn-secondary.active,
 [data-tool].active.tool-btn {
     background: var(--primary-color);
     border-color: var(--primary-color);

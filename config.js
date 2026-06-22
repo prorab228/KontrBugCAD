@@ -7,7 +7,7 @@ export const CONFIG = {
     // API_URL: process.env.NODE_ENV === 'production' ? 'https://cloud.контрбагтех.рф' : 'http://192.168.10.129:80',
 
     // Версия приложения (можно забирать из package.json, но для простоты оставим здесь)
-    APP_VERSION: '0.9.56',
+    APP_VERSION: '0.9.57',
     APP_NAME: 'КонтрCAD',
     APP_AUTHOR: 'Лунев Валерий Константинович'
 };
