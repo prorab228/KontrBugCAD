@@ -313,6 +313,11 @@
     .status-bar {
         flex-direction: column;
         height: auto;
+        display: none;
+    }
+    .coordinates
+    {
+        display: none;
     }
 
     .status-left, .status-right {
