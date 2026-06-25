@@ -1846,7 +1846,7 @@ input:checked + .toggle-slider:before {
 
 /* Стили для библиотеки */
 .library-controls {
-    margin-bottom: 20px;
+    /*margin-bottom: 20px;*/
 }
 
 
@@ -1910,7 +1910,7 @@ input:checked + .toggle-slider:before {
    /* max-height: 66%;*/
     overflow-y: auto;
     overflow-x: clip;
-    max-height: 65vh;
+    max-height: 69vh;
 }
 
 .library-item {
