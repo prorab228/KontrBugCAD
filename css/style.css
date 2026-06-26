@@ -284,6 +284,7 @@ body.dark-theme {
 
 a {
     color: var(--a-color);
+    text-decoration: none;
 }
 a:hover {
     color: var(--text-secondary);
@@ -1001,7 +1002,7 @@ a:hover {
     color: var(--text-primary);
     border-radius: 4px;
     padding: 8px 12px;
-    max-width: 100%;
+    max-width: 120px;
 }
 
 .property-row input:focus,
