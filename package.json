@@ -54,8 +54,12 @@
       "unicode": true
     },
     "mac": {
-      "target": "dmg",
-      "arch": "universal",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": "universal"
+        }
+      ],
       "icon": "build/icon.icns"
     },
     "dmg": {
