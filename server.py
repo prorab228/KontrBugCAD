@@ -7,6 +7,7 @@ PORT = 8000
 HOST = '0.0.0.0'
 
 
+
 class CustomHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
     def end_headers(self):
         # Добавляем заголовки кэширования

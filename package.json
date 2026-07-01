@@ -1,6 +1,6 @@
 {
   "name": "kontrbugcad",
-  "version": "0.9.56",
+  "version": "0.9.60",
   "description": "Простой и мощный параметрический 3D-САПР, с параметрическими эскизами и экспортом в STL",
   "author": "Лунев Валерий Константинович",
   "license": "SEE LICENSE IN LICENSE.md",
@@ -55,6 +55,7 @@
     },
     "mac": {
       "target": "dmg",
+      "arch": "universal",
       "icon": "build/icon.icns"
     },
     "dmg": {
