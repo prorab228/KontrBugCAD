@@ -1002,7 +1002,7 @@ a:hover {
     color: var(--text-primary);
     border-radius: 4px;
     padding: 8px 12px;
-    max-width: 120px;
+  /*  max-width: 120px;*/
 }
 
 .property-row input:focus,
@@ -1018,6 +1018,10 @@ a:hover {
     height: 36px;
     padding: 4px;
     cursor: pointer;
+    width: 120px;
+}
+
+.property-row input[type="range"] {
     width: 120px;
 }
 
