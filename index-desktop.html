@@ -40,6 +40,29 @@
 <!--    </script>-->
 
 
+
+    <!--    для старой пк версии-->
+<!--    <script type="importmap">-->
+<!--        {-->
+
+<!--            "imports": {-->
+<!--                "three": "./lib/three@0.162.0/build/three.module.js",-->
+<!--                "three/addons/": "./lib/three@0.162.0/examples/jsm/",-->
+<!--                "@tweenjs/tween.js": "./lib/tween.esm.js",-->
+<!--                "opentype.js": "./lib/opentype.module.js",-->
+<!--                "clipper-lib": "./lib/clipper.js",-->
+<!--                "fflate": "./lib/browser.js",-->
+
+<!--                 "config": "./config.js",-->
+<!--                "core/": "./js/core/",-->
+<!--                "generators/": "./js/generators/",-->
+<!--                 "tools/": "./js/tools/",-->
+<!--                 "utils/": "./js/utils/",-->
+<!--                 "lib/": "app://lib/"-->
+<!--            }-->
+<!--        }-->
+<!--    </script>-->
+
 <!--    для пк версии-->
     <script type="importmap">
         {
@@ -64,12 +87,34 @@
 
         <script type="module" src="js/app-desktop.js"></script>
 
+
+       <!--    для древних пк -->
+<!--       <script type="importmap">-->
+<!--        {-->
+
+<!--            "imports": {-->
+<!--                "three": "./lib/three@0.162.0/build/three.module.js",-->
+<!--                "three/addons/": "./lib/three@0.162.0/examples/jsm/",-->
+<!--                "@tweenjs/tween.js": "./lib/tween.esm.js",-->
+<!--                "opentype.js": "./lib/opentype.module.js",-->
+<!--                "clipper-lib": "./lib/clipper.js",-->
+<!--                "fflate": "./lib/browser.js",-->
+<!--                "config": "./config.js",-->
+<!--                "core/": "./js/core/",-->
+<!--                "generators/": "./js/generators/",-->
+<!--                 "tools/": "./js/tools/",-->
+<!--                 "utils/": "./js/utils/",-->
+<!--                 "lib/": "./lib/"-->
+<!--            }-->
+<!--        }-->
+<!--    </script>-->
+
 <!--    <script type="importmap">-->
 <!--        {-->
 
 <!--            "imports": {-->
-<!--                "three": "./lib/three@0.182.0/build/three.module.js",-->
-<!--                "three/addons/": "./lib/three@0.182.0/examples/jsm/",-->
+<!--                "three": "./lib/three@0.185.1/build/three.module.js",-->
+<!--                "three/addons/": "./lib/three@0.185.1/examples/jsm/",-->
 <!--                "@tweenjs/tween.js": "./lib/tween.esm.js",-->
 <!--                "opentype.js": "./lib/opentype.module.js",-->
 <!--                "clipper-lib": "./lib/clipper.js",-->
@@ -121,14 +166,14 @@
                         </button>
                         <div class="dropdown-menu">
                             <a href="#" id="newProject"><span class="cad-icon icon-new"></span> Новый проект (Ctrl+F)</a>
-                            <a href="#" id="saveProjectToDb"><i class="fas fa-database"></i> Сохранить проект</a>
+                            <a href="#" id="saveProject"><i class="fas fa-database"></i> Сохранить проект (Ctrl+S)</a>
                             <a href="#" id="saveProjectToGroup" style="display: none;"><i class="fas fa-users"></i> Сохранить в группу</a>
                             <a href="#" id="openProjectManager"><i class="fas fa-list"></i> Мои проекты</a>
                             <div class="dropdown-divider" ></div>
 
                             <a href="#" id="openProject"><i class="fas fa-folder-open"></i></span> Открыть файл проекта (Ctrl+O)</a>
-                            <a href="#" id="importProjectBtn"><i class="fas fa-file-import"></i> Импорт проекта из файла (Ctrl+I)</a>
-                            <a href="#" id="saveProject"><i class="fas fa-save"></i></span> Сохранить проект в файл (Ctrl+S)</a>
+                            <a href="#" id="importProject"><i class="fas fa-file-import"></i> Импорт проекта из файла (Ctrl+I)</a>
+                            <a href="#" id="exportProject"><i class="fas fa-save"></i></span> Экспорт проекта в файл </a>
 
 
                         </div>
@@ -954,41 +999,6 @@
             <div class="modal-footer">
                 <button id="cancelExport" class="btn-secondary">Отмена</button>
                 <button id="confirmExport" class="btn-primary">Экспорт</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="saveModal" class="modal-overlay">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3><i class="fas fa-save"></i> Сохранить проект</h3>
-                <button class="close-modal">&times;</button>
-            </div>
-            <div class="modal-body">
-                <div class="modal-section">
-                    <label>Название проекта:</label>
-                    <input type="text" id="projectNameInput" value="Без названия" class="modal-input">
-                </div>
-                <div class="modal-section">
-                    <label>Описание:</label>
-                    <textarea id="projectDescription" rows="3" class="modal-input" placeholder="Описание проекта"></textarea>
-                </div>
-                <div class="modal-section">
-                    <label>
-                        <input type="checkbox" id="compactFile" checked>
-                        Компактный формат проекта
-                    </label>
-                </div>
-<!--                <div class="modal-section">-->
-<!--                    <label>Сохраненные проекты:</label>-->
-<!--                    <div id="savedProjects" class="projects-list">-->
-<!--                        &lt;!&ndash; Список проектов &ndash;&gt;-->
-<!--                    </div>-->
-<!--                </div>-->
-            </div>
-            <div class="modal-footer">
-                <button id="cancelSave" class="btn-secondary">Отмена</button>
-                <button id="confirmSave" class="btn-primary">Сохранить</button>
             </div>
         </div>
     </div>

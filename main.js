@@ -228,25 +228,20 @@ function createMenu() {
                 { label: 'Масштаб по умолчанию', role: 'resetZoom' },
                 { type: 'separator' },
                 {
-                    id: 'softwareRendering',
-                    label: 'Программный рендеринг (для старых видеокарт)',
+                    id: 'useLegacy',
+                    label: 'Использовать совместимый режим (Three.js r162)',
                     type: 'checkbox',
                     checked: false,
                     click: (menuItem, browserWindow) => {
                         const enabled = menuItem.checked;
-                        saveSetting('softwareRendering', enabled);
-                        const result = dialog.showMessageBoxSync(browserWindow, {
-                            type: 'info',
-                            buttons: ['Перезапустить', 'Позже'],
-                            message: 'Для применения настройки требуется перезапустить приложение.',
-                            detail: 'Перезапустить сейчас?'
-                        });
-                        if (result === 0) {
-                            // Даём время на запись файла (300 мс достаточно)
-                            setTimeout(() => {
-                                app.relaunch();
-                                app.exit(0);
-                            }, 300);
+                        saveSetting('useLegacy', enabled);
+                        // Перезагружаем окно с нужным HTML
+                        const win = BrowserWindow.getFocusedWindow();
+                        if (win) {
+                            const htmlFile = enabled ? 'index-desktop-legacy.html' : 'index-desktop.html';
+                            win.loadFile(htmlFile).then(() => {
+                                // Обновляем состояние галочки в меню (оно уже обновлено, но на всякий случай)
+                            });
                         }
                     }
                 }
@@ -278,9 +273,10 @@ function createMenu() {
     }
 
     const menu = Menu.buildFromTemplate(template);
-    const item = menu.getMenuItemById('softwareRendering');
+    // Устанавливаем состояние галочки из сохранённой настройки
+    const item = menu.getMenuItemById('useLegacy');
     if (item) {
-        item.checked = !!getSettings().softwareRendering;
+        item.checked = !!getSettings().useLegacy;
     }
     Menu.setApplicationMenu(menu);
 }
@@ -290,6 +286,11 @@ function createMenu() {
 // ============================================================
 function createWindow() {
     const preloadPath = path.join(__dirname, 'preload.js');
+
+    // Определяем, какой HTML загружать
+    const settings = getSettings();
+    const htmlFile = settings.useLegacy ? 'index-desktop-legacy.html' : 'index-desktop.html';
+    console.log(`[Window] Loading ${htmlFile} (useLegacy=${!!settings.useLegacy})`);
 
     const win = new BrowserWindow({
         width: 1400,
@@ -303,7 +304,7 @@ function createWindow() {
         }
     });
 
-    win.loadFile('index-desktop.html').then(() => {
+    win.loadFile(htmlFile).then(() => {
         win.maximize();
         win.show();
     });
@@ -377,16 +378,9 @@ function registerAppProtocol() {
 //  ЗАПУСК ПРИЛОЖЕНИЯ
 // ============================================================
 app.whenReady().then(() => {
-    // Применяем настройку программного рендеринга ДО создания окна
-    const settings = getSettings();
-    if (settings.softwareRendering) {
-        console.log('🔧 Включаем программный рендеринг (SwiftShader)');
-        app.commandLine.appendSwitch('use-gl', 'swiftshader');
-        app.commandLine.appendSwitch('use-angle', 'swiftshader');
-        app.commandLine.appendSwitch('disable-gpu');
-    } else {
-        console.log('🖥️ Используем аппаратное ускорение');
-    }
+    // Убираем все флаги программного рендеринга – используем только аппаратное ускорение.
+    // Если пользователь хочет совместимости, он переключает HTML через меню.
+    console.log('🖥️ Используем аппаратное ускорение (по умолчанию)');
 
     registerAppProtocol();
     createWindow();
