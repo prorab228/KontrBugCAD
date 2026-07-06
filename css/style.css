@@ -441,6 +441,7 @@ a:hover {
 .storage-icons {
     width: 100%;
     position: absolute;
+    display: flex;
 }
 
 .storage-icon {
