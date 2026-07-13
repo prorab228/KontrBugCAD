@@ -1,0 +1,119 @@
+/* ===== ПАНЕЛЬ ОБУЧЕНИЯ ===== */
+.tutorial-panel {
+    display: none;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    margin: 50px 20px;
+    width: 360px;
+    max-height: 60vh;
+    overflow-y: auto;
+    background: var(--bg-primary, #2d2d2d);
+    border-radius: var(--border-radius, 8px);
+    padding: 16px;
+    z-index: 1000;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    font-family: sans-serif;
+}
+
+@media (max-width: 992px) {
+    .tutorial-panel {
+        max-width: 360px;
+        width:auto;
+    }
+}
+
+.tutorial-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.tutorial-icon {
+    font-size: 20px;
+    width: 28px;
+    text-align: center;
+}
+
+.tutorial-title {
+    margin: 0;
+    font-size: 16px;
+    flex: 1;
+    color: var(--text-primary, #eee);
+}
+
+.tutorial-close-btn {
+    background: none;
+    border: none;
+    font-size: 20px;
+    cursor: pointer;
+    color: var(--text-primary, #eee);
+}
+
+.tutorial-description {
+    margin: 10px 0;
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--text-primary, #eee);
+}
+
+.tutorial-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 12px;
+}
+
+.tutorial-progress {
+    font-size: 13px;
+    color: var(--text-secondary, #aaa);
+}
+
+.tutorial-footer {
+    margin-top: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.tutorial-hint {
+    font-size: 12px;
+    color: var(--text-secondary, #aaa);
+}
+
+.tutorial-edit-btn {
+    cursor: pointer;
+    color: #4CAF50;
+    font-size: 13px;
+}
+
+.tutorial-edit-btn:hover {
+    text-decoration: underline;
+}
+
+/* ===== ПОДСВЕТКА ИНСТРУМЕНТА В РЕЖИМЕ ОБУЧЕНИЯ ===== */
+[data-tool].tutorial-active {
+    outline: 2px solid #4CAF50 !important;
+    outline-offset: -2px;
+    border-radius: var(--border-radius, 4px);
+    box-shadow: 0 0 0 4px rgba(76, 175, 80, 0.2);
+    transition: outline 0.2s, box-shadow 0.2s;
+    position: relative;
+}
+
+/* Для кнопок внутри dropdown – подсветка родительского toggle */
+.dropdown .dropdown-toggle.tutorial-active {
+    outline: 2px solid #4CAF50 !important;
+    outline-offset: -2px;
+    border-radius: var(--border-radius, 4px);
+    box-shadow: 0 0 0 4px rgba(76, 175, 80, 0.2);
+}
+
+/* Также подсвечиваем активный пункт в dropdown меню */
+.dropdown-menu a[data-tool].tutorial-active {
+    background-color: rgba(76, 175, 80, 0.15) !important;
+    border-left: 3px solid #4CAF50 !important;
+}
