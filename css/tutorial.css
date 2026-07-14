@@ -1,12 +1,11 @@
-/* ===== ПАНЕЛЬ ОБУЧЕНИЯ ===== */
-.tutorial-panel {
+/* ===== ОБЩАЯ ПАНЕЛЬ ОБУЧЕНИЯ ===== */
+.lesson-panel {
     display: none;
     position: fixed;
-    bottom: 0;
-    left: 0;
-    margin: 50px 20px;
-    width: 360px;
-    max-height: 60vh;
+    bottom: 80px;
+    left: 20px;
+    width: 400px;
+    max-height: 70vh;
     overflow-y: auto;
     background: var(--bg-primary, #2d2d2d);
     border-radius: var(--border-radius, 8px);
@@ -15,107 +14,99 @@
     box-shadow: 0 4px 12px rgba(0,0,0,0.3);
     font-family: sans-serif;
 }
-
-@media (max-width: 992px) {
-    .tutorial-panel {
-        max-width: 360px;
-        width:auto;
-    }
-}
-
-.tutorial-header {
+.lesson-header {
     display: flex;
     align-items: center;
     gap: 8px;
     margin-bottom: 8px;
 }
-
-.tutorial-icon {
-    font-size: 20px;
-    width: 28px;
-    text-align: center;
-}
-
-.tutorial-title {
-    margin: 0;
-    font-size: 16px;
-    flex: 1;
+.lesson-icon { font-size: 20px; }
+.lesson-title { margin: 0; font-size: 16px; flex: 1; color: var(--text-primary, #eee); }
+.lesson-close-btn {
+    background: none; border: none; font-size: 20px; cursor: pointer;
     color: var(--text-primary, #eee);
 }
-
-.tutorial-close-btn {
-    background: none;
+.lesson-tabs {
+    display: flex;
+    gap: 4px;
+    border-bottom: 1px solid var(--border-primary, #444);
+    margin-bottom: 12px;
+}
+.lesson-tab {
+    padding: 6px 12px;
+    background: transparent;
     border: none;
-    font-size: 20px;
+    color: var(--text-secondary, #aaa);
     cursor: pointer;
-    color: var(--text-primary, #eee);
-}
-
-.tutorial-description {
-    margin: 10px 0;
-    font-size: 14px;
-    line-height: 1.6;
-    color: var(--text-primary, #eee);
-}
-
-.tutorial-controls {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-top: 12px;
-}
-
-.tutorial-progress {
     font-size: 13px;
-    color: var(--text-secondary, #aaa);
+    border-bottom: 2px solid transparent;
+}
+.lesson-tab.active {
+    color: var(--text-primary, #eee);
+    border-bottom-color: #4CAF50;
+}
+.lesson-pane {
+    display: block; /* всегда видима, содержимое обновляется динамически */
 }
 
-.tutorial-footer {
-    margin-top: 12px;
+.lesson-step-icon { font-size: 20px; margin-bottom: 4px; }
+.lesson-step-title { font-size: 16px; font-weight: bold; margin-bottom: 6px; color: var(--text-primary, #eee); }
+.lesson-step-description { font-size: 14px; line-height: 1.6; color: var(--text-primary, #eee); }
+.lesson-hint {
+    margin-top: 8px;
+    padding: 8px;
+    border-radius: 4px;
+    font-size: 13px;
+}
+.lesson-controls {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
+    margin-top: 12px;
 }
-
-.tutorial-hint {
-    font-size: 12px;
-    color: var(--text-secondary, #aaa);
-}
-
-.tutorial-edit-btn {
+.lesson-progress { font-size: 13px; color: var(--text-secondary, #aaa); }
+.lesson-footer { margin-top: 8px; text-align: right; }
+.lesson-edit-btn {
     cursor: pointer;
     color: #4CAF50;
     font-size: 13px;
 }
+.lesson-edit-btn:hover { text-decoration: underline; }
 
-.tutorial-edit-btn:hover {
-    text-decoration: underline;
-}
-
-/* ===== ПОДСВЕТКА ИНСТРУМЕНТА В РЕЖИМЕ ОБУЧЕНИЯ ===== */
+/* ===== ПОДСВЕТКА ИНСТРУМЕНТА ===== */
 [data-tool].tutorial-active {
     outline: 2px solid #4CAF50 !important;
     outline-offset: -2px;
     border-radius: var(--border-radius, 4px);
     box-shadow: 0 0 0 4px rgba(76, 175, 80, 0.2);
-    transition: outline 0.2s, box-shadow 0.2s;
-    position: relative;
 }
-
-/* Для кнопок внутри dropdown – подсветка родительского toggle */
 .dropdown .dropdown-toggle.tutorial-active {
     outline: 2px solid #4CAF50 !important;
     outline-offset: -2px;
-    border-radius: var(--border-radius, 4px);
     box-shadow: 0 0 0 4px rgba(76, 175, 80, 0.2);
 }
-
-/* Также подсвечиваем активный пункт в dropdown меню */
 .dropdown-menu a[data-tool].tutorial-active {
     background-color: rgba(76, 175, 80, 0.15) !important;
     border-left: 3px solid #4CAF50 !important;
 }
 
-
+.lesson-mode-toggle {
+    padding: 8px 12px;
+    background: rgba(255,255,255,0.05);
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+}
+.lesson-mode-toggle label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+}
+.lesson-mode-toggle .mode-hint {
+    font-size: 12px;
+    opacity: 0.7;
+    margin-left: 4px;
+}
