@@ -72,6 +72,30 @@ body {
 .sketch-only {
     display: none;
 }
+
+.custom-tooltip {
+    position: fixed;
+    display: none;
+
+    border-radius: var(--border-radius) !important;
+    padding: 10px 14px !important;
+    background: var(--bg-secondary) !important;
+    box-shadow: var(--shadow-md) !important;
+
+    max-width: 280px;
+    z-index: 9999999;
+    pointer-events: none;
+    font-size: 13px;
+    transition: opacity 0.15s ease;
+    overflow: hidden;
+
+}
+.custom-tooltip img {
+    border-radius: var(--border-radius);
+    margin-top: 6px;
+    max-width: 100%;
+    display: block;
+}
 /* ========== Светлая тема ========== */
 
 /* Тема и настройки окружения */
