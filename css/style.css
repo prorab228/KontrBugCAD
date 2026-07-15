@@ -1176,11 +1176,12 @@ a:hover {
 }
 
 .modal-header {
-    background: var(--bg-tertiary);
+   /* background: var(--bg-tertiary);*/
     padding: 10px 20px;
     display: flex;
     justify-content: space-between;
     align-items: center;
+    border-bottom: 1px solid var(--border-primary);
 }
 
 .modal-header h3 {
@@ -1231,8 +1232,8 @@ a:hover {
 }
 
 .modal-footer {
-    padding: 10px 20px;
-    background: var(--bg-tertiary);
+    padding: 10px;
+    /*background: var(--bg-tertiary);*/
     display: flex;
     justify-content: flex-end;
     gap: 12px;

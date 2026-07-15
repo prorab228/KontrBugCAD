@@ -26,6 +26,7 @@
     align-items: center;
     gap: 8px;
     margin-bottom: 8px;
+    border-bottom: 1px solid var(--border-primary);
 }
 .lesson-icon { font-size: 20px; }
 .lesson-title { margin: 0; font-size: 16px; flex: 1; color: var(--text-primary, #eee); }
