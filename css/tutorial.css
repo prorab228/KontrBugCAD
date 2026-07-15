@@ -2,17 +2,24 @@
 .lesson-panel {
     display: none;
     position: fixed;
-    bottom: 80px;
-    left: 20px;
-    width: 400px;
+    bottom: 0;
+    left: 0;
+    max-width: 400px;
     max-height: 70vh;
     overflow-y: auto;
     background: var(--bg-primary, #2d2d2d);
     border-radius: var(--border-radius, 8px);
-    padding: 16px;
+    padding: 10px;
     z-index: 1000;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-    font-family: sans-serif;
+    box-shadow: var(--shadow-md);
+    margin: 50px 10px;
+
+}
+
+@media (max-width: 992px) {
+    .lesson-panel {
+        margin: 0;
+    }
 }
 .lesson-header {
     display: flex;

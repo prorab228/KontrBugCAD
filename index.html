@@ -258,7 +258,7 @@
                                 <a href="#" class="dropdown-tool-btn" data-tool="text3dTool" data-tooltip-title="3D Текст" data-tooltip-image="/images/text3d_demo.png" data-tooltip-description="Генератор 3D-текста, умеет создавать, накладывать текст на 3D объекты и генерировать из загруженного шрифта">
                                     <i class="fas fa-font"></i>3D Текст
                                 </a>
-                                <a href="#" class="dropdown-tool-btn"  data-tool="imageTool" data-tooltip-title="Изображение">
+                                <a href="#" class="dropdown-tool-btn"  data-tool="imageTool" data-tooltip-title="Изображение" data-tooltip-description="Вставка изображения">
                                     <i class="fas fa-image"></i>Изображение
                                  </a>
                             </div>
@@ -272,7 +272,7 @@
                 <div class="tool-section">
                     <div class="tool-group">
 
-                        <button class="btn tool-btn" data-tool="chamfer" data-tooltip-title="Фаска/скругление/скос">
+                        <button class="btn tool-btn" data-tool="chamfer" data-tooltip-title="Фаска/скругление/скос" data-tooltip-image="/images/chamfer_demo.png" data-tooltip-description="Позволяет сделать фаску, скругление или скос на выбранных ребрах">
                             <span class="cad-icon icon-edge"></span>
 <!--                            <span class="tooltip">Фаска</span>-->
                         </button>
@@ -298,21 +298,21 @@
                         </div>
 
                         <div class="dropdown">
-                            <button class="tool-btn dropdown-toggle" data-tooltip-title="Трансформация">
+                            <button class="tool-btn dropdown-toggle" data-tooltip-title="Трансформация" data-tooltip-description="Перемещение, вращение, масштабирование и выравнивание объектов">
                                 <span class="cad-icon icon-move"></span>
                                 <i class="fas fa-caret-down"></i>
                             </button>
                             <div class="dropdown-menu">
-                                <a href="#" class="dropdown-tool-btn" data-tool="move" data-tooltip-title="Перемещение (Ctrl+W)">
-                                    <span class="cad-icon icon-move"></span> Перемещение (W)
+                                <a href="#" class="dropdown-tool-btn" data-tool="move" data-tooltip-image="/images/move_demo.png" data-tooltip-title="Перемещение (Ctrl+W)" data-tooltip-description="Перемещает выбранные объекты в пространстве">
+                                    <span class="cad-icon icon-move"></span> Перемещение (Ctrl+W)
                                 </a>
-                                <a href="#" class="dropdown-tool-btn" data-tool="rotate" data-tooltip-title="Вращение (Ctrl+R)">
-                                    <span class="cad-icon icon-rotate"></span> Вращение (R)
+                                <a href="#" class="dropdown-tool-btn" data-tool="rotate" data-tooltip-image="/images/rotate_demo.png" data-tooltip-title="Поворот (Ctrl+R)" data-tooltip-description="Поворачивает выбранные объекты на заданный угол">
+                                    <span class="cad-icon icon-rotate"></span> Поворот (Ctrl+R)
                                 </a>
-                                <a href="#" class="dropdown-tool-btn" data-tool="scale" data-tooltip-title="Масштаб (Ctrl+S)">
-                                    <span class="cad-icon icon-scale"></span> Масштаб (S)
+                                <a href="#" class="dropdown-tool-btn" data-tool="scale" data-tooltip-image="/images/scale_demo.png" data-tooltip-title="Масштаб (Ctrl+S)" data-tooltip-description="Изменяет размер выбранных объектов относительно центра или стороны">
+                                    <span class="cad-icon icon-scale"></span> Масштаб (Ctrl+S)
                                 </a>
-                                <a href="#" class="dropdown-tool-btn" data-tool="align" data-tooltip-title="Выравнивание (Ctrl+Shift+A)">
+                                <a href="#" class="dropdown-tool-btn" data-tool="align" data-tooltip-image="/images/align_demo.png" data-tooltip-title="Выравнивание (A)" data-tooltip-description="Выравнивает объекты относительно их общего центра или выбранного объекта">
                                     <i class="fas fa-arrows-alt"></i> Выравнивание (A)
                                 </a>
                             </div>
@@ -382,10 +382,10 @@
                 <div class="tool-section">
                     <div class="tool-group">
 
-                        <button class="tool-btn" data-tool="rulerTool" id="rulerTool" data-tooltip-title="Линейка (Ctrl+M)" data-tooltip-description="Измеряет расстояние между двумя точками">
+                        <button class="tool-btn" data-tool="rulerTool" id="rulerTool" data-tooltip-title="Линейка (Ctrl+M)" data-tooltip-image="/images/3Druler_demo.png" data-tooltip-description="Измеряет расстояние между двумя точками">
                             <span class="cad-icon icon-ruler"></span>
                         </button>
-                        <button class="tool-btn" data-tool="dimensionTool" data-tooltip-title="Показать размеры (Ctrl+Shift+D)" data-tooltip-description="Показывает размеры объекта при клике по нему">
+                        <button class="tool-btn" data-tool="dimensionTool" data-tooltip-title="Показать размеры (Ctrl+Shift+D)" data-tooltip-image="/images/3d_dimension_demo.png" data-tooltip-description="Показывает размеры объекта при клике по нему">
                             <i class="fas fa-ruler-combined"></i>
                         </button>
                         <button class="tool-btn" id="toggleWireframe" data-tooltip-title="Каркас">
@@ -430,17 +430,17 @@
                             <span class="cad-icon icon-dashedline"></span>
                         </button>
                         <div class="divider"></div>
-                        <button class="tool-btn sketch-tool-btn" data-sketch-tool="select" data-tooltip-title="Инструмент выделения (esc)" data-tooltip-description="Выделяет элементы чертежа для редактирования или удаления">
+                        <button class="tool-btn sketch-tool-btn" data-sketch-tool="select" data-tooltip-image="/images/sketch/select_demo.png" data-tooltip-title="Инструмент выделения (esc)" data-tooltip-description="Выделяет элементы чертежа для редактирования или удаления">
                             <span class="cad-icon icon-select"></span>
                         </button>
-                        <button class="tool-btn sketch-tool-btn" data-sketch-tool="line" data-tooltip-title="Линия (1)" data-tooltip-description="Создает отрезок прямой между двумя точками">
+                        <button class="tool-btn sketch-tool-btn" data-sketch-tool="line" data-tooltip-title="Линия (1)" data-tooltip-image="/images/sketch/line_demo.png" data-tooltip-description="Создает отрезок прямой между двумя точками">
                             <span class="cad-icon icon-line"></span>
                         </button>
 
 
 
                         <div class=" sketch-tool-menu">
-                            <button class="tool-btn sketch-tool-btn" data-sketch-tool="rectangle" data-tooltip-title="Прямоугольник (2)" data-tooltip-description="Строит прямоугольник по двум противоположным углам">
+                            <button class="tool-btn sketch-tool-btn" data-sketch-tool="rectangle" data-tooltip-title="Прямоугольник (2)" data-tooltip-image="/images/sketch/rectangle_demo.png" data-tooltip-description="Строит прямоугольник по двум противоположным углам">
                                 <span class="cad-icon icon-rectangle"></span>
                             </button>
                             <div class="dropdown">
@@ -448,7 +448,7 @@
                                     <i class="fas fa-caret-down"></i>
                                 </button>
                                 <div class="dropdown-menu">
-                                    <a class="sketch-tool-btn" data-sketch-tool="rectangle_center" data-tooltip-title="Прямоугольник по центру(2)" data-tooltip-description="Строит прямоугольник от центра и угловой точки">
+                                    <a class="sketch-tool-btn" data-sketch-tool="rectangle_center" data-tooltip-title="Прямоугольник по центру(2)" data-tooltip-image="/images/sketch/rectangle_center_demo.png" data-tooltip-description="Строит прямоугольник от центра и угловой точки">
                                         <span class="cad-icon icon-rectangle-center"></span> Прямоугольник по центру
                                     </a>
 
@@ -458,7 +458,7 @@
 
 
                         <div class=" sketch-tool-menu">
-                            <button class="tool-btn sketch-tool-btn" data-sketch-tool="circle" data-tooltip-title="Окружность" data-tooltip-description="Создать окружность по центру и радиусу">
+                            <button class="tool-btn sketch-tool-btn" data-sketch-tool="circle" data-tooltip-title="Окружность" data-tooltip-image="/images/sketch/circle_demo.png" data-tooltip-description="Создать окружность по центру и радиусу">
                                 <span class="cad-icon icon-circle"></span>
                             </button>
                             <div class="dropdown">
@@ -466,10 +466,10 @@
                                     <i class="fas fa-caret-down"></i>
                                 </button>
                                 <div class="dropdown-menu">
-                                    <a class="sketch-tool-btn" data-sketch-tool="circle_3p" data-tooltip-title="Окружность по трем точкам (3)" data-tooltip-description="Строит окружность, проходящую через три точки">
+                                    <a class="sketch-tool-btn" data-sketch-tool="circle_3p" data-tooltip-title="Окружность по трем точкам (3)" data-tooltip-image="/images/sketch/circle_demo.png" data-tooltip-description="Строит окружность, проходящую через три точки">
                                         <span class="cad-icon icon-circle-3points"></span> Окружность по трем точкам
                                     </a>
-                                    <a href="#" class="sketch-tool-btn"  data-sketch-tool="oval" data-tooltip-title="Овал (3)" data-tooltip-description="Создать овал от центра">
+                                    <a href="#" class="sketch-tool-btn"  data-sketch-tool="oval" data-tooltip-title="Овал (3)" data-tooltip-image="/images/sketch/oval_demo.png" data-tooltip-description="Создать овал от центра">
                                         <span class="cad-icon icon-oval"></span>Овал от центра
                                     </a>
                                 </div>
@@ -478,7 +478,7 @@
 
 
                         <div class=" sketch-tool-menu">
-                            <button class="tool-btn sketch-tool-btn" data-sketch-tool="polygon" data-tooltip-title="Вписанный многоугольник (4)" data-tooltip-description="Создать правильный многоугольник, вписанный в окружность">
+                            <button class="tool-btn sketch-tool-btn" data-sketch-tool="polygon" data-tooltip-title="Вписанный многоугольник (4)" data-tooltip-image="/images/sketch/polygon_demo.png" data-tooltip-description="Создать правильный многоугольник, вписанный в окружность">
                                 <span class="cad-icon icon-polygon-inscribed"></span>
                             </button>
                             <div class="dropdown">
@@ -486,7 +486,7 @@
                                     <i class="fas fa-caret-down"></i>
                                 </button>
                                 <div class="dropdown-menu">
-                                    <a href="#" class="sketch-tool-btn" data-sketch-tool="polygon_inscribed" data-tooltip-title="Описанный многоугольник (4)" data-tooltip-description="Создать правильный многоугольник, описанный вокруг окружности">
+                                    <a href="#" class="sketch-tool-btn" data-sketch-tool="polygon_inscribed" data-tooltip-title="Описанный многоугольник (4)" data-tooltip-image="/images/sketch/polygon_inscribed_demo.png" data-tooltip-description="Создать правильный многоугольник, описанный вокруг окружности">
                                         <span class="cad-icon icon-polygon-circumscribed"></span> Описанный многоугольник
                                     </a>
                                 </div>
@@ -495,7 +495,7 @@
 
 
                         <div class=" sketch-tool-menu">
-                            <button class="tool-btn sketch-tool-btn"  data-sketch-tool="arc" data-tooltip-title="Дуга (5)"  data-tooltip-description="Создать дугу по центру и её конечным точкам">
+                            <button class="tool-btn sketch-tool-btn"  data-sketch-tool="arc" data-tooltip-title="Дуга (5)" data-tooltip-image="/images/sketch/arc_demo.png" data-tooltip-description="Создать дугу по центру и её конечным точкам">
                                 <span class="cad-icon icon-arc-center "></span>
                             </button>
                             <div class="dropdown">
@@ -503,7 +503,7 @@
                                     <i class="fas fa-caret-down"></i>
                                 </button>
                                 <div class="dropdown-menu">
-                                    <a class="sketch-tool-btn"  data-sketch-tool="arc_3p" data-tooltip-title="Дуга по трем точкам (5)" data-tooltip-description="Строит дугу, проходящую через три точки">
+                                    <a class="sketch-tool-btn"  data-sketch-tool="arc_3p" data-tooltip-title="Дуга по трем точкам (5)" data-tooltip-image="/images/sketch/arc_3p_demo.png" data-tooltip-description="Строит дугу, проходящую через три точки">
                                         <span class="cad-icon icon-arc-3points"></span> Дуга по трем точкам
                                     </a>
                                 </div>
@@ -511,7 +511,7 @@
                         </div>
 
                         <div class=" sketch-tool-menu">
-                            <button href="#" class="tool-btn sketch-tool-btn"  data-sketch-tool="stadium_2p" data-tooltip-title="Стадион по двум точкам (6)" data-tooltip-description="Рисует стадион (прямоугольник с закруглениями) по двум центрам и радиусу">
+                            <button href="#" class="tool-btn sketch-tool-btn"  data-sketch-tool="stadium_2p" data-tooltip-title="Стадион по двум точкам (6)" data-tooltip-image="/images/sketch/stadium_2p_demo.png" data-tooltip-description="Рисует стадион (прямоугольник с закруглениями) по двум центрам и радиусу">
                                 <span class="cad-icon icon-stadion-2p"></span>
                             </button>
                             <div class="dropdown">
@@ -519,7 +519,7 @@
                                     <i class="fas fa-caret-down"></i>
                                 </button>
                                 <div class="dropdown-menu">
-                                    <a href="#" class="sketch-tool-btn"  data-sketch-tool="stadium" data-tooltip-title="Стадион по длине и ширине (6)" data-tooltip-description="Рисует стадион по длине и ширине от угла">
+                                    <a href="#" class="sketch-tool-btn"  data-sketch-tool="stadium" data-tooltip-title="Стадион по длине и ширине (6)" data-tooltip-image="/images/sketch/stadium_demo.png" data-tooltip-description="Рисует стадион по длине и ширине от угла">
                                         <span class="cad-icon icon-stadion"></span>Стадион от угла
                                     </a>
                                 </div>
@@ -528,7 +528,7 @@
 
 
                         <div class=" sketch-tool-menu">
-                            <button class="tool-btn sketch-tool-btn" data-sketch-tool="curve" data-tooltip-title="Сглаженная кривая (7)" data-tooltip-description="Создание и редактирование сглаженной кривой Безье">
+                            <button class="tool-btn sketch-tool-btn" data-sketch-tool="curve" data-tooltip-title="Сглаженная кривая (7)" data-tooltip-image="/images/sketch/curve_demo.png" data-tooltip-description="Создание и редактирование сглаженной кривой Безье">
                                 <span class="cad-icon icon-bezier"></span>
                             </button>
                             <div class="dropdown">
@@ -536,7 +536,7 @@
                                     <i class="fas fa-caret-down"></i>
                                 </button>
                                 <div class="dropdown-menu">
-                                    <a href="#" class="sketch-tool-btn" data-sketch-tool="polyline" data-tooltip-title="Ломаная (7)" data-tooltip-description="Создать/редактировать ломаную линию из отрезков">
+                                    <a href="#" class="sketch-tool-btn" data-sketch-tool="polyline" data-tooltip-title="Ломаная (7)" data-tooltip-image="/images/sketch/polyline_demo.png" data-tooltip-description="Создать/редактировать ломаную линию из отрезков">
                                         <span class="cad-icon icon-polyline"></span>Ломаная
                                     </a>
                                 </div>
@@ -550,21 +550,21 @@
                             </button>
                             <div class="dropdown-menu">
 
-                                <a href="#" class="sketch-tool-btn"  data-sketch-tool="text" data-tooltip-title="Текст (8)" data-tooltip-description="Создаёт текстовую надпись в виде контурных линий (полилиний)">
+                                <a href="#" class="sketch-tool-btn"  data-sketch-tool="text" data-tooltip-title="Текст (8)" data-tooltip-image="/images/sketch/text_demo.png" data-tooltip-description="Создаёт текстовую надпись в виде контурных линий (полилиний)">
                                     <span class="cad-icon icon-text"></span>Текст
                                 </a>
-                                <a class="sketch-tool-btn"  data-sketch-tool="mirror" data-tooltip-title="Симметрия (9)" data-tooltip-description="Создаёт зеркальную копию выделенных объектов относительно оси (выбранной линии)">
+                                <a class="sketch-tool-btn"  data-sketch-tool="mirror" data-tooltip-title="Симметрия (9)" data-tooltip-image="/images/sketch/mirror_demo.png" data-tooltip-description="Создаёт зеркальную копию выделенных объектов относительно оси (выбранной линии)">
                                     <span class="cad-icon icon-mirror"></span> Симметрия
                                 </a>
-                               <a href="#" class="sketch-tool-btn" data-sketch-tool="linear_array" data-tooltip-title="Линейный (квадратный) массив (L)" data-tooltip-description="Создаёт массив копий по горизонтали и вертикали с заданными шагами">
+                               <a href="#" class="sketch-tool-btn" data-sketch-tool="linear_array" data-tooltip-title="Линейный (квадратный) массив (L)" data-tooltip-image="/images/sketch/linear_array_demo.png" data-tooltip-description="Создаёт массив копий по горизонтали и вертикали с заданными шагами">
                                     <span class="cad-icon icon-array-linear"></span> Линейный массив
                                 </a>
 
-                                <a href="#" class="sketch-tool-btn"  data-sketch-tool="circular_array" data-tooltip-title="Круговой массив (C)" data-tooltip-description="Создаёт массив копий по окружности с заданным количеством">
+                                <a href="#" class="sketch-tool-btn"  data-sketch-tool="circular_array" data-tooltip-title="Круговой массив (C)" data-tooltip-image="/images/sketch/circular_array_demo.png" data-tooltip-description="Создаёт массив копий по окружности с заданным количеством">
                                     <span class="cad-icon icon-array-circular "></span> Круговой массив
                                 </a>
 
-                                <a href="#" class="sketch-tool-btn"  data-sketch-tool="offset" data-tooltip-title="Отступ (расширение) (0)" data-tooltip-description="Создает контур с равномерным отступом от выделенных объектов (эквидистанта) ">
+                                <a href="#" class="sketch-tool-btn"  data-sketch-tool="offset" data-tooltip-title="Отступ (расширение) (0)" data-tooltip-image="/images/sketch/offset_demo.png" data-tooltip-description="Создает контур с равномерным отступом от выделенных объектов (эквидистанта) ">
                                     <span class="cad-icon icon-offset "></span> Отступ (расширение)
                                 </a>
 
@@ -575,21 +575,21 @@
                         <div class="divider"></div>
 
 
-                        <button class="tool-btn  sketch-tool-btn" data-sketch-tool="move" data-tooltip-title="Перемещение (W)" data-tooltip-description="Перемещает выделенные элементы чертежа">
+                        <button class="tool-btn  sketch-tool-btn" data-sketch-tool="move" data-tooltip-title="Перемещение (W)" data-tooltip-image="/images/sketch/move_demo.png" data-tooltip-description="Перемещает выделенные элементы чертежа">
                             <i class="fas fa-arrows-alt"></i>
                         </button>
-                        <button class="tool-btn  sketch-tool-btn" data-sketch-tool="rotate" data-tooltip-title="Поворот (R)" data-tooltip-description="Поворачивает выделенные элементы относительно заданной точки ">
+                        <button class="tool-btn  sketch-tool-btn" data-sketch-tool="rotate" data-tooltip-title="Поворот (R)" data-tooltip-image="/images/sketch/rotate_demo.png" data-tooltip-description="Поворачивает выделенные элементы относительно заданной точки. Внимание! Некоторые ограничения могут блокировать операции перемещения и поворота.">
                             <i class="fas fa-sync-alt"></i>
                         </button>
-                        <button class="tool-btn  sketch-tool-btn" data-sketch-tool="scissors" data-tooltip-title="Ножницы (обрезка) (S)" data-tooltip-description="Обрезает линии в точках пересечения с другими">
+                        <button class="tool-btn  sketch-tool-btn" data-sketch-tool="scissors" data-tooltip-title="Ножницы (обрезка) (S)" data-tooltip-image="/images/sketch/scissors_demo.png" data-tooltip-description="Обрезает линии в точках пересечения с другими">
                             <i class="fas fa-cut"></i>
                         </button>
-                         <button class="tool-btn sketch-tool-btn"  data-sketch-tool="fillet" data-tooltip-title="Скругление" data-tooltip-description="Создаёт скругление (дугу) на углу двух линий">
+                         <button class="tool-btn sketch-tool-btn"  data-sketch-tool="fillet" data-tooltip-title="Скругление" data-tooltip-image="/images/sketch/fillet_demo.png" data-tooltip-description="Создаёт скругление (дугу) на углу двух линий">
                             <span class="cad-icon icon-fillet"></span>
                         </button>
 
                         <div class="divider"></div>
-                        <button class="tool-btn sketch-tool-btn" data-sketch-tool="dimension" data-tooltip-title="Размеры (D)" data-tooltip-description="Создает и редактирует размерные ограничения">
+                        <button class="tool-btn sketch-tool-btn" data-sketch-tool="dimension" data-tooltip-title="Размеры (D)" data-tooltip-image="/images/sketch/dimension_demo.png" data-tooltip-description="Создает и редактирует размерные ограничения">
                             <i class="fas fa-ruler-combined"></i>
                         </button>
                         <div class="dropdown">

@@ -479,6 +479,10 @@ a:hover {
     background: var(--bg-secondary, #f5f5f5);
     color: var(--text-primary, #333);
 }
+#storageInfo
+{
+    align-content: center;
+}
 
 /*project-info*/
 .project-info {
@@ -1177,7 +1181,6 @@ a:hover {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    border-bottom: 1px solid var(--border-primary);
 }
 
 .modal-header h3 {
@@ -1230,7 +1233,6 @@ a:hover {
 .modal-footer {
     padding: 10px 20px;
     background: var(--bg-tertiary);
-    border-top: 1px solid var(--border-primary);
     display: flex;
     justify-content: flex-end;
     gap: 12px;
@@ -1267,7 +1269,6 @@ a:hover {
 .btn-secondary {
     background: var(--hover-overlay);
     color: var(--text-primary);
-    border: 1px solid var(--border-primary);
 }
 
 .btn-secondary:hover {
