@@ -106,3 +106,72 @@
     gap: 6px;
     cursor: pointer;
 }
+
+
+/* ===== ВСТУПЛЕНИЕ ===== */
+.tutorial-intro-grid {
+  display: flex;
+  gap: 16px;
+  margin: 16px 0;
+  flex-wrap: wrap;
+}
+
+.tutorial-intro-card {
+  flex: 1;
+  min-width: 180px;
+  border-radius: var(--border-radius);
+  transition: background 0.2s;
+  text-align: center;
+  overflow: hidden;
+}
+
+.tutorial-intro-card.view {
+  background: rgba(33, 150, 243, 0.1);
+}
+
+.tutorial-intro-card.practice {
+  background: rgba(255, 152, 0, 0.1);
+}
+
+.tutorial-intro-image {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 8px;
+}
+
+.tutorial-intro-image img {
+  object-fit: cover;
+  max-height: 220px;
+  width: 100%;
+}
+
+.tutorial-intro-icon {
+  font-size: 32px;
+  display: none; /* по умолчанию скрыта, показывается если картинка не загружена */
+}
+
+.tutorial-intro-card.view .tutorial-intro-icon {
+  color: #2196f3;
+}
+
+.tutorial-intro-card.practice .tutorial-intro-icon {
+  color: #ff9800;
+}
+
+.tutorial-intro-title {
+  margin: 4px 0;
+  font-weight: bold;
+  font-size: 1.1rem;
+}
+
+.tutorial-intro-desc {
+  color: var(--text-secondary, #aaa);
+  margin: 10px;
+}
+
+.tutorial-intro-checkbox {
+  margin-top: 12px;
+  text-align: left;
+}
