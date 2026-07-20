@@ -1000,6 +1000,10 @@ a:hover {
     justify-content: space-between;
     gap: 5px;
 }
+.property-subgroup
+{
+    width: 100%;
+}
 .property-hint
 {
   font-size: 12px;
