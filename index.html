@@ -241,7 +241,7 @@
                         <button class="tool-btn" data-tool="sweep"   data-tooltip-title="Выдавливание по траектории" data-tooltip-image="images/sweep_demo.png"  data-tooltip-description="Формирование детали, когда эскиз ведут вдоль заданного пути">
                             <span class="cad-icon icon-sweep"></span>
                         </button>
-                        <button class="tool-btn" data-tool="loft"   data-tooltip-title="Лофтинг" data-tooltip-image="images/loft_demo.jpg"  data-tooltip-description="Построения формы путём плавного сопряжения нескольких сечений. Можно соединять грани объектов.">
+                        <button class="tool-btn" data-tool="loft"   data-tooltip-title="Построение по сечениям (лофт)" data-tooltip-image="images/loft_demo.jpg"  data-tooltip-description="Построения формы путём плавного сопряжения нескольких сечений. Можно соединять грани объектов, например куба и цилиндра">
                             <span class="cad-icon icon-loft"></span>
                         </button>
 
@@ -1082,6 +1082,11 @@
                 <div class="modal-section">
                     <label>
                         <input type="checkbox" id="graphicsShadows" checked> Включить тени
+                    </label>
+                </div>
+                <div class="modal-section">
+                    <label>
+                        <input type="checkbox" id="graphicsDamping" checked> Инерция камеры (плавное движение)
                     </label>
                 </div>
             </div>

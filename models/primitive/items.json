@@ -68,8 +68,7 @@
     "name": "Труба",
     "type": "primitive",
     "category": "primitive",
-    "icon": "tube.png",
-    "author": "Z"
+    "icon": "tube.png"
   },
   {
     "id": "frustum",

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>КонтрCAD - 3D САПР online</title>
+    <title>КонтрCAD</title>
 
     <meta name="description" content="Бесплатный российский онлайн-3D-САПР для редактирования STL-моделей, работы с чертежами и 3D-моделирования. Поддержка OBJ, 3MF, булевы операции, экспорт в популярные форматы.">
     <meta name="keywords" content="КонтрCAD, КонтрКАД, КонтрБагКАД, КонтрБагCAD, Аналог TinkerCAD, Аналог Fusion 360, KBCAD, kbcad, 3D редактор онлайн, САПР онлайн, STL редактор, редактирование STL, 3D моделирование, бесплатная САПР, трехмерное моделирование, чертежи онлайн">
@@ -85,7 +85,7 @@
 <!--        }-->
 <!--    </script>-->
 
-    <!--    <script type="module" src="js/app-desktop.js"></script>-->
+<!--        <script type="module" src="js/app-desktop.js"></script>-->
 
 
        <!--    для древних пк -->
@@ -127,7 +127,7 @@
 <!--                 "lib/": "./lib/"-->
 <!--            }-->
 <!--        }-->
-    </script>
+<!--    </script>-->
     <script type="module" src="js/app.js"></script>
 
 
@@ -231,15 +231,18 @@
                         <button class="tool-btn" data-tool="sketch"   data-tooltip-title="Чертеж (S) " data-tooltip-image="images/sketch_demo.png"  data-tooltip-description="Построение чертежа">
                             <span class="cad-icon icon-sketch"></span>
                         </button>
-                        <button class="tool-btn" data-tool="extrude"   data-tooltip-title="Выдавливание (E)" data-tooltip-image="images/extrude_demo.png"  data-tooltip-description="Это способ получить объёмную деталь, «вытянув» чертеж или грань объекта по прямой линии;">
+                        <button class="tool-btn" data-tool="extrude"   data-tooltip-title="Выдавливание (E)" data-tooltip-image="images/extrude_demo.png"  data-tooltip-description="Это способ получить объёмную деталь, «вытянув» чертеж или грань объекта по прямой линии">
                             <span class="cad-icon icon-extrude"></span>
                         </button>
                         <button class="tool-btn" data-tool="revolve"   data-tooltip-title="Создать тело вращения (R)" data-tooltip-image="images/revolve_demo.png" data-tooltip-description="Метод создания детали вращением эскиза вокруг оси. ">
 <!--                             <i class="fas fa-sync-alt"></i>-->
                             <span class="cad-icon icon-revolve"></span>
                          </button>
-                        <button class="tool-btn" data-tool="sweep"   data-tooltip-title="Выдавливание по траектории" data-tooltip-image="images/sweep_demo.png"  data-tooltip-description="Формирование детали, когда эскиз ведут вдоль заданного пути;">
+                        <button class="tool-btn" data-tool="sweep"   data-tooltip-title="Выдавливание по траектории" data-tooltip-image="images/sweep_demo.png"  data-tooltip-description="Формирование детали, когда эскиз ведут вдоль заданного пути">
                             <span class="cad-icon icon-sweep"></span>
+                        </button>
+                        <button class="tool-btn" data-tool="loft"   data-tooltip-title="Построение по сечениям (лофт)" data-tooltip-image="images/loft_demo.jpg"  data-tooltip-description="Построения формы путём плавного сопряжения нескольких сечений. Можно соединять грани объектов, например куба и цилиндра">
+                            <span class="cad-icon icon-loft"></span>
                         </button>
 
                         <!-- Генераторы -->
@@ -328,10 +331,10 @@
                                 <a href="#" class="dropdown-tool-btn" data-tool="boolean-union" data-tooltip-image="images/union_demo.png" data-tooltip-title="Объединение (U)" data-tooltip-description="Позволяет объединить несколько фигур в единое целое.">
                                     <span class="cad-icon icon-union"></span> Объединение (U)
                                 </a>
-                                <a href="#" class="dropdown-tool-btn" data-tool="boolean-subtract" data-tooltip-image="images/subtract_demo.png" data-tooltip-title="Вычитание (O)"  data-tooltip-title data-tooltip-description="Позволяет из одного объекта вырезать другой.">
+                                <a href="#" class="dropdown-tool-btn" data-tool="boolean-subtract" data-tooltip-image="images/subtract_demo.png" data-tooltip-title="Вычитание (O)"   data-tooltip-description="Позволяет из одного объекта вырезать другой.">
                                     <span class="cad-icon icon-subtract"></span> Вычитание (O)
                                 </a>
-                                <a href="#" class="dropdown-tool-btn" data-tool="boolean-intersect" data-tooltip-image="images/intersect_demo.png" data-tooltip-title="Пересечение (I)"  data-tooltip-title data-tooltip-description="Останется только пересечение выбранных фигур">
+                                <a href="#" class="dropdown-tool-btn" data-tool="boolean-intersect" data-tooltip-image="images/intersect_demo.png" data-tooltip-title="Пересечение (I)"  data-tooltip-description="Останется только пересечение выбранных фигур">
                                     <span class="cad-icon icon-intersect"></span> Пересечение (I)
                                 </a>
 
@@ -356,6 +359,10 @@
                                 </a>
                                 <a href="#" class="dropdown-tool-btn" data-tool="repair" data-tooltip-title="Ремонт геометрии">
                                     <i class="fas fa-tools"></i>Ремонт геометрии
+                                </a>
+
+                                <a data-tool="displacementBump" data-tooltip-title="3D-текстурирование (дисплейсмент)" data-tooltip-image="images/displacementBump_demo.png" data-tooltip-description="Добавляет детали к модели, реально изменяя её геометрию на основе текстуры">
+                                    <i class="fas fa-paint-roller"></i> 3D-текстурирование (дисплейсмент)
                                 </a>
 <!--                                <a href="#" data-tool="decimate" data-tooltip-title="Уменьшить полигоны">-->
 <!--                                    <i class="fas fa-compress-alt"></i>Уменьшить полигоны-->
@@ -1075,6 +1082,11 @@
                 <div class="modal-section">
                     <label>
                         <input type="checkbox" id="graphicsShadows" checked> Включить тени
+                    </label>
+                </div>
+                <div class="modal-section">
+                    <label>
+                        <input type="checkbox" id="graphicsDamping" checked> Инерция камеры (плавное движение)
                     </label>
                 </div>
             </div>

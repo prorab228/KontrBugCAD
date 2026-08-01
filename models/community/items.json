@@ -1,5 +1,70 @@
 [
   {
+    "id": "trubka",
+    "name": "Трубка со сливом",
+    "type": "stl_model",
+    "category": "mechanical",
+    "icon": "trubka.png",
+    "modelPath": "models/community/trubka.stl",
+    "author": "Андрей Николаев"
+  },
+  {
+    "id": "USB_Type_C",
+    "name": "USB TypeC",
+    "type": "stl_model",
+    "category": "mechanical",
+    "icon": "USB_Type_C.png",
+    "color": "0xc0c0c0",
+    "modelPath": "models/community/USB_Type_C.stl",
+    "author": "Олег Баталов"
+  },
+  {
+    "id": "USB_Type_A",
+    "name": "USB TypeA",
+    "type": "stl_model",
+    "category": "mechanical",
+    "icon": "USB_Type_A.png",
+    "color": "0xc0c0c0",
+    "modelPath": "models/community/USB_Type_A.stl",
+    "author": "Олег Баталов"
+  },
+  {
+    "id": "LimitSwitchBoard",
+    "name": "Датчик касания",
+    "type": "stl_model",
+    "category": "mechanical",
+    "icon": "LimitSwitchBoard.png",
+    "modelPath": "models/community/LimitSwitchBoard.stl",
+    "author": "Олег Баталов"
+  },
+  {
+    "id": "Karkas_Bezopastnosti",
+    "name": "Каркас безопасности",
+    "type": "stl_model",
+    "category": "mechanical",
+    "icon": "Karkas_Bezopastnosti.png",
+    "modelPath": "models/community/Karkas_Bezopastnosti.stl",
+    "author": "Олег Баталов"
+  },
+  {
+    "id": "FAN_50X50X10",
+    "name": "Вентилятор 50X50X10",
+    "type": "stl_model",
+    "category": "mechanical",
+    "icon": "FAN_50X50X10.png",
+    "modelPath": "models/community/FAN_50X50X10.stl",
+    "author": "Олег Баталов"
+  },
+  {
+    "id": "30X30X10_DC_fan",
+    "name": "Вентилятор 30X30X10",
+    "type": "stl_model",
+    "category": "mechanical",
+    "icon": "30X30X10_DC_fan.png",
+    "modelPath": "models/community/30X30X10_DC_fan.stl",
+    "author": "Олег Баталов"
+  },
+  {
     "id": "bob",
     "name": "Боб (сломанный)",
     "type": "stl_model",
