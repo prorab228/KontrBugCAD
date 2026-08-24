@@ -4,7 +4,7 @@
     position: fixed;
     bottom: 0;
     left: 0;
-    max-width: 400px;
+    width: 400px;
     max-height: 70vh;
     overflow-y: auto;
     background: var(--bg-primary, #2d2d2d);
