@@ -5,6 +5,7 @@
     "type": "primitive",
     "category": "basic",
     "icon": "cube.png",
+    "color": "0x4CAF50",
     "author": ""
   },
   {
@@ -13,6 +14,7 @@
     "type": "primitive",
     "category": "basic",
     "icon": "sphere.png",
+    "color": "0x2196F3",
     "author": ""
   },
   {
@@ -21,6 +23,7 @@
     "type": "primitive",
     "category": "basic",
     "icon": "cylinder.png",
+    "color": "0xFF9800",
     "author": ""
   },
   {
@@ -29,6 +32,7 @@
     "type": "primitive",
     "category": "basic",
     "icon": "hexagon.png",
+    "color": "0x0098FF",
     "author": ""
   },
   {
@@ -37,6 +41,7 @@
     "type": "primitive",
     "category": "basic",
     "icon": "cone.png",
+    "color": "0xE91E63",
     "author": ""
   },
   {
@@ -45,6 +50,7 @@
     "type": "primitive",
     "category": "basic",
     "icon": "torus.png",
+    "color": "0x9C27B0",
     "author": ""
   },
   {
@@ -53,6 +59,7 @@
     "type": "primitive",
     "category": "basic",
     "icon": "plane.png",
+    "color": "0x607D8B",
     "author": ""
   },
   {
@@ -61,6 +68,7 @@
     "type": "primitive",
     "category": "shapes",
     "icon": "pyramid.png",
+    "color": "0x00BCD4",
     "author": ""
   },
   {
@@ -68,7 +76,9 @@
     "name": "Труба",
     "type": "primitive",
     "category": "primitive",
-    "icon": "tube.png"
+    "icon": "tube.png",
+    "color": "0xFFDC28",
+    "author": ""
   },
   {
     "id": "frustum",
@@ -76,6 +86,7 @@
     "type": "primitive",
     "category": "primitive",
     "icon": "frustum.png",
+    "color": "0x795548",
     "author": ""
   },
   {
@@ -84,6 +95,7 @@
     "type": "primitive",
     "category": "primitive",
     "icon": "wedge.png",
+    "color": "0x7091DD",
     "author": ""
   },
   {
@@ -92,6 +104,7 @@
     "type": "primitive",
     "category": "primitive",
     "icon": "roof.png",
+    "color": "0x7DDB57",
     "author": ""
   },
   {
@@ -100,6 +113,7 @@
     "type": "primitive",
     "category": "primitive",
     "icon": "round_roof.png",
+    "color": "0xFB0000",
     "author": ""
   },
   {
@@ -108,7 +122,16 @@
     "type": "primitive",
     "category": "primitive",
     "icon": "hemisphere.png",
+    "color": "0x3FF83A",
+    "author": ""
+  },
+  {
+    "id": "stadium",
+    "name": "Стадион",
+    "type": "primitive",
+    "category": "primitive",
+    "icon": "stadium.png",
+    "color": "0xFF5722",
     "author": ""
   }
-
 ]
