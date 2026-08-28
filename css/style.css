@@ -567,7 +567,7 @@ a:hover {
     width: 1px;
     height: 30px;
     background: var(--border-primary);
-    margin: 0 7px;
+    margin: 0 3px;
     flex-shrink: 0;
 }
 
@@ -1760,7 +1760,7 @@ input:checked + .toggle-slider:before {
     }
 
     .divider {
-        margin: 0 10px;
+        margin: 0 3px;
     }
 
     .tool-group {
