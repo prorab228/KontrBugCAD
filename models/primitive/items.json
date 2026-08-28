@@ -133,5 +133,23 @@
     "icon": "stadium.png",
     "color": "0xFF5722",
     "author": ""
+  },
+  {
+    "id": "star",
+    "name": "Звезда",
+    "type": "primitive",
+    "category": "primitive",
+    "icon": "star.png",
+    "color": "0xFFD700",
+    "author": ""
+  },
+  {
+      "id": "heart",
+      "name": "Сердце",
+      "type": "primitive",
+      "category": "primitive",
+      "icon": "heart.png",
+      "color": "0xFF1744",
+      "author": ""
   }
 ]
