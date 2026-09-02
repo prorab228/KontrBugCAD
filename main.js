@@ -197,7 +197,7 @@ function createMenu() {
                 { type: 'separator' },
                 { label: 'Экспорт модели', click: () => BrowserWindow.getFocusedWindow()?.webContents.send('menu-event', 'export') },
                 { type: 'separator' },
-                { label: 'Добавить модель в библиотеку', click: () => BrowserWindow.getFocusedWindow()?.webContents.send('menu-event', 'add-to-library') },
+//                { label: 'Добавить модель в библиотеку', click: () => BrowserWindow.getFocusedWindow()?.webContents.send('menu-event', 'add-to-library') },
                 { type: 'separator' },
                 isMac ? { label: 'Закрыть окно', role: 'close' } : { label: 'Выход', role: 'quit' }
             ]
