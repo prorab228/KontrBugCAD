@@ -988,6 +988,10 @@ a:hover {
     gap: 5px;
     flex-wrap: wrap;
 }
+.property-label
+{
+    font-weight: bold;
+}
 
 .property-row label {
     color: var(--text-secondary);
