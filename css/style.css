@@ -726,7 +726,7 @@ a:hover {
     align-items: center;
     gap: 10px;
     font-size: 14px;
-    border-bottom: 1px solid var(--border-primary);
+ /*   border-bottom: 1px solid var(--border-primary);*/
     transition: background 0.2s;
     cursor: pointer;
 }
