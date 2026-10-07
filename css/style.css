@@ -40,7 +40,7 @@
     --toolbar-height: 60px;
     --status-height: 40px;
     --panel-width: 320px;
-    --border-radius: 6px;
+    --border-radius: 10px;
 
     /* Тени */
     --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
@@ -578,7 +578,7 @@ a:hover {
 .view-controls button,
 .filter-btn,
 .camera-controls button {
-    background: var(--hover-overlay);
+    background: none; /*var(--hover-overlay);*/
     /*border: 1px solid var(--border-primary);*/
     border: 0;
     color: var(--text-primary);
@@ -1106,8 +1106,8 @@ a:hover {
 .scene-item,
 .layer-item {
     padding: 12px 15px;
-    background: var(--hover-overlay);
-    border: 1px solid var(--border-primary);
+    background: none;/* var(--hover-overlay);*/
+    /*border: 1px solid var(--border-primary);*/
     margin-bottom: 8px;
     border-radius: var(--border-radius);
     cursor: pointer;
@@ -1172,7 +1172,7 @@ a:hover {
 
 .modal-content {
     background: var(--bg-secondary);
-    border-radius: 6px;
+    border-radius: 20px;
     width: 90%;
     max-width: 500px;
     max-height: 90vh;
@@ -1940,7 +1940,7 @@ input:checked + .toggle-slider:before {
 }
 
 .filter-btn:hover {
-    background: var(--bg-secondary);
+    background: var(--hover-overlay);
 }
 
 .filter-btn.active {
@@ -1963,7 +1963,7 @@ input:checked + .toggle-slider:before {
    /* display: flex;*/
     align-items: center;
     padding: 5px;
-    background: var(--hover-overlay);
+    background: none; /*var(--hover-overlay);*/
     border-radius: 8px;
     cursor: move;
     transition: all 0.2s;
