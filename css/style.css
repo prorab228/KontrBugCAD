@@ -489,8 +489,7 @@ a:hover {
   display: flex;
   align-items: center;
   gap: 20px;
-  padding-left: 20px;
-  border-left: 1px solid rgba(255, 255, 255, 0.1);
+  /*border-left: 1px solid var(--border-primary);*/
   flex-shrink: 0;
   }
 
@@ -510,9 +509,6 @@ a:hover {
   padding: 6px 14px;
   border-radius: 20px;
   font-size: 13px;
-  font-weight: 500;
-  min-width: 80px;
-  text-align: center;
   box-shadow: 0 2px 8px rgba(0, 200, 83, 0.3);
   position: absolute;
   right: 10px;
@@ -554,6 +550,12 @@ a:hover {
     display: flex;
     align-items: center;
     flex-shrink: 0;
+}
+#workToolsSection, #sketchToolsSection
+{
+    display: flex;
+      align-items: center;
+      flex-shrink: 0;
 }
 
 .tool-group {
@@ -912,7 +914,7 @@ a:hover {
 
 .panel-tabs {
     display: flex;
-    background: var(--bg-tertiary);
+   /* background: var(--bg-tertiary);*/
     border-bottom: 1px solid var(--border-primary);
     flex-shrink: 0;
 }
@@ -1141,9 +1143,17 @@ a:hover {
 }
 
 .scene-item-name {
+    cursor: text;
     color: var(--text-primary);
     font-size: 14px;
     font-weight: 500;
+    border-radius: var(--border-radius);
+  padding: 5px;
+  transition: transform 0.3s, background 0.5s;
+}
+
+.scene-item-name:hover {
+    background: var(--bg-primary);
 }
 
 .scene-item-type {
@@ -1311,13 +1321,12 @@ a:hover {
 
 /* Статус бар */
 .status-bar {
-    background: var(--bg-tertiary);
+    background: var(--bg-secondary);
     color: var(--text-secondary);
     padding: 0 20px;
     height: var(--status-height);
     display: flex;
     justify-content: space-between;
-    align-items: center;
     font-size: 13px;
     border-top: 1px solid var(--border-primary);
     flex-shrink: 0;
@@ -1909,9 +1918,10 @@ input:checked + .toggle-slider:before {
 .search-box input {
     width: 100%;
     padding: 10px 15px 10px 35px;
-    border: 1px solid #333;
-    border-radius: 6px;
-
+    border: 1px solid var(--active-overlay);
+    border-radius: var(--border-radius);
+    background: none;
+    color: var(--text-primary);
     font-size: 14px;
 }
 
@@ -1932,11 +1942,12 @@ input:checked + .toggle-slider:before {
 
 .filter-btn {
     flex: 1;
-    padding: 8px 12px;
+    padding: 8px 8px;
     font-size: 12px;
     cursor: pointer;
     transition: all 0.2s;
     margin-bottom: 10px;
+    font-weight: 600;
 }
 
 .filter-btn:hover {
@@ -1960,29 +1971,25 @@ input:checked + .toggle-slider:before {
 }
 
 .library-item {
-   /* display: flex;*/
-    align-items: center;
     padding: 5px;
     background: none; /*var(--hover-overlay);*/
     border-radius: 8px;
     cursor: move;
     transition: all 0.2s;
     position: relative;
-    color: var(--text-primary);
     font-size: 80%;
 }
 
 .library-item:hover {
-    background: var(--bg-secondary);
-    border-color: #00c853;
+    background: var(--bg-primary);
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 200, 83, 0.2);
+   /* box-shadow: 0 4px 12px rgba(0, 200, 83, 0.2);*/
 }
 
 .library-item.dragging {
     opacity: 0.5;
     background: rgba(0, 200, 83, 0.1);
-    border: 2px dashed #00c853;
+    border: 1px dashed #00c853;
 }
 
 .library-item-icon {
@@ -2126,7 +2133,7 @@ input:checked + .toggle-slider:before {
     z-index: 10000;
     opacity: 0;
     transition: opacity 0.3s ease;
-    border: 1px solid var(--primary-color);
+    /*border: 1px solid var(--primary-color);*/
     color: var(--text-secondary);
     display:none;
 }

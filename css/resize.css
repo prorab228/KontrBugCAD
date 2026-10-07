@@ -45,7 +45,7 @@
 }
 
 /* Для очень маленьких экранов (ширина < 1400px) */
-@media (max-width: 1400px) {
+@media (max-width: 992px) {
     :root {
         --toolbar-height: 50px;
         --panel-width: 280px;
