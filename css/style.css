@@ -38,7 +38,7 @@
 
     /* Размеры */
     --toolbar-height: 60px;
-    --status-height: 40px;
+    --status-height: 30px;
     --panel-width: 320px;
     --border-radius: 10px;
 
@@ -1968,7 +1968,7 @@ input:checked + .toggle-slider:before {
    /* max-height: 66%;*/
     overflow-y: auto;
     overflow-x: clip;
-    max-height: 69vh;
+   /* max-height: 69vh;*/
 }
 
 .library-item {
