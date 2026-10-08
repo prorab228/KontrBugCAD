@@ -318,12 +318,12 @@ a:hover {
 .navbar {
     background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-tertiary) 100%);
     color: var(--text-primary);
-    padding: 0 20px;
+    padding: 9px 20px;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    height: var(--toolbar-height);
-    min-height: var(--toolbar-height);
+   /* height: var(--toolbar-height);*/
+    /*min-height: var(--toolbar-height);*/
     box-shadow: var(--shadow-md);
     position: relative;
     z-index: 1000;
@@ -524,6 +524,7 @@ a:hover {
 /* Контейнер для тулбара */
 .toolbar-container {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     flex: 1;
     overflow-x: auto;
