@@ -1036,6 +1036,11 @@ a:hover {
     max-width: 100%;
 }
 
+select option {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+}
+
 /* Базовые инпуты */
 .property-row input,
 .modal-input,
