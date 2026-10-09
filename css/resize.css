@@ -44,52 +44,7 @@
     }
 }
 
-/* Для очень маленьких экранов (ширина < 1400px) */
-@media (max-width: 992px) {
-    :root {
-        --toolbar-height: 50px;
-        --panel-width: 280px;
-    }
 
-    .navbar {
-        padding: 0 15px;
-    }
-
-    .logo span {
-        font-size: 18px;
-    }
-
-    .logo i {
-        font-size: 22px;
-    }
-
-    .tool-btn {
-        width: 36px;
-        height: 36px;
-        font-size: 14px;
-    }
-
-    .divider {
-        height: 24px;
-        margin: 0 10px;
-    }
-
-    .properties-panel {
-        width: var(--panel-width);
-    }
-
-    .panel-content {
-        padding: 15px;
-    }
-
-    .library-grid {
-        grid-template-columns: 1fr;
-    }
-
-    .modal-content {
-        max-width: 450px;
-    }
-}
 
 /* Для маленьких экранов (ширина < 1200px) */
 
@@ -151,64 +106,53 @@
 
 
 }
-
-/* Для экранов с высотой < 700px */
-/*
-@media (max-height: 700px) {
+/* Для очень маленьких экранов (ширина < 1400px) */
+@media (max-width: 992px) {
     :root {
-        --toolbar-height: 46px;
-    }
-    .navbar {
-        padding: 0 10px;
+        --toolbar-height: 50px;
+        --panel-width: 280px;
     }
 
     .logo span {
-        font-size: 15px;
+        font-size: 18px;
+    }
+
+    .logo i {
+        font-size: 22px;
     }
 
     .tool-btn {
-        width: 30px;
-        height: 30px;
-        font-size: 10px;
-    }
-    .tool-btn .cad-icon {
-        width: 15px;
-        height: 15px;
+        width: 36px;
+        height: 36px;
+        font-size: 14px;
     }
 
-    .status-bar {
-        height: 34px;
-        font-size: 11px;
+    .divider {
+        height: 24px;
+        margin: 0 10px;
     }
 
-    .controls-hint {
-        display:none;
+    .properties-panel {
+        width: var(--panel-width);
     }
 
-    .coordinates {
-        bottom: 10px;
-        left: 10px;
-        padding: 6px 10px;
-        font-size: 11px;
+    .panel-content {
+        padding: 15px;
     }
 
-    .extrude-ui {
-        top: 60px;
-        right: 15px;
-        width: 250px;
-        padding: 12px;
+    .library-grid {
+        grid-template-columns: 1fr;
     }
-}
-*/
-/* Для мобильных устройств и планшетов */
-@media (max-width: 992px) {
+
+    .modal-content {
+        max-width: 450px;
+    }
+
     .logo span {
         display: none;
     }
 
-    .toolbar-container {
-        padding-left: 0;
-    }
+
 
 
 
@@ -238,13 +182,10 @@
     #projectName {
         position: absolute;
         left: 10px;
-        top: 70px;
+        top: 50px;
     }
 
-    .navbar {
-        padding: 0;
-        height:60px;
-    }
+
 
     .logo {
         padding:0;
@@ -263,7 +204,14 @@
     }
     .toolbar-container {
         gap: 0;
+        padding-left: 0;
+        flex-wrap: nowrap;
     }
+
+    .project-info {
+
+      border-left: 1px solid var(--border-primary);
+      }
 
     .tool-section, divider {
         padding: 0;
