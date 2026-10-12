@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>КонтрCAD</title>
+    <title>КонтрCAD - 3D САПР online</title>
 
     <meta name="description" content="Бесплатный российский онлайн-3D-САПР для редактирования STL-моделей, работы с чертежами и 3D-моделирования. Поддержка OBJ, 3MF, булевы операции, экспорт в популярные форматы.">
     <meta name="keywords" content="КонтрCAD, КонтрКАД, КонтрБагКАД, КонтрБагCAD, Аналог TinkerCAD, Аналог Fusion 360, KBCAD, kbcad, 3D редактор онлайн, САПР онлайн, STL редактор, редактирование STL, 3D моделирование, бесплатная САПР, трехмерное моделирование, чертежи онлайн">
@@ -85,7 +85,7 @@
 <!--        }-->
 <!--    </script>-->
 
-<!--        <script type="module" src="js/app-desktop.js"></script>-->
+    <!--    <script type="module" src="js/app-desktop.js"></script>-->
 
 
        <!--    для древних пк -->
@@ -220,7 +220,7 @@
 
 
 
-            <div id="workToolsSection" style="display: flex;">
+            <div id="workToolsSection" style="display: flex;" >
                     <!-- Основные инструменты -->
                 <div class="tool-section">
                     <div class="tool-group">
@@ -231,17 +231,37 @@
                         <button class="tool-btn" data-tool="sketch"   data-tooltip-title="Чертеж (S) " data-tooltip-image="images/sketch_demo.png"  data-tooltip-description="Построение чертежа">
                             <span class="cad-icon icon-sketch"></span>
                         </button>
-                        <button class="tool-btn" data-tool="extrude"   data-tooltip-title="Выдавливание (E)" data-tooltip-image="images/extrude_demo.png"  data-tooltip-description="Это способ получить объёмную деталь, «вытянув» чертеж или грань объекта по прямой линии">
+                        <button class="tool-btn" data-tool="extrude"
+                                data-collapse data-priority="40"
+                                data-collapse-target="#createToolsMenu"
+                                data-tooltip-title="Выдавливание (E)"
+                                data-tooltip-image="images/extrude_demo.png"
+                                data-tooltip-description="Это способ получить объёмную деталь, «вытянув» чертеж или грань объекта по прямой линии">
                             <span class="cad-icon icon-extrude"></span>
                         </button>
-                        <button class="tool-btn" data-tool="revolve"   data-tooltip-title="Создать тело вращения (R)" data-tooltip-image="images/revolve_demo.png" data-tooltip-description="Метод создания детали вращением эскиза вокруг оси. ">
+                        <button class="tool-btn" data-tool="revolve"
+                                data-collapse data-priority="30"
+                                data-collapse-target="#createToolsMenu"
+                                data-tooltip-title="Создать тело вращения (R)"
+                                data-tooltip-image="images/revolve_demo.png"
+                                data-tooltip-description="Метод создания детали вращением эскиза вокруг оси. ">
 <!--                             <i class="fas fa-sync-alt"></i>-->
                             <span class="cad-icon icon-revolve"></span>
                          </button>
-                        <button class="tool-btn" data-tool="sweep"   data-tooltip-title="Выдавливание по траектории" data-tooltip-image="images/sweep_demo.png"  data-tooltip-description="Формирование детали, когда эскиз ведут вдоль заданного пути">
+                        <button class="tool-btn" data-tool="sweep"
+                                data-collapse data-priority="20"
+                                data-collapse-target="#createToolsMenu"
+                                data-tooltip-title="Выдавливание по траектории"
+                                data-tooltip-image="images/sweep_demo.png"
+                                data-tooltip-description="Формирование детали, когда эскиз ведут вдоль заданного пути">
                             <span class="cad-icon icon-sweep"></span>
                         </button>
-                        <button class="tool-btn" data-tool="loft"   data-tooltip-title="Построение по сечениям (лофт)" data-tooltip-image="images/loft_demo.jpg"  data-tooltip-description="Построения формы путём плавного сопряжения нескольких сечений. Можно соединять грани объектов, например куба и цилиндра">
+                        <button class="tool-btn" data-tool="loft"
+                                data-collapse data-priority="10"
+                                data-collapse-target="#createToolsMenu"
+                                data-tooltip-title="Построение по сечениям (лофт)"
+                                data-tooltip-image="images/loft_demo.jpg"
+                                data-tooltip-description="Построения формы путём плавного сопряжения нескольких сечений. Можно соединять грани объектов, например куба и цилиндра">
                             <span class="cad-icon icon-loft"></span>
                         </button>
 
@@ -251,7 +271,7 @@
                                 <i class="fas fa-screwdriver"></i>
                                 <i class="fas fa-caret-down"></i>
                             </button>
-                            <div class="dropdown-menu">
+                            <div class="dropdown-menu" id="createToolsMenu">
                                 <a href="#" class="dropdown-tool-btn" data-tool="gearGenerator" id="gearGenerator" data-tooltip-title="Генератор шестерней" data-tooltip-image="images/gear_demo.png" data-tooltip-description="Генератор шестерней по заданным параметрам">
                                     <i class="fas fa-cog"></i> Генератор шестерней
                                 </a>
@@ -389,17 +409,17 @@
                 <div class="tool-section">
                     <div class="tool-group">
 
-                        <button class="tool-btn" data-tool="rulerTool" id="rulerTool" data-tooltip-title="Линейка (Ctrl+M)" data-tooltip-image="images/3Druler_demo.png" data-tooltip-description="Измеряет расстояние между двумя точками">
+                        <button class="tool-btn" data-collapse data-priority="55" data-tool="rulerTool" id="rulerTool" data-tooltip-title="Линейка (Ctrl+M)" data-tooltip-image="images/3Druler_demo.png" data-tooltip-description="Измеряет расстояние между двумя точками">
                             <span class="cad-icon icon-ruler"></span>
                         </button>
-                        <button class="tool-btn" data-tool="dimensionTool" data-tooltip-title="Показать размеры (Ctrl+Shift+D)" data-tooltip-image="images/3d_dimension_demo.png" data-tooltip-description="Показывает размеры объекта при клике по нему">
+                        <button class="tool-btn" data-collapse data-priority="45" data-tool="dimensionTool" data-tooltip-title="Показать размеры (Ctrl+Shift+D)" data-tooltip-image="images/3d_dimension_demo.png" data-tooltip-description="Показывает размеры объекта при клике по нему">
                             <i class="fas fa-ruler-combined"></i>
                         </button>
-                        <button class="tool-btn" id="toggleWireframe" data-tooltip-title="Каркас">
+                        <button class="tool-btn" data-collapse data-priority="35" id="toggleWireframe" data-tooltip-title="Каркас">
                             <i class="fas fa-border-style"></i>
                         </button>
 
-                        <button class="tool-btn" id="tutorialBtn" data-tooltip-title="Режим обучения" data-tooltip-description="Просмотрите построение модели по шагам или пройдите эти шаги самостоятельно.">
+                        <button class="tool-btn" data-collapse data-priority="25" id="tutorialBtn" data-tooltip-title="Режим обучения" data-tooltip-description="Просмотрите построение модели по шагам или пройдите эти шаги самостоятельно.">
                             <i class="fas fa-graduation-cap"></i>
                         </button>
 
@@ -415,10 +435,10 @@
                 <!-- Вид и отображение -->
                 <div class="tool-section">
                     <div class="tool-group">
-                        <button class="tool-btn" id="toggleGrid" data-tooltip-title="Сетка">
+                        <button class="tool-btn" data-collapse data-priority="15" id="toggleGrid" data-tooltip-title="Сетка">
                             <i class="fas fa-th"></i>
                         </button>
-                        <button class="tool-btn" id="toggleAxes" data-tooltip-title="Оси">
+                        <button class="tool-btn" data-collapse data-priority="5" id="toggleAxes" data-tooltip-title="Оси">
                             <i class="fas fa-crosshairs"></i>
                         </button>
 
@@ -446,7 +466,9 @@
 
 
 
-                        <div class=" sketch-tool-menu">
+                        <div class=" sketch-tool-menu"
+                                 data-collapse data-priority="60"
+                                    data-collapse-target="#sketchMoreShapesMenu">
                             <button class="tool-btn sketch-tool-btn" data-sketch-tool="rectangle" data-tooltip-title="Прямоугольник (2)" data-tooltip-image="images/sketch/rectangle_demo.png" data-tooltip-description="Строит прямоугольник по двум противоположным углам">
                                 <span class="cad-icon icon-rectangle"></span>
                             </button>
@@ -464,7 +486,9 @@
                         </div>
 
 
-                        <div class=" sketch-tool-menu">
+                        <div class=" sketch-tool-menu"
+                             data-collapse data-priority="50"
+                                data-collapse-target="#sketchMoreShapesMenu">
                             <button class="tool-btn sketch-tool-btn" data-sketch-tool="circle" data-tooltip-title="Окружность" data-tooltip-image="images/sketch/circle_demo.png" data-tooltip-description="Создать окружность по центру и радиусу">
                                 <span class="cad-icon icon-circle"></span>
                             </button>
@@ -484,7 +508,9 @@
                         </div>
 
 
-                        <div class=" sketch-tool-menu">
+                        <div class=" sketch-tool-menu"
+                                 data-collapse data-priority="40"
+                                data-collapse-target="#sketchMoreShapesMenu">
                             <button class="tool-btn sketch-tool-btn" data-sketch-tool="polygon" data-tooltip-title="Вписанный многоугольник (4)" data-tooltip-image="images/sketch/polygon_demo.png" data-tooltip-description="Создать правильный многоугольник, вписанный в окружность">
                                 <span class="cad-icon icon-polygon-inscribed"></span>
                             </button>
@@ -501,7 +527,7 @@
                         </div>
 
 
-                        <div class=" sketch-tool-menu">
+                        <div class=" sketch-tool-menu" data-collapse data-priority="30" data-collapse-target="#sketchMoreShapesMenu">
                             <button class="tool-btn sketch-tool-btn"  data-sketch-tool="arc" data-tooltip-title="Дуга (5)" data-tooltip-image="images/sketch/arc_demo.png" data-tooltip-description="Создать дугу по центру и её конечным точкам">
                                 <span class="cad-icon icon-arc-center "></span>
                             </button>
@@ -517,7 +543,7 @@
                             </div>
                         </div>
 
-                        <div class=" sketch-tool-menu">
+                        <div class=" sketch-tool-menu" data-collapse data-priority="20" data-collapse-target="#sketchMoreShapesMenu">
                             <button href="#" class="tool-btn sketch-tool-btn"  data-sketch-tool="stadium_2p" data-tooltip-title="Стадион по двум точкам (6)" data-tooltip-image="images/sketch/stadium_2p_demo.png" data-tooltip-description="Рисует стадион (прямоугольник с закруглениями) по двум центрам и радиусу">
                                 <span class="cad-icon icon-stadion-2p"></span>
                             </button>
@@ -534,7 +560,7 @@
                         </div>
 
 
-                        <div class=" sketch-tool-menu">
+                        <div class=" sketch-tool-menu" data-collapse data-priority="10" data-collapse-target="#sketchMoreShapesMenu">
                             <button class="tool-btn sketch-tool-btn" data-sketch-tool="curve" data-tooltip-title="Сглаженная кривая (7)" data-tooltip-image="images/sketch/curve_demo.png" data-tooltip-description="Создание и редактирование сглаженной кривой Безье">
                                 <span class="cad-icon icon-bezier"></span>
                             </button>
@@ -555,7 +581,7 @@
                                 <span class="cad-icon icon-more-shapes"></span>
                                 <i class="fas fa-caret-down"></i>
                             </button>
-                            <div class="dropdown-menu">
+                            <div class="dropdown-menu" id="sketchMoreShapesMenu">
 
                                 <a href="#" class="sketch-tool-btn"  data-sketch-tool="text" data-tooltip-title="Текст (8)" data-tooltip-image="images/sketch/text_demo.png" data-tooltip-description="Создаёт текстовую надпись в виде контурных линий (полилиний)">
                                     <span class="cad-icon icon-text"></span>Текст
@@ -582,16 +608,34 @@
                         <div class="divider"></div>
 
 
-                        <button class="tool-btn  sketch-tool-btn" data-sketch-tool="move" data-tooltip-title="Перемещение (W)" data-tooltip-image="images/sketch/move_demo.png" data-tooltip-description="Перемещает выделенные элементы чертежа">
+                        <button class="tool-btn  sketch-tool-btn" data-sketch-tool="move"
+                                data-collapse data-priority="55"
+                                data-tooltip-title="Перемещение (W)"
+                                data-tooltip-image="images/sketch/move_demo.png"
+                                data-tooltip-description="Перемещает выделенные элементы чертежа">
                             <i class="fas fa-arrows-alt"></i>
                         </button>
-                        <button class="tool-btn  sketch-tool-btn" data-sketch-tool="rotate" data-tooltip-title="Поворот (R)" data-tooltip-image="images/sketch/rotate_demo.png" data-tooltip-description="Поворачивает выделенные элементы относительно заданной точки. Внимание! Некоторые ограничения могут блокировать операции перемещения и поворота.">
+                        <button class="tool-btn  sketch-tool-btn"
+                                data-sketch-tool="rotate"
+                                data-collapse data-priority="45"
+                                data-tooltip-title="Поворот (R)"
+                                data-tooltip-image="images/sketch/rotate_demo.png"
+                                data-tooltip-description="Поворачивает выделенные элементы относительно заданной точки. Внимание! Некоторые ограничения могут блокировать операции перемещения и поворота.">
                             <i class="fas fa-sync-alt"></i>
                         </button>
-                        <button class="tool-btn  sketch-tool-btn" data-sketch-tool="scissors" data-tooltip-title="Ножницы (обрезка) (S)" data-tooltip-image="images/sketch/scissors_demo.png" data-tooltip-description="Обрезает линии в точках пересечения с другими">
+                        <button class="tool-btn  sketch-tool-btn"
+                                data-sketch-tool="scissors"
+                                data-collapse data-priority="35"
+                                data-tooltip-title="Ножницы (обрезка) (S)"
+                                data-tooltip-image="images/sketch/scissors_demo.png"
+                                data-tooltip-description="Обрезает линии в точках пересечения с другими">
                             <i class="fas fa-cut"></i>
                         </button>
-                         <button class="tool-btn sketch-tool-btn"  data-sketch-tool="fillet" data-tooltip-title="Скругление" data-tooltip-image="images/sketch/fillet_demo.png" data-tooltip-description="Создаёт скругление (дугу) на углу двух линий">
+                         <button class="tool-btn sketch-tool-btn"
+                                 data-sketch-tool="fillet" data-tooltip-title="Скругление"
+                                 data-collapse data-priority="26"
+                                 data-tooltip-image="images/sketch/fillet_demo.png"
+                                 data-tooltip-description="Создаёт скругление (дугу) на углу двух линий">
                             <span class="cad-icon icon-fillet"></span>
                         </button>
 
@@ -669,15 +713,20 @@
 
 
                         <div class="divider"></div>
-                        <button class="tool-btn sketch-tool-btn" data-sketch-tool="ruler" data-tooltip-title="Линейка (Комбинация Ctrl + M)" data-tooltip-description="Измеряет расстояние между двумя точками на чертеже">
+                        <button class="tool-btn sketch-tool-btn"
+                                data-collapse data-priority="25"
+                                data-sketch-tool="ruler"
+                                data-tooltip-title="Линейка (Комбинация Ctrl + M)"
+                                data-tooltip-description="Измеряет расстояние между двумя точками на чертеже">
                             <i class="fas fa-ruler"></i>
                         </button>
                         <div class="divider"></div>
 
-                        <button class="tool-btn" id="sketchDeleteBtn" data-tooltip-title="Удалить элемент чертежа ( Delete)" data-tooltip-description="Удаляет выделенный элемент чертежа (Delete)">
+                        <button class="tool-btn" data-collapse data-priority="24" id="sketchDeleteBtn" data-tooltip-title="Удалить элемент чертежа ( Delete)" data-tooltip-description="Удаляет выделенный элемент чертежа (Delete)">
                             <span class="cad-icon icon-delete"></span>
                         </button>
-                        <button class="tool-btn" id="sketchClearBtn"  data-tooltip-title="Очистить чертеж" data-tooltip-description="Удаляет все элементы текущего чертежа">
+                        <button class="tool-btn"
+                                id="sketchClearBtn" data-collapse data-priority="23" data-tooltip-title="Очистить чертеж" data-tooltip-description="Удаляет все элементы текущего чертежа">
                             <span class="cad-icon icon-clean"></span>
                         </button>
                         <button class="tool-btn" id="exitSketchBtn" data-tooltip-title="Выйти из режима чертежа" data-tooltip-description="Завершает редактирование чертежа и возвращает в 3D-режим">
@@ -951,7 +1000,7 @@
         <div class="status-right">
             <span id="fpsCounter"><i class="fas fa-tachometer-alt"></i> FPS: 60</span>
             <span class="separator">|</span>
-            <span id="version"><i class="fas fa-memory"></i> Версия: --</span>  <span> Cледить за обновлениями: <a href="https://t.me/KontrBugTech"> в ТГ</a> <a href="https://vk.com/kontrbugtech"> в ВК</a> </span>  <a href="https://www.kontrcad.ru/pages/type/guides">Гайд</a> <a href="http://dev.kontrcad.ru">dev-версия</a>
+            <span id="version"><i class="fas fa-memory"></i> Версия: --</span> <a href="https://www.kontrcad.ru/pages/type/guides">Гайд</a>  <span> Cледить за обновлениями/сообщить о проблеме: <a href="https://t.me/KontrBugTech"> в ТГ</a> <a href="https://vk.com/kontrbugtech"> в ВК</a> </span>   <a href="http://dev.kontrcad.ru">dev-версия</a>
         </div>
     </div>
 
