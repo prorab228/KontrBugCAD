@@ -739,7 +739,7 @@ a:hover {
     display: none;
     position: fixed;          /* обязательно fixed, а не absolute */
     background: var(--bg-secondary);
-    border: 1px solid var(--border-primary);
+  /*  border: 1px solid var(--border-primary);*/
     border-radius: var(--border-radius);
     box-shadow: var(--shadow-lg);
     z-index: 99999;
