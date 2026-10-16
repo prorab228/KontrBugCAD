@@ -151,5 +151,14 @@
       "icon": "heart.png",
       "color": "0xFF1744",
       "author": ""
+  },
+  {
+      "id": "polyhedron",
+      "name": "Многогранник",
+      "type": "primitive",
+      "category": "primitive",
+      "icon": "polyhedron.png",
+      "color": "0x5DD2D6",
+      "author": ""
   }
 ]
