@@ -1173,16 +1173,49 @@ select option {
 
 .scene-item,
 .layer-item {
-    padding: 12px 15px;
+    padding: 4px 6px;
     background: none;/* var(--hover-overlay);*/
     /*border: 1px solid var(--border-primary);*/
-    margin-bottom: 8px;
+    margin-bottom: 6px;
     border-radius: var(--border-radius);
     cursor: pointer;
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 8px;
     transition: all 0.2s;
+}
+
+.scene-item-expander,
+.scene-item-expander-spacer {
+    width: 14px;
+    display: inline-block;
+    text-align: center;
+    flex-shrink: 0;
+}
+.scene-item-expander {
+    cursor: pointer;
+    color: var(--text-secondary, #888);
+    transition: transform 0.15s;
+}
+.scene-item-children {
+    padding-left: 16px;
+    border-left: 1px dashed var(--border-primary, #444);
+    margin-left: 8px;
+}
+
+.scene-item[draggable="true"] { cursor: grab; }
+.scene-item.dragging          { opacity: 0.4; }
+
+.scene-item.drop-inside {
+    background: rgba(33, 150, 243, 0.18);
+    border: 1px dashed #2196F3;
+}
+.scene-item.drop-before { border-top:    2px solid #2196F3; }
+.scene-item.drop-after  { border-bottom: 2px solid #2196F3; }
+
+#sceneList.drop-to-root {
+    background: rgba(33, 150, 243, 0.06);
+    min-height: 40px;
 }
 
 .scene-item:hover,
