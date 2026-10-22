@@ -41,6 +41,7 @@
     --status-height: 30px;
     --panel-width: 320px;
     --border-radius: 10px;
+    --border-radius-max: 20px;
 
     /* Тени */
     --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
@@ -826,7 +827,7 @@ a:hover {
     background: rgba(0, 0, 0, 0.7);
     color: #FFF;
     padding: 10px 15px;
-    border-radius: var(--border-radius);
+    border-radius: var(--border-radius-max);
     font-size: 13px;
     font-family: 'Consolas', 'Monaco', monospace;
     border: 1px solid var(--border-primary);
@@ -946,7 +947,7 @@ a:hover {
     background: rgba(0, 0, 0, 0.7);
     color: white;
     padding: 10px 15px;
-    border-radius: 8px;
+    border-radius: var(--border-radius-max);
     font-size: 12px;
     width: 300px;
 
@@ -1281,7 +1282,7 @@ select option {
 
 .modal-content {
     background: var(--bg-secondary);
-    border-radius: 20px;
+    border-radius: var(--border-radius-max);
     width: 90%;
     max-width: 500px;
     max-height: 90vh;
