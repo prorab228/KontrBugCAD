@@ -17,7 +17,7 @@
 
     /* Фоны */
     --bg-primary: #1e1e1e;
-    --bg-secondary: #2d2d2d;
+    --bg-secondary: rgba(45, 45, 45, 0.9); /* #2d2d2d;*/
     --bg-tertiary: #1a1a1a;
     --bg-surface: #2d2d2d;
 
@@ -279,7 +279,7 @@ body.theme-transition * {
 /* Стили для светлой темы */
 body.light-theme {
     --bg-primary: #f5f5f7;
-    --bg-secondary: #ffffff;
+    --bg-secondary: rgba(255, 255, 255, 0.9); /* #ffffff;*/
     --bg-tertiary: #e8e8e8;
     --bg-surface: #f0f0f0;
 
@@ -923,7 +923,7 @@ a:hover {
     height: 70px;
     background: var(--bg-secondary);
     border: 1px solid var(--border-primary);
-    border-radius: 4px 0 0 4px;
+    border-radius: 10px 0 0 10px;
     color: var(--text-primary);
     cursor: pointer;
     display: flex;
