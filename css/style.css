@@ -1446,8 +1446,8 @@ select option {
 }
 .selectedMetrics
 {
-    opacity: 0.7;
-  gap: 10px;
+    opacity: 0.5;
+  gap: 15px;
   display: flex;
 }
 
