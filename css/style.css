@@ -1439,9 +1439,23 @@ select option {
     gap: 15px;
 }
 
+#selectedInfo
+{
+    display: flex;
+    gap: 10px;
+}
+.selectedMetrics
+{
+    opacity: 0.7;
+  gap: 10px;
+  display: flex;
+}
+
 .separator {
     color: var(--border-primary);
 }
+
+
 
 /* Управление видами */
 .compact-view-controls {
