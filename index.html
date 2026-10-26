@@ -619,7 +619,9 @@
                                 <a href="#" class="sketch-tool-btn"  data-sketch-tool="offset" data-tooltip-title="Отступ (расширение) (0)" data-tooltip-image="images/sketch/offset_demo.png" data-tooltip-description="Создает контур с равномерным отступом от выделенных объектов (эквидистанта) ">
                                     <span class="cad-icon icon-offset "></span> Отступ (расширение)
                                 </a>
-
+                                <a class="sketch-tool-btn" data-sketch-tool="projection" data-tooltip-title="Проекция геометрии" data-tooltip-image="images/sketch/projection_demo.gif"  data-tooltip-description="Проецирует контур грани, рёбра тела или элементы другого чертежа на текущую плоскость скетча">
+                                    <i class="fas fa-project-diagram"></i> Проекция геометрии
+                                </a>
 
                             </div>
                        </div>
@@ -714,9 +716,9 @@
 <!--                                </a>-->
 
                                 <div class="dropdown-divider"></div>
-<!--                                <a href="#" id="autoConstraintSelectedEntities" >-->
-<!--                                    Автоматические ограничения выделенных-->
-<!--                                </a>-->
+                                <a href="#" id="autoConstraintSelectedEntities" >
+                                    Автоматические ограничения выделенных
+                                </a>
                                 <a href="#" id="constraintDeleteSelectedEntities" >
                                     <span class="cad-icon-dropdown icon-delete"> </span>Удалить у выделенных объектов
                                 </a>
@@ -1021,6 +1023,7 @@
             <span id="modeIndicator"><i class="fas fa-mouse-pointer"></i> Режим: Выделение</span>
             <span class="separator">|</span>
             <span id="selectedInfo">Выбрано: 0</span>
+            <span id="metrics"></span>
         </div>
         <div class="status-right">
             <span id="fpsCounter"><i class="fas fa-tachometer-alt"></i> FPS: 60</span>
