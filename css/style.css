@@ -1284,7 +1284,7 @@ select option {
     background: var(--bg-secondary);
     border-radius: var(--border-radius-max);
     width: 90%;
-    max-width: 500px;
+    max-width: 600px;
     max-height: 90vh;
     overflow: hidden;
     box-shadow: var(--shadow-lg);
