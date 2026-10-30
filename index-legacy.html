@@ -1059,19 +1059,20 @@
                     <label>Название файла:</label>
                     <input type="text" id="exportFileName" value="модель" class="modal-input">
                 </div>
-                <select id="exportFormat" class="modal-select">
+                    <select id="exportFormat" class="modal-select">
                         <option value="stl">STL (Binary)</option>
                         <option value="stl-ascii">STL (ASCII)</option>
+                        <option value="3mf">3MF (с цветами объектов)</option>
                         <option value="obj">OBJ + MTL</option>
                         <option value="ply">PLY (ASCII)</option>
                         <option value="gltf">GLTF (JSON)</option>
-                        <option value="3mf">3MF</option>
+
                         <option value="step">STEP (фасетированный, .step)</option>
                     </select>
 
                     <div class="modal-section">
                         <label>
-                            <input type="checkbox" id="exportMaterials" checked>
+                            <input type="checkbox" id="exportMaterials" >
                             Экспортировать материалы (если поддерживается форматом)
                         </label>
                     </div>
