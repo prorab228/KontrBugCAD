@@ -238,6 +238,25 @@
     -webkit-mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%2032%2032%27%3E%3Cpath%20d%3D%27M16%2C4l-8.3%2C8.3C7.1%2C12.9%2C7.5%2C14%2C8.4%2C14H13v13c0%2C0.6%2C0.4%2C1%2C1%2C1h4c0.6%2C0%2C1-0.4%2C1-1V14h4.6c0.9%2C0%2C1.3-1.1%2C0.7-1.7L16%2C4z%27%20fill%3D%27none%27%20stroke%3D%27%23000%27%20stroke-width%3D%272%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%20stroke-miterlimit%3D%2710%27/%3E%3C/svg%3E");
 }
 */
+
+/* === Создать (Массив + Плюс) === */
+.icon-create {
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='2' y='2' width='8' height='8' rx='1.5'/%3E%3Crect x='2' y='13' width='8' height='8' rx='1.5'/%3E%3Crect x='14' y='13' width='8' height='8' rx='1.5'/%3E%3Cpath d='M18 3v6M15 6h6' stroke-width='2.5'/%3E%3C/svg%3E");
+    -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='2' y='2' width='8' height='8' rx='1.5'/%3E%3Crect x='2' y='13' width='8' height='8' rx='1.5'/%3E%3Crect x='14' y='13' width='8' height='8' rx='1.5'/%3E%3Cpath d='M18 3v6M15 6h6' stroke-width='2.5'/%3E%3C/svg%3E");
+}
+
+/* === Толщина (Оболочка / Полый куб) === */
+.icon-thickness {
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 2 L21 6.5 L21 16.5 L12 21 L3 16.5 L3 6.5 Z'/%3E%3Cpath d='M12 4.5 L18 7.5 L18 14.5 L12 17.5 L6 14.5 L6 7.5 Z'/%3E%3Cpath d='M12 2 L12 4.5 M21 6.5 L18 7.5 M3 6.5 L6 7.5'/%3E%3Cpath d='M6 14.5 L12 17.5 L18 14.5'/%3E%3C/svg%3E");
+    -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 2 L21 6.5 L21 16.5 L12 21 L3 16.5 L3 6.5 Z'/%3E%3Cpath d='M12 4.5 L18 7.5 L18 14.5 L12 17.5 L6 14.5 L6 7.5 Z'/%3E%3Cpath d='M12 2 L12 4.5 M21 6.5 L18 7.5 M3 6.5 L6 7.5'/%3E%3Cpath d='M6 14.5 L12 17.5 L18 14.5'/%3E%3C/svg%3E");
+}
+
+/* === Проекция геометрии (3D-объект на плоскость) === */
+.icon-projection {
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 2 L18 5 L18 10 L12 13 L6 10 L6 5 Z'/%3E%3Cpath d='M12 8 L18 5 M12 8 L6 5 M12 8 L12 13'/%3E%3Cpath d='M4 16 L20 16 L22 21 L2 21 Z' stroke-dasharray='2 2'/%3E%3Cpath d='M6 10 L4 16 M18 10 L20 16 M12 13 L12 16' stroke-dasharray='2 2'/%3E%3C/svg%3E");
+    -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 2 L18 5 L18 10 L12 13 L6 10 L6 5 Z'/%3E%3Cpath d='M12 8 L18 5 M12 8 L6 5 M12 8 L12 13'/%3E%3Cpath d='M4 16 L20 16 L22 21 L2 21 Z' stroke-dasharray='2 2'/%3E%3Cpath d='M6 10 L4 16 M18 10 L20 16 M12 13 L12 16' stroke-dasharray='2 2'/%3E%3C/svg%3E");
+}
+
 /* === Вытягивание (Extrude) — увеличенная === */
 .icon-extrude {
     mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cg transform='matrix(1.2,0,0,1.2,-2.4,-2.4)'%3E%3Cpath d='M21 12.353v4.294a.6.6 0 0 1-.309.525l-8.4 4.666a.6.6 0 0 1-.582 0l-8.4-4.666A.6.6 0 0 1 3 16.647v-4.294a.6.6 0 0 1 .309-.524l8.4-4.667a.6.6 0 0 1 .582 0l8.4 4.667a.6.6 0 0 1 .309.524Z'/%3E%3Cpath d='m3.528 12.294 8.18 4.544a.6.6 0 0 0 .583 0l8.209-4.56M12 21.5V17m0-5V2m0 0 2.5 2.5M12 2 9.5 4.5'/%3E%3C/g%3E%3C/svg%3E");

@@ -311,3 +311,163 @@
         transition: none;
     }
 }
+
+/* ============================================================
+   МОБИЛЬНАЯ ВЕРСИЯ (≤ 768px)
+   ============================================================ */
+@media (max-width: 768px) {
+
+    /* ---------- 1. Правая панель → вниз ---------- */
+    .properties-panel {
+        top: auto !important;
+        right: 0 !important;
+        left: 0 !important;
+        bottom: 0 !important;
+        width: 100% !important;
+        height: 42vh !important;
+        max-height: 55vh;
+        border-left: none !important;
+        border-top: 1px solid var(--border-primary);
+        border-radius: var(--border-radius-max) var(--border-radius-max) 0 0;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        z-index: 20;
+        transition: bottom 0.28s ease;
+    }
+
+    .properties-panel.hidden {
+        right: 0 !important;
+        bottom: -42vh !important;
+    }
+
+    .properties-panel .panel-tabs       { flex-shrink: 0; }
+    .properties-panel .panel-content    {
+        flex: 1 1 auto; min-height: 0; height: auto;
+        overflow-y: auto; padding: 6px;
+    }
+    .properties-panel .scene-list,
+    .properties-panel .history-list     { max-height: none; }
+
+    .panel-tab { padding: 8px 4px; font-size: 12px; }
+
+    /* ---------- 2. Библиотека: 3 колонки обратно ---------- */
+    .library-grid {
+        grid-template-columns: repeat(3, 1fr) !important;
+        gap: 5px;
+    }
+
+    /* ---------- 3. Контейнер правых элементов на всю ширину ---------- */
+    /*        Иначе left:50% у кнопки считается от нулевой ширины   */
+    .right-panel-elements {
+        left: 0 !important;
+        right: 0 !important;
+        width: 100% !important;
+    }
+
+    .properties-panel:not(.hidden) + .right-panel-elements {
+        right: 0 !important;
+        left: 0 !important;
+    }
+
+    /* ---------- 4. Кнопка-«язычок» по центру снизу ---------- */
+    .panel-toggle-btn {
+        position: absolute;
+        top: auto !important;
+        right: auto !important;
+        left: 50% !important;
+        bottom: 0;
+        transform: translateX(-50%) !important;
+        width: 64px;
+        height: 26px;
+        border-radius: 10px 10px 0 0;
+        border: 1px solid var(--border-primary);
+        border-bottom: none;
+        z-index: 25;
+        transition: bottom 0.28s ease;
+    }
+
+    /* Стрелка вверх — панель свёрнута */
+    .panel-toggle-btn i {
+        transform: rotate(90deg);
+        font-size: 12px;
+    }
+
+    /* Панель открыта — кнопка поднимается и остаётся по центру */
+    .properties-panel:not(.hidden) + .right-panel-elements .panel-toggle-btn {
+        bottom: 42vh;
+        transform: rotate(-90deg);
+    }
+    .properties-panel:not(.hidden) + .right-panel-elements .panel-toggle-btn i {
+        transform: rotate(90deg);
+    }
+
+    /* Статус (загрузка/ошибки) — оставляем справа сверху */
+    .status {
+        position: absolute !important;
+        right: 8px !important;
+        top: 8px !important;
+    }
+
+    /* ---------- 5. Скрыть оверлеи ---------- */
+    .controls-hint,
+    .coordinates { display: none !important; }
+
+    /* ---------- 6. Компактный статус-бар ---------- */
+    .status-bar {
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: center;
+        justify-content: space-between;
+        height: auto !important;
+        min-height: 22px;
+        padding: 2px 8px;
+        font-size: 10px;
+        line-height: 1.2;
+        gap: 6px;
+        flex-shrink: 0;
+    }
+
+    .status-bar .status-left,
+    .status-bar .status-right {
+        display: flex;
+        align-items: center;
+        flex-wrap: nowrap;
+        gap: 6px;
+        justify-content: flex-start;
+        text-align: left;
+        min-width: 0;
+        overflow: hidden;
+    }
+
+    .status-bar .status-right { margin-left: auto; }
+
+    .status-bar #modeIndicator,
+    .status-bar #selectedInfo,
+    .status-bar #fpsCounter {
+        font-size: 10px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .status-bar #modeIndicator i,
+    .status-bar #fpsCounter i {
+        font-size: 10px;
+        margin-right: 2px;
+    }
+
+    /* Убираем «лишнее» */
+    .status-bar .separator,
+    .status-bar #metrics,
+    .status-bar #version,
+    .status-bar .status-right > a,
+    .status-bar .status-right > span:not(#fpsCounter) {
+        display: none !important;
+    }
+
+    .viewport-container {
+        width: 100% !important;
+        height: 100% !important;
+    }
+}
