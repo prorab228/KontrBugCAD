@@ -64,7 +64,7 @@ body {
     background: var(--bg-primary);
     color: var(--text-primary);
     height: 100vh;
-    height: 100dvh; 
+    height: 100dvh;
     overflow: hidden;
     display: flex;
     flex-direction: column;
@@ -1250,6 +1250,7 @@ select option {
     font-weight: 500;
     border-radius: var(--border-radius);
   padding: 5px;
+  width: fit-content;
   transition: transform 0.3s, background 0.5s;
 }
 

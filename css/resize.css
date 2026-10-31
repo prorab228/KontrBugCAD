@@ -459,11 +459,24 @@
 
     /* Убираем «лишнее» */
     .status-bar .separator,
-    .status-bar #metrics,
+    .status-bar #modeIndicator,
     .status-bar #version,
     .status-bar .status-right > a,
     .status-bar .status-right > span:not(#fpsCounter) {
         display: none !important;
+    }
+
+    /* Метрики: показываем до тех пор, пока влезают, обрезаем плавно */
+    .status-bar #metrics {
+        display: flex !important;
+        gap: 10px;
+        align-items: center;
+        flex: 1 1 auto;          /* занимает всё оставшееся место */
+        min-width: 0;            /* разрешаем сжиматься меньше контента */
+        overflow: hidden;
+        white-space: nowrap;
+
+
     }
 
     .viewport-container {
