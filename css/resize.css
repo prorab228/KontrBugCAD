@@ -478,12 +478,13 @@
     }
     .panel-toggle-btn i {
         display: inline-block !important;
-        transform: rotate(-90deg) !important;
+        transform: rotate(90deg) !important;
         transition: transform 0.28s ease;
     }
     .properties-panel:not(.hidden) + .right-panel-elements .panel-toggle-btn {
         bottom: 42vh;
         bottom: 42dvh;
+
     }
     .properties-panel:not(.hidden) + .right-panel-elements .panel-toggle-btn i {
         transform: rotate(90deg) !important;
