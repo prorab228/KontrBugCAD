@@ -182,7 +182,7 @@
     #projectName {
         position: absolute;
         left: 10px;
-        top: 50px;
+        top: 65px;
     }
 
 
@@ -317,15 +317,116 @@
    ============================================================ */
 @media (max-width: 768px) {
 
-    /* ---------- 1. Правая панель → вниз ---------- */
+    /* ---------- 0. Высоты (dvh + fallback) ---------- */
+    html, body {
+        height: 100vh;
+        height: 100dvh;
+        overflow: hidden;
+    }
+
+    :root {
+        --mobile-nav-h: 52px;      /* высота верхнего бара */
+        --mobile-status-h: 26px;   /* высота нижнего статус-бара */
+        --mobile-tools-w: 52px;    /* ширина вертикального меню */
+    }
+
+    /* ---------- 1. Верхний бар: только логотип + project-info ---------- */
+    .navbar {
+        padding: 6px 8px !important;
+        min-height: var(--mobile-nav-h);
+        flex-wrap: nowrap;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .navbar > a { flex-shrink: 0; }
+    .project-info { margin-left: auto; }
+
+     #settings.hidden {
+        display: flex;
+    }
+
+    #accountAvatar.hidden {
+        display: flex;
+    }
+
+  .logo span {
+    display: flex;
+  }
+
+    /* ---------- 2. Главное меню (toolbar) → вертикальная панель справа ---------- */
+    .toolbar-container {
+        position: fixed;
+        top: var(--mobile-nav-h);
+        right: 0;
+        bottom: var(--mobile-status-h);
+        left: auto !important;
+        width: var(--mobile-tools-w);
+        max-height: calc(100dvh
+            - var(--mobile-nav-h)
+            - var(--mobile-status-h));
+        padding: 4px 2px;
+        flex-direction: column !important;
+        align-items: stretch;
+        overflow-x: hidden;
+        overflow-y: auto;
+        background: var(--bg-secondary);
+        border-left: 1px solid var(--border-primary);
+        z-index: 100;
+        scrollbar-width: thin;
+    }
+    .toolbar-container::-webkit-scrollbar { width: 3px; height: 0; }
+
+    /* Все секции и группы — столбцом */
+    .toolbar-container .tool-section,
+    .toolbar-container .tool-group,
+    .toolbar-container #workToolsSection,
+    .toolbar-container #sketchToolsSection {
+        flex-direction: column !important;
+        align-items: stretch;
+        width: 100%;
+        gap: 4px;
+        padding: 0;
+    }
+
+    /* Разделители становятся горизонтальными */
+    .toolbar-container .divider {
+        width: 24px;
+        height: 1px;
+        margin: 4px auto;
+    }
+
+    /* Компактные кнопки */
+    .toolbar-container .tool-btn {
+        width: 40px;
+        height: 40px;
+        font-size: 15px;
+    }
+    .toolbar-container .sketch-tool-menu { width: 100%; }
+    .toolbar-container .sketch-tool-menu .tool-btn { width: 28px; }
+    .toolbar-container .sketch-tool-menu .dropdown-toggle { width: 12px; }
+
+    /* Выпадающие меню открываем влево от панели, не давая им уехать за экран */
+    .toolbar-container .dropdown-menu {
+        left: auto !important;
+        right: calc(var(--mobile-tools-w) + 4px) !important;
+    }
+
+    /* ---------- 3. Вьюпорт + панели учитывают ширину меню ---------- */
+    .main-container {
+        padding-right: var(--mobile-tools-w);
+    }
+
+    /* Нижняя панель свойств (dvh — фикс адресной строки) */
     .properties-panel {
         top: auto !important;
-        right: 0 !important;
         left: 0 !important;
+        right: var(--mobile-tools-w) !important;
         bottom: 0 !important;
-        width: 100% !important;
-        height: 42vh !important;
-        max-height: 55vh;
+        width: auto !important;
+        height: 42vh;
+        height: 42dvh;
+        max-height: 55dvh;
         border-left: none !important;
         border-top: 1px solid var(--border-primary);
         border-radius: var(--border-radius-max) var(--border-radius-max) 0 0;
@@ -335,48 +436,37 @@
         z-index: 20;
         transition: bottom 0.28s ease;
     }
-
     .properties-panel.hidden {
-        right: 0 !important;
         bottom: -42vh !important;
+        bottom: -42dvh !important;
     }
-
-    .properties-panel .panel-tabs       { flex-shrink: 0; }
-    .properties-panel .panel-content    {
+    .properties-panel .panel-tabs { flex-shrink: 0; }
+    .properties-panel .panel-content {
         flex: 1 1 auto; min-height: 0; height: auto;
         overflow-y: auto; padding: 6px;
     }
     .properties-panel .scene-list,
-    .properties-panel .history-list     { max-height: none; }
+    .properties-panel .history-list { max-height: none; }
 
     .panel-tab { padding: 8px 4px; font-size: 12px; }
 
-    /* ---------- 2. Библиотека: 3 колонки обратно ---------- */
-    .library-grid {
-        grid-template-columns: repeat(3, 1fr) !important;
-        gap: 5px;
-    }
-
-    /* ---------- 3. Контейнер правых элементов на всю ширину ---------- */
-    /*        Иначе left:50% у кнопки считается от нулевой ширины   */
+    /* ---------- 4. Кнопка-«язычок» — по центру видимой области ---------- */
     .right-panel-elements {
         left: 0 !important;
         right: 0 !important;
         width: 100% !important;
     }
-
     .properties-panel:not(.hidden) + .right-panel-elements {
-        right: 0 !important;
         left: 0 !important;
+        right: 0 !important;
     }
 
-    /* ---------- 4. Кнопка-«язычок» по центру снизу ---------- */
     .panel-toggle-btn {
         position: absolute;
         top: auto !important;
-        right: auto !important;
-        left: 50% !important;
         bottom: 0;
+        right: auto !important;
+        left: calc((100% - var(--mobile-tools-w)) / 2) !important;
         transform: translateX(-50%) !important;
         width: 64px;
         height: 26px;
@@ -386,61 +476,61 @@
         z-index: 25;
         transition: bottom 0.28s ease;
     }
-
-    /* Стрелка вверх — панель свёрнута */
     .panel-toggle-btn i {
-        transform: rotate(90deg);
-        font-size: 12px;
+        display: inline-block !important;
+        transform: rotate(-90deg) !important;
+        transition: transform 0.28s ease;
     }
-
-    /* Панель открыта — кнопка поднимается и остаётся по центру */
     .properties-panel:not(.hidden) + .right-panel-elements .panel-toggle-btn {
         bottom: 42vh;
-        transform: rotate(-90deg);
+        bottom: 42dvh;
     }
     .properties-panel:not(.hidden) + .right-panel-elements .panel-toggle-btn i {
-        transform: rotate(90deg);
+        transform: rotate(90deg) !important;
     }
 
-    /* Статус (загрузка/ошибки) — оставляем справа сверху */
+    /* Status сообщений не должен прятаться под toolbar */
     .status {
-        position: absolute !important;
-        right: 8px !important;
-        top: 8px !important;
+        right: calc(var(--mobile-tools-w) + 6px) !important;
+        top: 6px !important;
     }
 
-    /* ---------- 5. Скрыть оверлеи ---------- */
+    /* ---------- 5. Библиотека: 3 колонки ---------- */
+    .library-grid {
+        grid-template-columns: repeat(3, 1fr) !important;
+        gap: 5px;
+    }
+
+    /* ---------- 6. Скрываемые оверлеи ---------- */
     .controls-hint,
     .coordinates { display: none !important; }
 
-    /* ---------- 6. Компактный статус-бар ---------- */
+    /* ---------- 7. Компактный статус-бар с плавной обрезкой metrics ---------- */
     .status-bar {
         display: flex !important;
         flex-direction: row !important;
         align-items: center;
         justify-content: space-between;
         height: auto !important;
-        min-height: 22px;
+        min-height: var(--mobile-status-h);
         padding: 2px 8px;
         font-size: 10px;
         line-height: 1.2;
         gap: 6px;
         flex-shrink: 0;
     }
-
     .status-bar .status-left,
     .status-bar .status-right {
         display: flex;
         align-items: center;
         flex-wrap: nowrap;
         gap: 6px;
-        justify-content: flex-start;
-        text-align: left;
         min-width: 0;
         overflow: hidden;
+        text-align: left;
     }
-
-    .status-bar .status-right { margin-left: auto; }
+    .status-bar .status-left  { flex: 1 1 auto; justify-content: flex-start; }
+    .status-bar .status-right { flex: 0 0 auto;  margin-left: auto; }
 
     .status-bar #modeIndicator,
     .status-bar #selectedInfo,
@@ -450,37 +540,31 @@
         overflow: hidden;
         text-overflow: ellipsis;
     }
-
     .status-bar #modeIndicator i,
     .status-bar #fpsCounter i {
         font-size: 10px;
         margin-right: 2px;
     }
 
-    /* Убираем «лишнее» */
-    .status-bar .separator,
-    .status-bar #modeIndicator,
-    .status-bar #version,
-    .status-bar .status-right > a,
-    .status-bar .status-right > span:not(#fpsCounter) {
-        display: none !important;
-    }
-
-    /* Метрики: показываем до тех пор, пока влезают, обрезаем плавно */
+    /* metrics: показываем, пока влезают; обрезаем плавно */
     .status-bar #metrics {
         display: flex !important;
         gap: 10px;
         align-items: center;
-        flex: 1 1 auto;          /* занимает всё оставшееся место */
-        min-width: 0;            /* разрешаем сжиматься меньше контента */
+        flex: 1 1 auto;
+        min-width: 0;
         overflow: hidden;
         white-space: nowrap;
-
-
+        -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 24px), transparent);
+                mask-image: linear-gradient(90deg, #000 calc(100% - 24px), transparent);
     }
 
-    .viewport-container {
-        width: 100% !important;
-        height: 100% !important;
+    /* Скрываем «лишнее» в статус-баре */
+    .status-bar .separator,
+    .status-bar #version,
+    .status-bar #modeIndicator,
+    .status-bar .status-right > a,
+    .status-bar .status-right > span:not(#fpsCounter) {
+        display: none !important;
     }
 }
