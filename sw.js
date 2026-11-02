@@ -1,109 +1,57 @@
-const CACHE_PREFIX = 'kontrcad-cache-';
-let currentCacheName = null;
+const CACHE_NAME = 'kontrcad-cache-v1';
 
-// Функция для получения версии из config.js
-async function getAppVersion() {
-    try {
-        // cache: 'no-store' гарантирует, что мы скачаем свежий файл, а не старый из кэша
-        const response = await fetch('./config.js', { cache: 'no-store' });
-        const text = await response.text();
-        // Ищем строку вида: APP_VERSION: '0.9.79'
-        const match = text.match(/APP_VERSION\s*:\s*['"]([^'"]+)['"]/);
-        return match ? match[1] : 'default';
-    } catch (e) {
-        console.error('SW: Не удалось получить версию', e);
-        return 'offline-fallback';
-    }
-}
-
-// Установка: создаем кэш на основе версии
 self.addEventListener('install', (event) => {
-    event.waitUntil(
-        (async () => {
-            const version = await getAppVersion();
-            currentCacheName = CACHE_PREFIX + version;
-            const cache = await caches.open(currentCacheName);
-
-            // Список файлов для первоначального кэша
-            const urlsToCache = [
-                './',
-                './config.js',
-                './manifest.json'
-            ];
-
-            // Добавляем HTML, если он есть (чтобы не упасть, если имя другое)
-            if (await fetch('./index.html').then(r => r.ok).catch(() => false)) urlsToCache.push('./index.html');
-            if (await fetch('./index-desktop.html').then(r => r.ok).catch(() => false)) urlsToCache.push('./index-desktop.html');
-
-            // Кэшируем каждый файл отдельно, игнорируя ошибки (404)
-            await Promise.allSettled(
-                urlsToCache.map(url =>
-                    cache.add(url).catch(err => console.warn(`SW: Не удалось закэшировать ${url}`, err))
-                )
-            );
-
-            console.log('SW: Установка завершена (с возможными пропусками)');
-            // НЕ вызываем skipWaiting() здесь
-        })()
-    );
+    self.skipWaiting(); // Активируем новый SW сразу
 });
 
-// Активация: удаляем старый кэш
 self.addEventListener('activate', (event) => {
-    event.waitUntil(
-        (async () => {
-            const keys = await caches.keys();
-            await Promise.all(
-                keys.map((key) => {
-                    if (key.startsWith(CACHE_PREFIX) && key !== currentCacheName) {
-                        console.log('SW: Удаляем старый кэш:', key);
-                        return caches.delete(key);
-                    }
-                })
-            );
-            await self.clients.claim();
-        })()
-    );
+    event.waitUntil(clients.claim()); // Берем контроль над вкладками
 });
 
-// Перехват запросов
 self.addEventListener('fetch', (event) => {
     if (event.request.method !== 'GET') return;
-
     const url = new URL(event.request.url);
-    if (url.origin !== self.location.origin) return; // Игнорируем сторонние запросы
+    if (url.origin !== self.location.origin) return;
 
-    // Для HTML, навигации и config.js используем Network First (чтобы всегда проверять обновления)
-    if (event.request.mode === 'navigate' ||
-        url.pathname.endsWith('.html') ||
-        url.pathname.endsWith('config.js')) {
+    // ГЛАВНОЕ ПРАВИЛО: Для config.js и HTML всегда идем в сеть (Network First)
+    if (url.pathname.endsWith('config.js') || event.request.mode === 'navigate') {
         event.respondWith(
             fetch(event.request)
                 .then((response) => {
+                    // Обновляем кэш свежей версией
                     const clone = response.clone();
-                    caches.open(currentCacheName).then((cache) => cache.put(event.request, clone));
+                    caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
                     return response;
                 })
-                .catch(() => caches.match(event.request))
+                .catch(() => caches.match(event.request)) // Если нет сети, берем из кэша
         );
-    } else {
-        // Для JS, CSS, картинок используем Cache First (мгновенная загрузка)
-        event.respondWith(
-            caches.match(event.request).then((cached) => {
-                if (cached) return cached;
-                return fetch(event.request).then((response) => {
-                    const clone = response.clone();
-                    caches.open(currentCacheName).then((cache) => cache.put(event.request, clone));
-                    return response;
-                });
-            })
-        );
+        return;
     }
+
+    // Для всех остальных файлов (JS, CSS, картинки) — Cache First
+    event.respondWith(
+        caches.match(event.request).then((cached) => {
+            if (cached) return cached;
+            return fetch(event.request).then((response) => {
+                if (response.status === 200) {
+                    const clone = response.clone();
+                    caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+                }
+                return response;
+            });
+        })
+    );
 });
 
-// Принудительная активация по команде от пользователя
+// Принудительная очистка
 self.addEventListener('message', (event) => {
-    if (event.data && event.data.action === 'SKIP_WAITING') {
-        self.skipWaiting();
+    if (event.data && event.data.action === 'CLEAR_CACHE') {
+        caches.keys().then((names) => {
+            return Promise.all(names.map(name => caches.delete(name)));
+        }).then(() => {
+            self.clients.matchAll().then(clients => {
+                clients.forEach(client => client.postMessage({ action: 'CACHE_CLEARED' }));
+            });
+        });
     }
 });
