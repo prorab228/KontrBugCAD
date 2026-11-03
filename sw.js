@@ -1,11 +1,11 @@
 const CACHE_NAME = 'kontrcad-cache-v1';
 
 self.addEventListener('install', (event) => {
-    self.skipWaiting(); // Активируем новый SW сразу
+    self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
-    event.waitUntil(clients.claim()); // Берем контроль над вкладками
+    event.waitUntil(clients.claim());
 });
 
 self.addEventListener('fetch', (event) => {
@@ -13,22 +13,26 @@ self.addEventListener('fetch', (event) => {
     const url = new URL(event.request.url);
     if (url.origin !== self.location.origin) return;
 
-    // ГЛАВНОЕ ПРАВИЛО: Для config.js и HTML всегда идем в сеть (Network First)
-    if (url.pathname.endsWith('config.js') || event.request.mode === 'navigate') {
+    // Проверяем, перезагрузились ли мы с параметром принудительного обновления ?v=
+    // (в referrer будет ссылка страницы, откуда был запрос)
+    const isForcedUpdate = event.request.referrer && event.request.referrer.includes('?v=');
+
+    // Если это HTML, config.js ИЛИ принудительное обновление — всегда идем в сеть
+    if (event.request.mode === 'navigate' || url.pathname.endsWith('config.js') || isForcedUpdate) {
         event.respondWith(
-            fetch(event.request)
+            // cache: 'reload' заставляет браузер обойти свой HTTP-кэш и скачать файл заново
+            fetch(event.request, { cache: 'reload' })
                 .then((response) => {
-                    // Обновляем кэш свежей версией
                     const clone = response.clone();
                     caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
                     return response;
                 })
-                .catch(() => caches.match(event.request)) // Если нет сети, берем из кэша
+                .catch(() => caches.match(event.request))
         );
         return;
     }
 
-    // Для всех остальных файлов (JS, CSS, картинки) — Cache First
+    // Для всего остального (картинки, шрифты, которые не менялись) — Cache First
     event.respondWith(
         caches.match(event.request).then((cached) => {
             if (cached) return cached;
