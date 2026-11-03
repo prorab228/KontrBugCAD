@@ -71,6 +71,13 @@ body {
     user-select: none
 }
 
+html, body, #viewport, canvas {
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none; /* Запрещает меню "Сохранить картинку" при долгом тапе на канвас */
+    -webkit-user-select: none;   /* Запрещает выделение текста */
+    user-select: none;
+}
+
 .sketch-only {
     display: none;
 }
