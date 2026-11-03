@@ -1,4 +1,5 @@
 const CACHE_NAME = 'kontrcad-cache-v1';
+let isHardReload = false; // Флаг для принудительного обхода HTTP-кэша
 
 self.addEventListener('install', (event) => {
     self.skipWaiting();
@@ -13,14 +14,17 @@ self.addEventListener('fetch', (event) => {
     const url = new URL(event.request.url);
     if (url.origin !== self.location.origin) return;
 
-    // Проверяем, перезагрузились ли мы с параметром принудительного обновления ?v=
-    // (в referrer будет ссылка страницы, откуда был запрос)
-    const isForcedUpdate = event.request.referrer && event.request.referrer.includes('?v=');
+    // 1. ГЛАВНОЕ ИСПРАВЛЕНИЕ: Не трогаем API запросы!
+    // Пропускаем их напрямую в сеть, чтобы список проектов всегда был актуальным
+    if (url.pathname.includes('/api/')) {
+        return;
+    }
 
-    // Если это HTML, config.js ИЛИ принудительное обновление — всегда идем в сеть
-    if (event.request.mode === 'navigate' || url.pathname.endsWith('config.js') || isForcedUpdate) {
+    // 2. РЕЖИМ ЖЕСТКОГО СБРОСА:
+    // Если пользователь нажал "Сбросить" или вышло обновление, качаем всё заново
+    if (isHardReload) {
         event.respondWith(
-            // cache: 'reload' заставляет браузер обойти свой HTTP-кэш и скачать файл заново
+            // cache: 'reload' заставляет браузер игнорировать 7-дневный HTTP-кэш
             fetch(event.request, { cache: 'reload' })
                 .then((response) => {
                     const clone = response.clone();
@@ -32,7 +36,21 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
-    // Для всего остального (картинки, шрифты, которые не менялись) — Cache First
+    // 3. ДЛЯ HTML И CONFIG.JS: Network First (всегда проверяем обновления)
+    if (event.request.mode === 'navigate' || url.pathname.endsWith('config.js')) {
+        event.respondWith(
+            fetch(event.request)
+                .then((response) => {
+                    const clone = response.clone();
+                    caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+                    return response;
+                })
+                .catch(() => caches.match(event.request))
+        );
+        return;
+    }
+
+    // 4. ДЛЯ ВСЕГО ОСТАЛЬНОГО (JS, CSS, картинки): Cache First (мгновенная загрузка)
     event.respondWith(
         caches.match(event.request).then((cached) => {
             if (cached) return cached;
@@ -47,15 +65,18 @@ self.addEventListener('fetch', (event) => {
     );
 });
 
-// Принудительная очистка
+// Обработка сообщений
 self.addEventListener('message', (event) => {
-    if (event.data && event.data.action === 'CLEAR_CACHE') {
+    // Команда жесткого сброса
+    if (event.data && event.data.action === 'HARD_RELOAD') {
+        isHardReload = true;
         caches.keys().then((names) => {
             return Promise.all(names.map(name => caches.delete(name)));
         }).then(() => {
-            self.clients.matchAll().then(clients => {
-                clients.forEach(client => client.postMessage({ action: 'CACHE_CLEARED' }));
-            });
+            // Отвечаем странице, что можно перезагружаться
+            if (event.ports && event.ports[0]) {
+                event.ports[0].postMessage({ status: 'READY' });
+            }
         });
     }
 });
