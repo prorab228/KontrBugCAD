@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Menu, shell, ipcMain, dialog, protocol } = require('electron');
+const { app, BrowserWindow, Menu, shell, ipcMain, dialog, protocol, session } = require('electron');
 const path = require('path');
 const fs = require('fs').promises;
 const fsSync = require('fs');
@@ -10,7 +10,7 @@ const { ElectronUpdater, setupIPCHandlers } = require('@capgo/electron-updater')
 // ============================================================
 const updater = new ElectronUpdater({
     appId: 'com.kontrbugtech.cad',
-    autoUpdate: false, // Проверку запускаем вручную
+    autoUpdate: false,
 });
 
 // ============================================================
@@ -219,13 +219,11 @@ function createMenu() {
         {
             label: 'Справка',
             submenu: [
-                // --- НОВЫЙ ПУНКТ МЕНЮ ---
                 {
                     label: 'Проверить обновления',
                     click: () => BrowserWindow.getFocusedWindow()?.webContents.send('menu-event', 'check-updates')
                 },
                 { type: 'separator' },
-                // ------------------------
                 { label: 'Гайд по редактору', click: async () => await shell.openExternal('https://3dtoday.ru/blogs/envalid/kratkii-gaid-po-moemu-3d-redaktoru-kontrbagcad') },
                 { type: 'separator' },
                 { label: 'О программе', click: () => BrowserWindow.getFocusedWindow()?.webContents.send('menu-event', 'about') }
@@ -272,7 +270,6 @@ function createWindow() {
         }
     });
 
-    // Загружаем через протокол app://local/, чтобы стили и скрипты работали корректно
     win.loadURL('app://local/index-desktop.html').then(() => {
         win.maximize();
         win.show();
@@ -299,10 +296,7 @@ protocol.registerSchemesAsPrivileged([
 
 function registerAppProtocol() {
     protocol.handle('app', async (request) => {
-        // Отрезаем фиктивный хост 'app://local/'
         let filePath = request.url.replace('app://local/', '');
-
-        // Убираем query-параметры (если есть) и декодируем URL
         filePath = decodeURIComponent(filePath.split('?')[0]);
 
         const baseDir = updater.getCurrentBundlePath() || __dirname;
@@ -348,6 +342,29 @@ function registerAppProtocol() {
 //  ЗАПУСК
 // ============================================================
 app.whenReady().then(async () => {
+    // ФИКС CORS: Подменяем заголовки для запросов к API
+    session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+        if (details.url.startsWith('https://www.kontrcad.ru/api/')) {
+            const headers = details.responseHeaders || {};
+
+            // Удаляем старые заголовки CORS, если они есть (на случай дублирования)
+            for (const key in headers) {
+                if (key.toLowerCase().startsWith('access-control-')) {
+                    delete headers[key];
+                }
+            }
+
+            // Добавляем разрешающие заголовки
+            headers['Access-Control-Allow-Origin'] = ['*'];
+            headers['Access-Control-Allow-Methods'] = ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'];
+            headers['Access-Control-Allow-Headers'] = ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'];
+
+            callback({ responseHeaders: headers });
+        } else {
+            callback({ responseHeaders: details.responseHeaders });
+        }
+    });
+
     await updater.initialize();
     setupIPCHandlers(updater);
 
