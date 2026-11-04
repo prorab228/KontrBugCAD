@@ -1059,7 +1059,7 @@ a:hover {
 .panel-content.active {
     display: flex;
     flex-direction: column;
-    overflow: hidden;          /* прокрутка — внутри .history-list */
+    overflow: auto;          /* прокрутка — внутри .history-list */
 }
 
 .panel-content h3 {
