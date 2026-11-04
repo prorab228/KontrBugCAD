@@ -13,9 +13,11 @@
     "pack": "electron-builder --dir"
   },
   "dependencies": {
+    "@capgo/electron-updater": "^0.0.6",
     "uuid": "^9.0.1"
   },
   "devDependencies": {
+    "archiver": "^6.0.1",
     "electron": "^28.0.0",
     "electron-builder": "^24.9.1",
     "javascript-obfuscator": "^4.1.0"

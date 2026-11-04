@@ -3,13 +3,21 @@ const path = require('path');
 const fs = require('fs').promises;
 const fsSync = require('fs');
 const { v4: uuidv4 } = require('uuid');
+const { ElectronUpdater, setupIPCHandlers } = require('@capgo/electron-updater');
 
 // ============================================================
-//  НАСТРОЙКИ ПОЛЬЗОВАТЕЛЯ (сохраняются в %APPDATA%/kontrbugcad/settings.json)
+//  ИНИЦИАЛИЗАЦИЯ LIVE-UPDATE
+// ============================================================
+const updater = new ElectronUpdater({
+    appId: 'com.kontrbugtech.cad',
+    autoUpdate: false, // Проверку запускаем вручную из интерфейса
+});
+
+// ============================================================
+//  НАСТРОЙКИ ПОЛЬЗОВАТЕЛЯ
 // ============================================================
 const settingsPath = path.join(app.getPath('userData'), 'settings.json');
 
-// Гарантируем, что папка существует
 try {
     if (!fsSync.existsSync(path.dirname(settingsPath))) {
         fsSync.mkdirSync(path.dirname(settingsPath), { recursive: true });
@@ -21,11 +29,8 @@ try {
 function getSettings() {
     try {
         const data = fsSync.readFileSync(settingsPath, 'utf8');
-        const parsed = JSON.parse(data);
-        console.log('[Settings] Loaded:', parsed);
-        return parsed;
+        return JSON.parse(data);
     } catch (e) {
-        console.warn('[Settings] Failed to load, using default:', e.message);
         return {};
     }
 }
@@ -35,12 +40,10 @@ function saveSetting(key, value) {
     settings[key] = value;
     try {
         fsSync.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
-        console.log('[Settings] Saved:', settings);
     } catch (e) {
         console.error('[Settings] Failed to save:', e.message);
     }
 }
-// ============================================================
 
 function getIconPath() {
     const isWindows = process.platform === 'win32';
@@ -53,35 +56,26 @@ function getIconPath() {
     return undefined;
 }
 
+// ============================================================
+//  IPC ОБРАБОТЧИКИ
+// ============================================================
 ipcMain.handle('add-model-to-library', async (event, { fileName, fileData, modelName, category, color, previewData }) => {
-    console.log('=== ADD MODEL TO LIBRARY ===');
-    console.log('Received params:', { fileName, modelName, category, color, hasPreview: !!previewData });
-    console.log('fileData length:', fileData?.length);
-
     try {
         const targetCategory = category || 'user';
         const modelsDir = path.join(__dirname, 'models', targetCategory);
         const iconsDir = path.join(modelsDir, 'icons');
 
-        console.log('Creating directories:', modelsDir, iconsDir);
         await fs.mkdir(modelsDir, { recursive: true });
         await fs.mkdir(iconsDir, { recursive: true });
-        console.log('Directories created/verified');
 
         const ext = path.extname(fileName);
         const uniqueName = `${Date.now()}_${uuidv4()}${ext}`;
         const filePath = path.join(modelsDir, uniqueName);
-        console.log('STL file path:', filePath);
 
         const buffer = Buffer.from(fileData);
-        console.log('Buffer size:', buffer.length);
-
-        if (buffer.length === 0) {
-            throw new Error('Buffer is empty');
-        }
+        if (buffer.length === 0) throw new Error('Buffer is empty');
 
         await fs.writeFile(filePath, buffer);
-        console.log('STL file written, size:', (await fs.stat(filePath)).size);
 
         let iconRelativePath = '';
         if (previewData) {
@@ -90,20 +84,14 @@ ipcMain.handle('add-model-to-library', async (event, { fileName, fileData, model
             const iconFullPath = path.join(iconsDir, iconFileName);
             await fs.writeFile(iconFullPath, Buffer.from(base64Data, 'base64'));
             iconRelativePath = `icons/${iconFileName}`;
-            console.log('Icon saved:', iconFullPath, 'size:', (await fs.stat(iconFullPath)).size);
         }
 
         const itemsPath = path.join(modelsDir, 'items.json');
-        console.log('Items.json path:', itemsPath);
-
         let items = [];
         try {
             const itemsContent = await fs.readFile(itemsPath, 'utf8');
             items = JSON.parse(itemsContent);
-            console.log('Existing items count:', items.length);
-        } catch (e) {
-            console.log('No existing items.json, will create new');
-        }
+        } catch (e) {}
 
         const newItem = {
             id: `user_${Date.now()}`,
@@ -116,20 +104,14 @@ ipcMain.handle('add-model-to-library', async (event, { fileName, fileData, model
             author: 'Пользователь'
         };
         items.push(newItem);
-        console.log('New item to save:', newItem);
 
-        const itemsJson = JSON.stringify(items, null, 2);
-        console.log('Writing items.json, content length:', itemsJson.length);
-        await fs.writeFile(itemsPath, itemsJson, 'utf8');
-        console.log('items.json written, size:', (await fs.stat(itemsPath)).size);
+        await fs.writeFile(itemsPath, JSON.stringify(items, null, 2), 'utf8');
 
         const categoriesPath = path.join(__dirname, 'models', 'categories.json');
         let categories = [];
         try {
-            const categoriesContent = await fs.readFile(categoriesPath, 'utf8');
-            categories = JSON.parse(categoriesContent);
+            categories = JSON.parse(await fs.readFile(categoriesPath, 'utf8'));
         } catch (e) {
-            console.log('categories.json not found, creating default');
             categories = [
                 { id: 'all', name: 'Все', children: ['primitive', 'components', 'community', 'KontrBugTech'] },
                 { id: 'primitive', name: 'Примитивы', path: 'models/primitive' },
@@ -140,14 +122,10 @@ ipcMain.handle('add-model-to-library', async (event, { fileName, fileData, model
         }
 
         if (!categories.some(c => c.id === 'user')) {
-            console.log('Adding user category to categories.json');
             categories.push({ id: 'user', name: 'Пользовательские', path: 'models/user' });
             const allCat = categories.find(c => c.id === 'all');
-            if (allCat && allCat.children) {
-                allCat.children.push('user');
-            }
+            if (allCat && allCat.children) allCat.children.push('user');
             await fs.writeFile(categoriesPath, JSON.stringify(categories, null, 2));
-            console.log('categories.json updated');
         }
 
         return { success: true, item: newItem };
@@ -171,7 +149,19 @@ ipcMain.handle('open-file-dialog', async () => {
     return null;
 });
 
-// Костылина чертова
+// Запрос к вашему Flask API за информацией об обновлении
+ipcMain.handle('check-for-updates', async () => {
+    try {
+        // Стучимся на ваш боевой сервер
+        const response = await fetch('https://www.kontrcad.ru/api/latest-update');
+        if (!response.ok) throw new Error('Network response was not ok');
+        return await response.json();
+    } catch (error) {
+        console.error('Ошибка проверки обновлений:', error);
+        return null;
+    }
+});
+
 ipcMain.on('focus-window', () => {
     const win = BrowserWindow.getFocusedWindow();
     if (win) {
@@ -183,7 +173,7 @@ ipcMain.on('focus-window', () => {
 });
 
 // ============================================================
-//  МЕНЮ
+//  МЕНЮ (БЕЗ ИЗМЕНЕНИЙ)
 // ============================================================
 function createMenu() {
     const isMac = process.platform === 'darwin';
@@ -196,8 +186,6 @@ function createMenu() {
                 { label: 'Сохранить проект', accelerator: 'CmdOrCtrl+S', click: () => BrowserWindow.getFocusedWindow()?.webContents.send('menu-event', 'save-project') },
                 { type: 'separator' },
                 { label: 'Экспорт модели', click: () => BrowserWindow.getFocusedWindow()?.webContents.send('menu-event', 'export') },
-                { type: 'separator' },
-//                { label: 'Добавить модель в библиотеку', click: () => BrowserWindow.getFocusedWindow()?.webContents.send('menu-event', 'add-to-library') },
                 { type: 'separator' },
                 isMac ? { label: 'Закрыть окно', role: 'close' } : { label: 'Выход', role: 'quit' }
             ]
@@ -235,13 +223,10 @@ function createMenu() {
                     click: (menuItem, browserWindow) => {
                         const enabled = menuItem.checked;
                         saveSetting('useLegacy', enabled);
-                        // Перезагружаем окно с нужным HTML
                         const win = BrowserWindow.getFocusedWindow();
                         if (win) {
-                            const htmlFile = enabled ? 'index-desktop-legacy.html' : 'index-desktop.html';
-                            win.loadFile(htmlFile).then(() => {
-                                // Обновляем состояние галочки в меню (оно уже обновлено, но на всякий случай)
-                            });
+                            // Перезагружаем окно
+                            win.reload();
                         }
                     }
                 }
@@ -273,11 +258,8 @@ function createMenu() {
     }
 
     const menu = Menu.buildFromTemplate(template);
-    // Устанавливаем состояние галочки из сохранённой настройки
     const item = menu.getMenuItemById('useLegacy');
-    if (item) {
-        item.checked = !!getSettings().useLegacy;
-    }
+    if (item) item.checked = !!getSettings().useLegacy;
     Menu.setApplicationMenu(menu);
 }
 
@@ -287,11 +269,6 @@ function createMenu() {
 function createWindow() {
     const preloadPath = path.join(__dirname, 'preload.js');
 
-    // Определяем, какой HTML загружать
-    const settings = getSettings();
-    const htmlFile = settings.useLegacy ? 'index-desktop-legacy.html' : 'index-desktop.html';
-    console.log(`[Window] Loading ${htmlFile} (useLegacy=${!!settings.useLegacy})`);
-
     const win = new BrowserWindow({
         width: 1400,
         height: 900,
@@ -300,11 +277,12 @@ function createWindow() {
         webPreferences: {
             nodeIntegration: false,
             contextIsolation: true,
-            preload: require('fs').existsSync(preloadPath) ? preloadPath : undefined
+            preload: fsSync.existsSync(preloadPath) ? preloadPath : undefined
         }
     });
 
-    win.loadFile(htmlFile).then(() => {
+    // ГЛАВНОЕ ИЗМЕНЕНИЕ: Загружаем через app:// протокол, чтобы перехватывать обновления
+    win.loadURL('app://index.html').then(() => {
         win.maximize();
         win.show();
     });
@@ -319,18 +297,12 @@ function createWindow() {
 }
 
 // ============================================================
-//  ПРОТОКОЛ APP (для загрузки локальных ресурсов)
+//  ПРОТОКОЛ APP (МАРШРУТИЗАЦИЯ ФАЙЛОВ)
 // ============================================================
 protocol.registerSchemesAsPrivileged([
     {
         scheme: 'app',
-        privileges: {
-            standard: true,
-            secure: true,
-            supportFetchAPI: true,
-            corsEnabled: true,
-            stream: true
-        }
+        privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true, stream: true }
     }
 ]);
 
@@ -339,11 +311,20 @@ function registerAppProtocol() {
         const url = request.url;
         let filePath = url.slice('app://'.length);
         if (filePath.startsWith('/')) filePath = filePath.slice(1);
-        const fullPath = path.join(__dirname, filePath);
-        console.log(`[app] Request: ${url} -> ${fullPath}`);
 
-        if (!fullPath.startsWith(__dirname)) {
-            console.warn(`[app] Forbidden: ${fullPath}`);
+        // Определяем базовую папку: если есть обновление — берем из него, иначе из установочной папки
+        const baseDir = updater.getCurrentBundlePath() || __dirname;
+
+        // ФОЛЛБЕК: Если в обновлении нет index.html (например, первый запуск),
+        // подставляем стандартный index-desktop.html или legacy-версию
+        if (filePath === 'index.html' && !fsSync.existsSync(path.join(baseDir, 'index.html'))) {
+            const settings = getSettings();
+            filePath = settings.useLegacy ? 'index-desktop-legacy.html' : 'index-desktop.html';
+        }
+
+        const fullPath = path.join(baseDir, filePath);
+
+        if (!fullPath.startsWith(baseDir)) {
             return new Response('Forbidden', { status: 403 });
         }
 
@@ -357,8 +338,13 @@ function registerAppProtocol() {
                 '.css': 'text/css',
                 '.html': 'text/html',
                 '.png': 'image/png',
-                '.jpg': 'image/jpeg'
+                '.jpg': 'image/jpeg',
+                '.svg': 'image/svg+xml',
+                '.woff': 'font/woff',
+                '.woff2': 'font/woff2',
+                '.ttf': 'font/ttf'
             }[ext] || 'application/octet-stream';
+
             return new Response(data, {
                 status: 200,
                 headers: {
@@ -368,19 +354,18 @@ function registerAppProtocol() {
                 }
             });
         } catch (err) {
-            console.error(`[app] Error serving ${fullPath}: ${err.message}`);
             return new Response('Not Found', { status: 404 });
         }
     });
 }
 
 // ============================================================
-//  ЗАПУСК ПРИЛОЖЕНИЯ
+//  ЗАПУСК
 // ============================================================
-app.whenReady().then(() => {
-    // Убираем все флаги программного рендеринга – используем только аппаратное ускорение.
-    // Если пользователь хочет совместимости, он переключает HTML через меню.
-    console.log('🖥️ Используем аппаратное ускорение (по умолчанию)');
+app.whenReady().then(async () => {
+    // Инициализация апдейтера
+    await updater.initialize();
+    setupIPCHandlers(updater);
 
     registerAppProtocol();
     createWindow();
