@@ -10,7 +10,7 @@ const { ElectronUpdater, setupIPCHandlers } = require('@capgo/electron-updater')
 // ============================================================
 const updater = new ElectronUpdater({
     appId: 'com.kontrbugtech.cad',
-    autoUpdate: false, // Проверку запускаем вручную из интерфейса
+    autoUpdate: false,
 });
 
 // ============================================================
@@ -252,6 +252,10 @@ function createMenu() {
 // ============================================================
 function createWindow() {
     const preloadPath = path.join(__dirname, 'preload.js');
+    const settings = getSettings();
+
+    // Жестко задаем, какой файл грузить, в зависимости от настроек
+    const targetHtml = settings.useLegacy ? 'index-desktop-legacy.html' : 'index-desktop.html';
 
     const win = new BrowserWindow({
         width: 1400,
@@ -265,7 +269,8 @@ function createWindow() {
         }
     });
 
-    win.loadURL('app://index.html').then(() => {
+    // КРИТИЧЕСКИ ВАЖНО: Используем "local" как хост, чтобы стили грузились правильно
+    win.loadURL(`app://local/${targetHtml}`).then(() => {
         win.maximize();
         win.show();
     });
@@ -291,17 +296,13 @@ protocol.registerSchemesAsPrivileged([
 
 function registerAppProtocol() {
     protocol.handle('app', async (request) => {
-        const url = request.url;
-        let filePath = url.slice('app://'.length);
-        if (filePath.startsWith('/')) filePath = filePath.slice(1);
+        // КРИТИЧЕСКИ ВАЖНО: Отрезаем фиктивный хост 'app://local/'
+        let filePath = request.url.replace('app://local/', '');
+
+        // Убираем query-параметры (если есть) и декодируем URL
+        filePath = decodeURIComponent(filePath.split('?')[0]);
 
         const baseDir = updater.getCurrentBundlePath() || __dirname;
-
-        if (filePath === 'index.html' && !fsSync.existsSync(path.join(baseDir, 'index.html'))) {
-            const settings = getSettings();
-            filePath = settings.useLegacy ? 'index-desktop-legacy.html' : 'index-desktop.html';
-        }
-
         const fullPath = path.join(baseDir, filePath);
 
         if (!fullPath.startsWith(baseDir)) {
@@ -334,6 +335,7 @@ function registerAppProtocol() {
                 }
             });
         } catch (err) {
+            console.error(`[app://] 404 Not Found: ${fullPath}`);
             return new Response('Not Found', { status: 404 });
         }
     });
