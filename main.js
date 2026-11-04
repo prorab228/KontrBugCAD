@@ -10,7 +10,7 @@ const { ElectronUpdater, setupIPCHandlers } = require('@capgo/electron-updater')
 // ============================================================
 const updater = new ElectronUpdater({
     appId: 'com.kontrbugtech.cad',
-    autoUpdate: false, // Проверку запускаем вручную
+    autoUpdate: false,
 });
 
 // ============================================================
@@ -269,11 +269,11 @@ function createWindow() {
         webPreferences: {
             nodeIntegration: false,
             contextIsolation: true,
+            sandbox: false, // <--- КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Отключаем песочницу, чтобы preload мог загружать npm-модули
             preload: fsSync.existsSync(preloadPath) ? preloadPath : undefined
         }
     });
 
-    // Загружаем через кастомный протокол, чтобы избежать проблем с путями и кэшем
     mainWindow.loadURL('app://local/index-desktop.html').then(() => {
         mainWindow.maximize();
         mainWindow.show();
@@ -285,7 +285,6 @@ function createWindow() {
         mainWindow.focus();
     });
 
-    // Очищаем ссылку при закрытии
     mainWindow.on('closed', () => {
         mainWindow = null;
     });
@@ -305,8 +304,18 @@ protocol.registerSchemesAsPrivileged([
 
 function registerAppProtocol() {
     protocol.handle('app', async (request) => {
-        let filePath = request.url.replace('app://local/', '');
-        filePath = decodeURIComponent(filePath.split('?')[0]);
+        // ИСПРАВЛЕНИЕ: Используем URL API, чтобы корректно отрезать ЛЮБОЙ хост (local, lib, и т.д.)
+        const urlObj = new URL(request.url);
+        let filePath = urlObj.pathname;
+
+        if (filePath.startsWith('/')) {
+            filePath = filePath.slice(1);
+        }
+
+        // Если путь пустой (запрос к корню), отдаем index-desktop.html
+        if (filePath === '' || filePath === 'index.html') {
+            filePath = 'index-desktop.html';
+        }
 
         const baseDir = updater.getCurrentBundlePath() || __dirname;
         const fullPath = path.join(baseDir, filePath);
@@ -351,7 +360,7 @@ function registerAppProtocol() {
 //  ЗАПУСК
 // ============================================================
 app.whenReady().then(async () => {
-    // ФИКС CORS: Правильная обработка куки и источника (для Electron)
+    // ФИКС CORS
     session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
         if (details.url.startsWith('https://www.kontrcad.ru/api/') || details.url.startsWith('https://www.kontrcad.ru/editor')) {
             const headers = details.responseHeaders || {};
