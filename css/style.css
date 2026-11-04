@@ -862,7 +862,11 @@ a:hover {
     border-left: 1px solid var(--border-primary);
     z-index: 10;
     transition: right 0.2s ease;
-    overflow: hidden;          /* чтобы содержимое не вылезало при скрытии */
+    overflow: hidden;
+
+    /* ★ вертикальный flex: вкладки + контент */
+    display: flex;
+    flex-direction: column;
 }
 
 /* Скрытое состояние панели */
@@ -1012,14 +1016,50 @@ a:hover {
 .panel-content {
     display: none;
     flex: 1;
-    padding: 10px;
+    padding: 0 10px;
     overflow-y: auto;
     min-height: 0;
-    height: 100%;
+}
+#libraryContent
+{
+    padding: 10px;
+}
+
+/* ───────── История: тулбар зафиксирован, список прокручивается ───────── */
+
+
+.history-toolbar {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-top: 1px solid var(--border-primary);
+    min-height: 40px;          /* стабильная высота даже когда фильтр скрыт */
+}
+
+.history-list, .scene-list {
+    flex: 1 1 auto;
+    min-height: 0;
+    max-height: none;          /* ★ снимаем 68vh из общего правила */
+    margin-bottom: 0;
+    overflow-y: auto;
+}
+
+/* ───────── Сцена: то же самое ───────── */
+.scene-stats {
+    flex: 0 0 auto;
+    padding: 8px 0;
+    border-top: 1px solid var(--border-primary);
+    flex-direction: row;
+      display: flex;
+      gap: 10px;
+      text-align: center;
 }
 
 .panel-content.active {
-    display: block;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;          /* прокрутка — внутри .history-list */
 }
 
 .panel-content h3 {
@@ -1171,14 +1211,14 @@ select option {
 }
 
 /* Списки */
-.scene-list,
+/*.scene-list,
 .layers-panel, .history-list{
     max-height: 80%;
     overflow-y: auto;
     margin-bottom: 20px;
     max-height: 68vh;
 
-}
+}*/
 
 .scene-item,
 .layer-item {

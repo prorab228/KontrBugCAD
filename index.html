@@ -998,11 +998,25 @@
                 <div class="history-list" id="historyList">
                     <!-- История будет здесь -->
                 </div>
-                <div class="history-controls">
-                    <button id="clearHistory" class="btn-small">
-                        <i class="fas fa-trash"></i> Очистить последующие операции (для всех объектов)
-                    </button>
+                <div class="history-toolbar">
+                    <div id="historyFilterInfo" class="property-hint"
+                         style="display:none;"></div>
+                    <div class="dropdown" style="margin-left:auto;">
+                        <button class="tool-btn dropdown-toggle" data-tooltip-title="Действия с историей">
+                            <i class="fas fa-ellipsis-v"></i>
+                        </button>
+                        <div class="dropdown-menu">
+                            <a href="#" id="compactHistory" class="dropdown-tool-btn">
+                                <i class="fas fa-broom"></i> Оптимизировать историю
+                            </a>
+                            <div class="dropdown-divider"></div>
+                            <a href="#" id="clearHistory" class="dropdown-tool-btn">
+                                <i class="fas fa-trash"></i> Очистить последующие операции
+                            </a>
+                        </div>
+                    </div>
                 </div>
+
             </div>
         </div>
 
@@ -1138,7 +1152,7 @@
     <div id="graphicsSettingsModal" class="modal-overlay">
         <div class="modal-content" style="width: 450px;">
             <div class="modal-header">
-                <h3><i class="fas fa-tachometer-alt"></i> Настройки графики</h3>
+                <h3><i class="fas fa-tachometer-alt"></i> Настройки </h3>
                 <button class="close-modal">&times;</button>
             </div>
             <div class="modal-body">
