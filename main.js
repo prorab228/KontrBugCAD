@@ -344,11 +344,18 @@ function registerAppProtocol() {
 app.whenReady().then(async () => {
     // ФИКС CORS: Правильная обработка куки и источника
     session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+        // Проверяем, что запрос идет к нашему API
         if (details.url.startsWith('https://www.kontrcad.ru/api/') || details.url.startsWith('https://www.kontrcad.ru/editor')) {
             const headers = details.responseHeaders || {};
 
-            // Получаем реальный Origin из запроса (это будет app://local)
-            const origin = details.requestHeaders['Origin'] || details.requestHeaders['origin'] || 'app://local';
+            // Безопасно получаем Origin. details.requestHeaders здесь нет.
+            // details.initiator содержит URL, откуда был сделан запрос.
+            let origin = details.initiator || 'app://local';
+
+            // Electron иногда может передавать 'app://-' или 'app://local/', нормализуем
+            if (origin === 'app://-' || origin === 'app://local/') {
+                origin = 'app://local';
+            }
 
             // Удаляем старые заголовки CORS, чтобы не было конфликтов
             for (const key in headers) {
@@ -365,6 +372,7 @@ app.whenReady().then(async () => {
 
             callback({ responseHeaders: headers });
         } else {
+            // Для всех остальных запросов ничего не меняем
             callback({ responseHeaders: details.responseHeaders });
         }
     });
