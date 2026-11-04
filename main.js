@@ -342,20 +342,24 @@ function registerAppProtocol() {
 //  ЗАПУСК
 // ============================================================
 app.whenReady().then(async () => {
-    // ФИКС CORS: Подменяем заголовки для запросов к API
+    // ФИКС CORS: Правильная обработка куки и источника
     session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
-        if (details.url.startsWith('https://www.kontrcad.ru/api/')) {
+        if (details.url.startsWith('https://www.kontrcad.ru/api/') || details.url.startsWith('https://www.kontrcad.ru/editor')) {
             const headers = details.responseHeaders || {};
 
-            // Удаляем старые заголовки CORS, если они есть (на случай дублирования)
+            // Получаем реальный Origin из запроса (это будет app://local)
+            const origin = details.requestHeaders['Origin'] || details.requestHeaders['origin'] || 'app://local';
+
+            // Удаляем старые заголовки CORS, чтобы не было конфликтов
             for (const key in headers) {
                 if (key.toLowerCase().startsWith('access-control-')) {
                     delete headers[key];
                 }
             }
 
-            // Добавляем разрешающие заголовки
-            headers['Access-Control-Allow-Origin'] = ['*'];
+            // Устанавливаем новые, правильные заголовки
+            headers['Access-Control-Allow-Origin'] = [origin];
+            headers['Access-Control-Allow-Credentials'] = ['true']; // <--- Разрешаем куки
             headers['Access-Control-Allow-Methods'] = ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'];
             headers['Access-Control-Allow-Headers'] = ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'];
 
