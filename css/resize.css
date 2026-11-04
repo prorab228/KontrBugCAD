@@ -569,11 +569,13 @@
         display: none !important;
     }
 
-    }
     .filter-btn {
       padding: 2px 8px;
       font-size: 12px;
       margin-bottom: 0;
       scrollbar-width: none;
     }
+
+    }
+
 }
