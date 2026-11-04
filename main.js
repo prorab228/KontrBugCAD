@@ -10,8 +10,13 @@ const { ElectronUpdater, setupIPCHandlers } = require('@capgo/electron-updater')
 // ============================================================
 const updater = new ElectronUpdater({
     appId: 'com.kontrbugtech.cad',
-    autoUpdate: false,
+    autoUpdate: false, // Проверку запускаем вручную
 });
+
+// ============================================================
+//  ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ
+// ============================================================
+let mainWindow = null;
 
 // ============================================================
 //  НАСТРОЙКИ ПОЛЬЗОВАТЕЛЯ
@@ -150,12 +155,11 @@ ipcMain.handle('open-file-dialog', async () => {
 });
 
 ipcMain.on('focus-window', () => {
-    const win = BrowserWindow.getFocusedWindow();
-    if (win) {
-        win.blur();
-        win.hide();
-        win.show();
-        win.focus();
+    if (mainWindow) {
+        mainWindow.blur();
+        mainWindow.hide();
+        mainWindow.show();
+        mainWindow.focus();
     }
 });
 
@@ -168,11 +172,11 @@ function createMenu() {
         {
             label: 'Файл',
             submenu: [
-                { label: 'Новый проект', accelerator: 'CmdOrCtrl+N', click: () => BrowserWindow.getFocusedWindow()?.webContents.send('menu-event', 'new-project') },
-                { label: 'Открыть проект', accelerator: 'CmdOrCtrl+O', click: () => BrowserWindow.getFocusedWindow()?.webContents.send('menu-event', 'open-project') },
-                { label: 'Сохранить проект', accelerator: 'CmdOrCtrl+S', click: () => BrowserWindow.getFocusedWindow()?.webContents.send('menu-event', 'save-project') },
+                { label: 'Новый проект', accelerator: 'CmdOrCtrl+N', click: () => mainWindow?.webContents.send('menu-event', 'new-project') },
+                { label: 'Открыть проект', accelerator: 'CmdOrCtrl+O', click: () => mainWindow?.webContents.send('menu-event', 'open-project') },
+                { label: 'Сохранить проект', accelerator: 'CmdOrCtrl+S', click: () => mainWindow?.webContents.send('menu-event', 'save-project') },
                 { type: 'separator' },
-                { label: 'Экспорт модели', click: () => BrowserWindow.getFocusedWindow()?.webContents.send('menu-event', 'export') },
+                { label: 'Экспорт модели', click: () => mainWindow?.webContents.send('menu-event', 'export') },
                 { type: 'separator' },
                 isMac ? { label: 'Закрыть окно', role: 'close' } : { label: 'Выход', role: 'quit' }
             ]
@@ -180,15 +184,15 @@ function createMenu() {
         {
             label: 'Правка',
             submenu: [
-                { label: 'Отменить', accelerator: 'CmdOrCtrl+Z', click: () => BrowserWindow.getFocusedWindow()?.webContents.send('menu-event', 'undo') },
-                { label: 'Повторить', accelerator: 'CmdOrCtrl+Y', click: () => BrowserWindow.getFocusedWindow()?.webContents.send('menu-event', 'redo') },
+                { label: 'Отменить', accelerator: 'CmdOrCtrl+Z', click: () => mainWindow?.webContents.send('menu-event', 'undo') },
+                { label: 'Повторить', accelerator: 'CmdOrCtrl+Y', click: () => mainWindow?.webContents.send('menu-event', 'redo') },
                 { type: 'separator' },
-                { label: 'Копировать', accelerator: 'CmdOrCtrl+C', click: () => BrowserWindow.getFocusedWindow()?.webContents.send('menu-event', 'copy') },
-                { label: 'Вставить', accelerator: 'CmdOrCtrl+V', click: () => BrowserWindow.getFocusedWindow()?.webContents.send('menu-event', 'paste') },
-                { label: 'Удалить', accelerator: 'Delete', click: () => BrowserWindow.getFocusedWindow()?.webContents.send('menu-event', 'delete') },
+                { label: 'Копировать', accelerator: 'CmdOrCtrl+C', click: () => mainWindow?.webContents.send('menu-event', 'copy') },
+                { label: 'Вставить', accelerator: 'CmdOrCtrl+V', click: () => mainWindow?.webContents.send('menu-event', 'paste') },
+                { label: 'Удалить', accelerator: 'Delete', click: () => mainWindow?.webContents.send('menu-event', 'delete') },
                 { type: 'separator' },
-                { label: 'Выделить всё', accelerator: 'CmdOrCtrl+A', click: () => BrowserWindow.getFocusedWindow()?.webContents.send('menu-event', 'selectAll') },
-                { label: 'Дублировать', accelerator: 'CmdOrCtrl+D', click: () => BrowserWindow.getFocusedWindow()?.webContents.send('menu-event', 'duplicate') }
+                { label: 'Выделить всё', accelerator: 'CmdOrCtrl+A', click: () => mainWindow?.webContents.send('menu-event', 'selectAll') },
+                { label: 'Дублировать', accelerator: 'CmdOrCtrl+D', click: () => mainWindow?.webContents.send('menu-event', 'duplicate') }
             ]
         },
         {
@@ -207,11 +211,10 @@ function createMenu() {
                     label: 'Использовать совместимый режим (Three.js r162)',
                     type: 'checkbox',
                     checked: false,
-                    click: (menuItem, browserWindow) => {
+                    click: (menuItem) => {
                         const enabled = menuItem.checked;
                         saveSetting('useLegacy', enabled);
-                        const win = BrowserWindow.getFocusedWindow();
-                        if (win) win.reload();
+                        if (mainWindow) mainWindow.reload();
                     }
                 }
             ]
@@ -221,12 +224,12 @@ function createMenu() {
             submenu: [
                 {
                     label: 'Проверить обновления',
-                    click: () => BrowserWindow.getFocusedWindow()?.webContents.send('menu-event', 'check-updates')
+                    click: () => mainWindow?.webContents.send('menu-event', 'check-updates')
                 },
                 { type: 'separator' },
                 { label: 'Гайд по редактору', click: async () => await shell.openExternal('https://3dtoday.ru/blogs/envalid/kratkii-gaid-po-moemu-3d-redaktoru-kontrbagcad') },
                 { type: 'separator' },
-                { label: 'О программе', click: () => BrowserWindow.getFocusedWindow()?.webContents.send('menu-event', 'about') }
+                { label: 'О программе', click: () => mainWindow?.webContents.send('menu-event', 'about') }
             ]
         }
     ];
@@ -258,7 +261,7 @@ function createMenu() {
 function createWindow() {
     const preloadPath = path.join(__dirname, 'preload.js');
 
-    const win = new BrowserWindow({
+    mainWindow = new BrowserWindow({
         width: 1400,
         height: 900,
         icon: getIconPath(),
@@ -270,15 +273,21 @@ function createWindow() {
         }
     });
 
-    win.loadURL('app://local/index-desktop.html').then(() => {
-        win.maximize();
-        win.show();
+    // Загружаем через кастомный протокол, чтобы избежать проблем с путями и кэшем
+    mainWindow.loadURL('app://local/index-desktop.html').then(() => {
+        mainWindow.maximize();
+        mainWindow.show();
     });
 
-    win.once('ready-to-show', () => {
-        win.maximize();
-        win.show();
-        win.focus();
+    mainWindow.once('ready-to-show', () => {
+        mainWindow.maximize();
+        mainWindow.show();
+        mainWindow.focus();
+    });
+
+    // Очищаем ссылку при закрытии
+    mainWindow.on('closed', () => {
+        mainWindow = null;
     });
 
     createMenu();
@@ -342,37 +351,29 @@ function registerAppProtocol() {
 //  ЗАПУСК
 // ============================================================
 app.whenReady().then(async () => {
-    // ФИКС CORS: Правильная обработка куки и источника
+    // ФИКС CORS: Правильная обработка куки и источника (для Electron)
     session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
-        // Проверяем, что запрос идет к нашему API
         if (details.url.startsWith('https://www.kontrcad.ru/api/') || details.url.startsWith('https://www.kontrcad.ru/editor')) {
             const headers = details.responseHeaders || {};
 
-            // Безопасно получаем Origin. details.requestHeaders здесь нет.
-            // details.initiator содержит URL, откуда был сделан запрос.
             let origin = details.initiator || 'app://local';
-
-            // Electron иногда может передавать 'app://-' или 'app://local/', нормализуем
             if (origin === 'app://-' || origin === 'app://local/') {
                 origin = 'app://local';
             }
 
-            // Удаляем старые заголовки CORS, чтобы не было конфликтов
             for (const key in headers) {
                 if (key.toLowerCase().startsWith('access-control-')) {
                     delete headers[key];
                 }
             }
 
-            // Устанавливаем новые, правильные заголовки
             headers['Access-Control-Allow-Origin'] = [origin];
-            headers['Access-Control-Allow-Credentials'] = ['true']; // <--- Разрешаем куки
+            headers['Access-Control-Allow-Credentials'] = ['true'];
             headers['Access-Control-Allow-Methods'] = ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'];
             headers['Access-Control-Allow-Headers'] = ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'];
 
             callback({ responseHeaders: headers });
         } else {
-            // Для всех остальных запросов ничего не меняем
             callback({ responseHeaders: details.responseHeaders });
         }
     });
