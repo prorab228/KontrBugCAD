@@ -149,19 +149,6 @@ ipcMain.handle('open-file-dialog', async () => {
     return null;
 });
 
-// Запрос к вашему Flask API за информацией об обновлении
-ipcMain.handle('check-for-updates', async () => {
-    try {
-        // Стучимся на ваш боевой сервер
-        const response = await fetch('https://www.kontrcad.ru/api/latest-update');
-        if (!response.ok) throw new Error('Network response was not ok');
-        return await response.json();
-    } catch (error) {
-        console.error('Ошибка проверки обновлений:', error);
-        return null;
-    }
-});
-
 ipcMain.on('focus-window', () => {
     const win = BrowserWindow.getFocusedWindow();
     if (win) {
@@ -173,7 +160,7 @@ ipcMain.on('focus-window', () => {
 });
 
 // ============================================================
-//  МЕНЮ (БЕЗ ИЗМЕНЕНИЙ)
+//  МЕНЮ
 // ============================================================
 function createMenu() {
     const isMac = process.platform === 'darwin';
@@ -224,10 +211,7 @@ function createMenu() {
                         const enabled = menuItem.checked;
                         saveSetting('useLegacy', enabled);
                         const win = BrowserWindow.getFocusedWindow();
-                        if (win) {
-                            // Перезагружаем окно
-                            win.reload();
-                        }
+                        if (win) win.reload();
                     }
                 }
             ]
@@ -281,7 +265,6 @@ function createWindow() {
         }
     });
 
-    // ГЛАВНОЕ ИЗМЕНЕНИЕ: Загружаем через app:// протокол, чтобы перехватывать обновления
     win.loadURL('app://index.html').then(() => {
         win.maximize();
         win.show();
@@ -297,7 +280,7 @@ function createWindow() {
 }
 
 // ============================================================
-//  ПРОТОКОЛ APP (МАРШРУТИЗАЦИЯ ФАЙЛОВ)
+//  ПРОТОКОЛ APP
 // ============================================================
 protocol.registerSchemesAsPrivileged([
     {
@@ -312,11 +295,8 @@ function registerAppProtocol() {
         let filePath = url.slice('app://'.length);
         if (filePath.startsWith('/')) filePath = filePath.slice(1);
 
-        // Определяем базовую папку: если есть обновление — берем из него, иначе из установочной папки
         const baseDir = updater.getCurrentBundlePath() || __dirname;
 
-        // ФОЛЛБЕК: Если в обновлении нет index.html (например, первый запуск),
-        // подставляем стандартный index-desktop.html или legacy-версию
         if (filePath === 'index.html' && !fsSync.existsSync(path.join(baseDir, 'index.html'))) {
             const settings = getSettings();
             filePath = settings.useLegacy ? 'index-desktop-legacy.html' : 'index-desktop.html';
@@ -363,7 +343,6 @@ function registerAppProtocol() {
 //  ЗАПУСК
 // ============================================================
 app.whenReady().then(async () => {
-    // Инициализация апдейтера
     await updater.initialize();
     setupIPCHandlers(updater);
 
