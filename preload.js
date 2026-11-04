@@ -1,10 +1,10 @@
 const { contextBridge, ipcRenderer } = require('electron');
 const { exposeUpdaterAPI } = require('@capgo/electron-updater/preload');
 
-// Внедряем API апдейтера
+// Внедряем API апдейтера в глобальную область видимости (window.electronUpdater)
 exposeUpdaterAPI();
 
-// Основной API
+// Ваш основной API
 contextBridge.exposeInMainWorld('electronAPI', {
     onMenuEvent: (callback) => ipcRenderer.on('menu-event', (event, ...args) => callback(...args)),
     addModelToLibrary: (data) => ipcRenderer.invoke('add-model-to-library', data),

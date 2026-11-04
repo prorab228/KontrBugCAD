@@ -10,7 +10,7 @@ const { ElectronUpdater, setupIPCHandlers } = require('@capgo/electron-updater')
 // ============================================================
 const updater = new ElectronUpdater({
     appId: 'com.kontrbugtech.cad',
-    autoUpdate: false,
+    autoUpdate: false, // Проверку запускаем вручную
 });
 
 // ============================================================
@@ -219,6 +219,13 @@ function createMenu() {
         {
             label: 'Справка',
             submenu: [
+                // --- НОВЫЙ ПУНКТ МЕНЮ ---
+                {
+                    label: 'Проверить обновления',
+                    click: () => BrowserWindow.getFocusedWindow()?.webContents.send('menu-event', 'check-updates')
+                },
+                { type: 'separator' },
+                // ------------------------
                 { label: 'Гайд по редактору', click: async () => await shell.openExternal('https://3dtoday.ru/blogs/envalid/kratkii-gaid-po-moemu-3d-redaktoru-kontrbagcad') },
                 { type: 'separator' },
                 { label: 'О программе', click: () => BrowserWindow.getFocusedWindow()?.webContents.send('menu-event', 'about') }
@@ -252,10 +259,6 @@ function createMenu() {
 // ============================================================
 function createWindow() {
     const preloadPath = path.join(__dirname, 'preload.js');
-    const settings = getSettings();
-
-    // Жестко задаем, какой файл грузить, в зависимости от настроек
-    const targetHtml = settings.useLegacy ? 'index-desktop-legacy.html' : 'index-desktop.html';
 
     const win = new BrowserWindow({
         width: 1400,
@@ -269,8 +272,8 @@ function createWindow() {
         }
     });
 
-    // КРИТИЧЕСКИ ВАЖНО: Используем "local" как хост, чтобы стили грузились правильно
-    win.loadURL(`app://local/${targetHtml}`).then(() => {
+    // Загружаем через протокол app://local/, чтобы стили и скрипты работали корректно
+    win.loadURL('app://local/index-desktop.html').then(() => {
         win.maximize();
         win.show();
     });
@@ -296,7 +299,7 @@ protocol.registerSchemesAsPrivileged([
 
 function registerAppProtocol() {
     protocol.handle('app', async (request) => {
-        // КРИТИЧЕСКИ ВАЖНО: Отрезаем фиктивный хост 'app://local/'
+        // Отрезаем фиктивный хост 'app://local/'
         let filePath = request.url.replace('app://local/', '');
 
         // Убираем query-параметры (если есть) и декодируем URL
