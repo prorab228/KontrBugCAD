@@ -421,7 +421,10 @@ function registerAppProtocol() {
         let filePath = host ? `${host}${pathname}` : pathname;
         if (filePath.startsWith('/')) filePath = filePath.slice(1);
 
-        let baseDir = updater.getCurrentBundlePath() || __dirname;
+      //  let baseDir = updater.getCurrentBundlePath() || __dirname;
+
+        const currentBundlePath = updater.getCurrentBundlePath();
+        let baseDir = currentBundlePath ? path.dirname(currentBundlePath) : __dirname;
 
         // ★ ИСПРАВЛЕНИЕ: Проверяем, есть ли реальные файлы в папке обновления.
         // Если папка пустая (свежая установка) или битая, откатываемся к встроенным файлам.
