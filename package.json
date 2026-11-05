@@ -12,9 +12,11 @@
     "dist:all": "electron-builder -mwl",
     "pack": "electron-builder --dir"
   },
-  "dependencies": {
+    "dependencies": {
     "@capgo/electron-updater": "^0.0.6",
-    "uuid": "^9.0.1"
+    "@modelcontextprotocol/sdk": "^1.6.0",
+    "uuid": "^9.0.1",
+    "ws": "^8.18.0"
   },
   "devDependencies": {
     "archiver": "^6.0.1",

@@ -5,6 +5,7 @@ const fsSync = require('fs');
 const { v4: uuidv4 } = require('uuid');
 const { ElectronUpdater, setupIPCHandlers } = require('@capgo/electron-updater');
 // ★ Безопасное подключение MCP SDK (чтобы не падало без пакета)
+const { WebSocketServer } = require('ws');
 let Server, StdioServerTransport;
 try {
     Server = require('@modelcontextprotocol/sdk/server/index.js').Server;
@@ -309,6 +310,94 @@ function createWindow() {
     });
 
     createMenu();
+
+    // ★ ДОБАВЛЯЕМ ЗАПУСК WEBSOCKET-СЕРВЕРА
+    if (Server && StdioServerTransport) {
+        try {
+            const wss = new WebSocketServer({ port: 3100, path: '/mcp' });
+            console.log('[MCP-WS] WebSocket-сервер запущен на ws://localhost:3100/mcp');
+
+            wss.on('connection', (ws) => {
+                console.log('[MCP-WS] Клиент подключился');
+
+                const server = new Server(
+                    { name: 'kontrcad', version: '1.0.0' },
+                    { capabilities: { tools: {} } }
+                );
+
+                // Создаем транспорт, который будет читать/писать в WebSocket
+                const transport = {
+                    onmessage: null,
+                    onclose: null,
+                    onerror: null,
+                    async start() {},
+                    async close() { ws.close(); },
+                    send(message) {
+                        if (ws.readyState === ws.OPEN) {
+                            ws.send(JSON.stringify(message));
+                        }
+                    }
+                };
+
+                // Связываем WebSocket-сообщения с MCP-сервером
+                ws.on('message', (data) => {
+                    try {
+                        const message = JSON.parse(data.toString());
+                        if (transport.onmessage) {
+                            transport.onmessage(message);
+                        }
+                    } catch (e) {
+                        console.error('[MCP-WS] Ошибка парсинга сообщения:', e);
+                    }
+                });
+
+                ws.on('close', () => {
+                    console.log('[MCP-WS] Клиент отключился');
+                    if (transport.onclose) transport.onclose();
+                });
+
+                ws.on('error', (error) => {
+                    console.error('[MCP-WS] Ошибка WebSocket:', error);
+                    if (transport.onerror) transport.onerror(error);
+                });
+
+                // Подключаем MCP-сервер к нашему транспорту
+                server.connect(transport);
+
+                // Настраиваем обработчики (как в STDIO-режиме)
+                // Запрашиваем список инструментов у рендерера
+                mainWindow.webContents.send('mcp-get-tools');
+
+                // Временно подписываемся на ответ, чтобы получить список
+                const onToolsResponse = (event, tools) => {
+                    ipcMain.removeListener('mcp-tools-response', onToolsResponse);
+
+                    server.setRequestHandler('tools/list', async () => ({ tools }));
+
+                    server.setRequestHandler('tools/call', async (req) => {
+                        return new Promise((resolve) => {
+                            mainWindow.webContents.send('mcp-call', req.params);
+
+                            const onCallResponse = (e, res) => {
+                                ipcMain.removeListener('mcp-call-response', onCallResponse);
+                                if (res.error) {
+                                    resolve({ content: [{ type: 'text', text: res.error }], isError: true });
+                                } else {
+                                    resolve(res.result);
+                                }
+                            };
+                            ipcMain.once('mcp-call-response', onCallResponse);
+                        });
+                    });
+                };
+                ipcMain.once('mcp-tools-response', onToolsResponse);
+            });
+        } catch (e) {
+            console.error('[MCP-WS] Не удалось запустить WebSocket-сервер:', e);
+        }
+    } else {
+        console.warn('[MCP-WS] SDK не установлен, WebSocket-сервер не запущен.');
+    }
 }
 
 // ============================================================
@@ -332,9 +421,19 @@ function registerAppProtocol() {
         let filePath = host ? `${host}${pathname}` : pathname;
         if (filePath.startsWith('/')) filePath = filePath.slice(1);
 
-        const baseDir = updater.getCurrentBundlePath() || __dirname;
+        let baseDir = updater.getCurrentBundlePath() || __dirname;
 
-        // ★ УМНЫЙ ВЫБОР ФАЙЛА: Если запросили корень или любой из index-файлов
+        // ★ ИСПРАВЛЕНИЕ: Проверяем, есть ли реальные файлы в папке обновления.
+        // Если папка пустая (свежая установка) или битая, откатываемся к встроенным файлам.
+        const hasIndex = fsSync.existsSync(path.join(baseDir, 'index-desktop.html')) ||
+                         fsSync.existsSync(path.join(baseDir, 'index.html'));
+
+        if (!hasIndex && baseDir !== __dirname) {
+            console.warn(`[app://] Файлы не найдены в ${baseDir}. Переключение на встроенную версию: ${__dirname}`);
+            baseDir = __dirname;
+        }
+
+        // ★ УМНЫЙ ВЫБОР ФАЙЛА
         if (filePath === '' || filePath === 'index.html' || filePath === 'index-desktop.html') {
             const settings = getSettings();
             const isLegacy = settings.useLegacy;
