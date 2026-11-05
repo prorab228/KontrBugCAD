@@ -3,7 +3,7 @@ const path = require('path');
 const fs = require('fs').promises;
 const fsSync = require('fs');
 const { v4: uuidv4 } = require('uuid');
-const { ElectronUpdater, setupIPCHandlers } = require('@capgo/electron-updater');
+const { ElectronUpdater, setupIPCHandlers, setupEventForwarding } = require('@capgo/electron-updater');
 // ★ Безопасное подключение MCP SDK (чтобы не падало без пакета)
 const { WebSocketServer } = require('ws');
 let Server, StdioServerTransport;
@@ -519,10 +519,7 @@ app.whenReady().then(async () => {
         }
     });
 
-    await updater.initialize();
-    setupIPCHandlers(updater);
-
-    // ★ ДОБАВЛЕНА ПРОВЕРКА: запускаем MCP только если пакет установлен
+    // ★ ПРОВЕРКА: Запускаем MCP-режим, если есть аргумент --mcp
     if (process.argv.includes('--mcp')) {
         if (!Server || !StdioServerTransport) {
             console.error('[MCP] SDK не установлен. Выполните npm install @modelcontextprotocol/sdk');
@@ -578,12 +575,34 @@ app.whenReady().then(async () => {
             console.error('[MCP] STDIO server started');
         });
 
-        return;
+        return; // Завершаем выполнение, если запущен MCP
     }
 
+    // ============================================================
+    // ★ ИСПРАВЛЕННЫЙ БЛОК ЗАПУСКА ОСНОВНОГО ПРИЛОЖЕНИЯ
+    // ============================================================
+
+    // 1. Регистрируем протокол (нужен для загрузки файлов)
     registerAppProtocol();
+
+    // 2. Создаем главное окно (ваша функция createWindow заполнит глобальную mainWindow)
     createWindow();
 
+    // 3. Теперь инициализируем updater, передавая ему уже созданное окно и путь к встроенной версии
+    const builtinPath = path.join(__dirname, 'index-desktop.html');
+    await updater.initialize(mainWindow, builtinPath);
+
+    // 4. Настраиваем IPC и перенаправление событий (КРИТИЧЕСКИ ВАЖНО для перезагрузки)
+    setupIPCHandlers(updater);
+
+    // Проверка на наличие функции (на случай несовпадения версий пакета)
+    if (typeof setupEventForwarding === 'function') {
+        setupEventForwarding(updater, mainWindow);
+    } else {
+        console.warn('⚠️ ВНИМАНИЕ: Функция setupEventForwarding не найдена в @capgo/electron-updater. Перезагрузка может не сработать.');
+    }
+
+    // 5. Обработка активации (для macOS)
     app.on('activate', () => {
         if (BrowserWindow.getAllWindows().length === 0) createWindow();
     });
