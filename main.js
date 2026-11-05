@@ -292,7 +292,8 @@ function createWindow() {
 //    });
 
         // Стучимся к корню. Обработчик протокола сам разберется, какой файл отдать.
-    mainWindow.loadURL('app://local/').then(() => {
+        // Явно грузим десктопный файл
+    mainWindow.loadURL('app://local/index-desktop.html').then(() => {
         mainWindow.maximize();
         mainWindow.show();
     });
