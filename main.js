@@ -519,7 +519,11 @@ app.whenReady().then(async () => {
         }
     });
 
-    // ★ ПРОВЕРКА: Запускаем MCP-режим, если есть аргумент --mcp
+    // 1. Инициализация апдейтера (БЕЗ аргументов)
+    await updater.initialize();
+    setupIPCHandlers(updater);
+
+    // ★ ДОБАВЛЕНА ПРОВЕРКА: запускаем MCP только если пакет установлен
     if (process.argv.includes('--mcp')) {
         if (!Server || !StdioServerTransport) {
             console.error('[MCP] SDK не установлен. Выполните npm install @modelcontextprotocol/sdk');
@@ -575,34 +579,20 @@ app.whenReady().then(async () => {
             console.error('[MCP] STDIO server started');
         });
 
-        return; // Завершаем выполнение, если запущен MCP
+        return;
     }
 
-    // ============================================================
-    // ★ ИСПРАВЛЕННЫЙ БЛОК ЗАПУСКА ОСНОВНОГО ПРИЛОЖЕНИЯ
-    // ============================================================
-
-    // 1. Регистрируем протокол (нужен для загрузки файлов)
+    // 2. Регистрация протокола (теперь updater уже инициализирован)
     registerAppProtocol();
 
-    // 2. Создаем главное окно (ваша функция createWindow заполнит глобальную mainWindow)
+    // 3. Создание главного окна
     createWindow();
 
-    // 3. Теперь инициализируем updater, передавая ему уже созданное окно и путь к встроенной версии
-    const builtinPath = path.join(__dirname, 'index-desktop.html');
-    await updater.initialize(mainWindow, builtinPath);
-
-    // 4. Настраиваем IPC и перенаправление событий (КРИТИЧЕСКИ ВАЖНО для перезагрузки)
-    setupIPCHandlers(updater);
-
-    // Проверка на наличие функции (на случай несовпадения версий пакета)
-    if (typeof setupEventForwarding === 'function') {
-        setupEventForwarding(updater, mainWindow);
-    } else {
-        console.warn('⚠️ ВНИМАНИЕ: Функция setupEventForwarding не найдена в @capgo/electron-updater. Перезагрузка может не сработать.');
+    // 4. Передаем окно в апдейтер, если такой метод существует (для корректной работы событий)
+    if (typeof updater.setWindow === 'function') {
+        updater.setWindow(mainWindow);
     }
 
-    // 5. Обработка активации (для macOS)
     app.on('activate', () => {
         if (BrowserWindow.getAllWindows().length === 0) createWindow();
     });
