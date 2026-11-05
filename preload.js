@@ -9,5 +9,15 @@ contextBridge.exposeInMainWorld('electronAPI', {
     onMenuEvent: (callback) => ipcRenderer.on('menu-event', (event, ...args) => callback(...args)),
     addModelToLibrary: (data) => ipcRenderer.invoke('add-model-to-library', data),
     openFileDialog: () => ipcRenderer.invoke('open-file-dialog'),
-    focusWindow: () => ipcRenderer.send('focus-window')
+    focusWindow: () => ipcRenderer.send('focus-window'),
+
+    // ★ НОВОЕ: Методы для MCP
+    onMcpGetTools: (callback) => ipcRenderer.on('mcp-get-tools', () => {
+        const tools = callback();
+        ipcRenderer.send('mcp-tools-response', tools);
+    }),
+    onMcpCall: (callback) => ipcRenderer.on('mcp-call', async (event, req) => {
+        const res = await callback(req);
+        ipcRenderer.send('mcp-call-response', res);
+    })
 });

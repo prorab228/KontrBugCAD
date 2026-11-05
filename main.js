@@ -4,7 +4,14 @@ const fs = require('fs').promises;
 const fsSync = require('fs');
 const { v4: uuidv4 } = require('uuid');
 const { ElectronUpdater, setupIPCHandlers } = require('@capgo/electron-updater');
-
+// ★ Безопасное подключение MCP SDK (чтобы не падало без пакета)
+let Server, StdioServerTransport;
+try {
+    Server = require('@modelcontextprotocol/sdk/server/index.js').Server;
+    StdioServerTransport = require('@modelcontextprotocol/sdk/server/stdio.js').StdioServerTransport;
+} catch (e) {
+    // Пакет не установлен локально — MCP-режим будет недоступен, но приложение запустится
+}
 // ============================================================
 //  ИНИЦИАЛИЗАЦИЯ LIVE-UPDATE
 // ============================================================
@@ -399,6 +406,65 @@ app.whenReady().then(async () => {
 
     await updater.initialize();
     setupIPCHandlers(updater);
+
+    // ★ ДОБАВЛЕНА ПРОВЕРКА: запускаем MCP только если пакет установлен
+    if (process.argv.includes('--mcp')) {
+        if (!Server || !StdioServerTransport) {
+            console.error('[MCP] SDK не установлен. Выполните npm install @modelcontextprotocol/sdk');
+            app.quit();
+            return;
+        }
+
+        const server = new Server(
+            { name: 'kontrcad', version: '1.0.0' },
+            { capabilities: { tools: {} } }
+        );
+
+        const mcpWindow = new BrowserWindow({
+            show: false,
+            webPreferences: {
+                nodeIntegration: false,
+                contextIsolation: true,
+                sandbox: false,
+                preload: path.join(__dirname, 'preload.js')
+            }
+        });
+
+        registerAppProtocol();
+        mcpWindow.loadURL('app://local/index-desktop.html');
+
+        mcpWindow.webContents.on('did-finish-load', () => {
+            mcpWindow.webContents.send('mcp-get-tools');
+        });
+
+        let toolsList = [];
+
+        ipcMain.once('mcp-tools-response', (event, tools) => {
+            toolsList = tools;
+
+            server.setRequestHandler('tools/list', async () => ({ tools: toolsList }));
+
+            server.setRequestHandler('tools/call', async (req) => {
+                return new Promise((resolve) => {
+                    mcpWindow.webContents.send('mcp-call', req.params);
+
+                    ipcMain.once('mcp-call-response', (e, res) => {
+                        if (res.error) {
+                            resolve({ content: [{ type: 'text', text: res.error }], isError: true });
+                        } else {
+                            resolve(res.result);
+                        }
+                    });
+                });
+            });
+
+            const transport = new StdioServerTransport();
+            server.connect(transport);
+            console.error('[MCP] STDIO server started');
+        });
+
+        return;
+    }
 
     registerAppProtocol();
     createWindow();
