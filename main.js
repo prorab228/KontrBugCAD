@@ -304,18 +304,28 @@ protocol.registerSchemesAsPrivileged([
 
 function registerAppProtocol() {
     protocol.handle('app', async (request) => {
-        // ИСПРАВЛЕНИЕ: Используем URL API, чтобы корректно отрезать ЛЮБОЙ хост (local, lib, и т.д.)
+        // Парсим URL, чтобы правильно извлечь хост (local, lib) и путь
         const urlObj = new URL(request.url);
-        let filePath = urlObj.pathname;
+        let host = urlObj.host;
+        let pathname = urlObj.pathname;
 
-        if (filePath.startsWith('/')) {
-            filePath = filePath.slice(1);
+        // Если хост 'local' или '-', мы не включаем его в путь к файлу
+        if (host === 'local' || host === '-') {
+            host = '';
         }
 
-        // Если путь пустой (запрос к корню), отдаем index-desktop.html
+        let filePath = host ? `${host}${pathname}` : pathname;
+
+        // Убираем ведущий слеш
+        if (filePath.startsWith('/')) filePath = filePath.slice(1);
+
+        // Если это корень, отдаем index-desktop.html
         if (filePath === '' || filePath === 'index.html') {
             filePath = 'index-desktop.html';
         }
+
+        // Декодируем пробелы (например, Arial%20Narrow -> Arial Narrow)
+        filePath = decodeURIComponent(filePath);
 
         const baseDir = updater.getCurrentBundlePath() || __dirname;
         const fullPath = path.join(baseDir, filePath);
