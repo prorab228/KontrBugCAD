@@ -281,8 +281,18 @@ function createWindow() {
         }
     });
 
-    // ★ Грузим index.html — обработчик протокола сам подставит нужный файл
-    mainWindow.loadURL('app://local/index.html').then(() => {
+//    // ★ Грузим index.html — обработчик протокола сам подставит нужный файл
+//    mainWindow.loadURL('app://local/index.html').then(() => {
+//        mainWindow.maximize();
+//        mainWindow.show();
+//    });
+//       mainWindow.loadURL('app://local/index-desktop.html').then(() => {
+//        mainWindow.maximize();
+//        mainWindow.show();
+//    });
+
+        // Стучимся к корню. Обработчик протокола сам разберется, какой файл отдать.
+    mainWindow.loadURL('app://local/').then(() => {
         mainWindow.maximize();
         mainWindow.show();
     });
@@ -316,28 +326,39 @@ function registerAppProtocol() {
         let host = urlObj.host;
         let pathname = urlObj.pathname;
 
-        if (host === 'local' || host === '-') {
-            host = '';
-        }
+        if (host === 'local' || host === '-') host = '';
 
         let filePath = host ? `${host}${pathname}` : pathname;
         if (filePath.startsWith('/')) filePath = filePath.slice(1);
 
-        // ★ Умная маршрутизация для HTML
-        if (filePath === '' || filePath === 'index.html') {
-            const settings = getSettings();
+        const baseDir = updater.getCurrentBundlePath() || __dirname;
 
-            // Если включен совместимый режим - отдаем legacy-файл
-            if (settings.useLegacy) {
-                filePath = 'index-desktop-legacy.html';
+        // ★ УМНЫЙ ВЫБОР ФАЙЛА: Если запросили корень или любой из index-файлов
+        if (filePath === '' || filePath === 'index.html' || filePath === 'index-desktop.html') {
+            const settings = getSettings();
+            const isLegacy = settings.useLegacy;
+
+            // Приоритет файлов в зависимости от режима
+            const candidates = isLegacy
+                ? ['index-desktop-legacy.html', 'index-legacy.html', 'index-desktop.html', 'index.html']
+                : ['index-desktop.html', 'index.html', 'index-desktop-legacy.html'];
+
+            let resolvedPath = null;
+            for (const candidate of candidates) {
+                if (fsSync.existsSync(path.join(baseDir, candidate))) {
+                    resolvedPath = candidate;
+                    break;
+                }
+            }
+
+            if (resolvedPath) {
+                filePath = resolvedPath;
             } else {
-                filePath = 'index-desktop.html';
+                console.warn(`[app://] Ни один index-файл не найден в ${baseDir}`);
             }
         }
 
         filePath = decodeURIComponent(filePath);
-
-        const baseDir = updater.getCurrentBundlePath() || __dirname;
         const fullPath = path.join(baseDir, filePath);
 
         if (!fullPath.startsWith(baseDir)) {
@@ -348,17 +369,9 @@ function registerAppProtocol() {
             const data = await fs.readFile(fullPath);
             const ext = path.extname(fullPath);
             const contentType = {
-                '.js': 'application/javascript',
-                '.wasm': 'application/wasm',
-                '.json': 'application/json',
-                '.css': 'text/css',
-                '.html': 'text/html',
-                '.png': 'image/png',
-                '.jpg': 'image/jpeg',
-                '.svg': 'image/svg+xml',
-                '.woff': 'font/woff',
-                '.woff2': 'font/woff2',
-                '.ttf': 'font/ttf'
+                '.js': 'application/javascript', '.wasm': 'application/wasm', '.json': 'application/json',
+                '.css': 'text/css', '.html': 'text/html', '.png': 'image/png', '.jpg': 'image/jpeg',
+                '.svg': 'image/svg+xml', '.woff': 'font/woff', '.woff2': 'font/woff2', '.ttf': 'font/ttf'
             }[ext] || 'application/octet-stream';
 
             return new Response(data, {
