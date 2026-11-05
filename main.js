@@ -281,7 +281,8 @@ function createWindow() {
         }
     });
 
-    mainWindow.loadURL('app://local/index-desktop.html').then(() => {
+    // ★ Грузим index.html — обработчик протокола сам подставит нужный файл
+    mainWindow.loadURL('app://local/index.html').then(() => {
         mainWindow.maximize();
         mainWindow.show();
     });
@@ -311,27 +312,29 @@ protocol.registerSchemesAsPrivileged([
 
 function registerAppProtocol() {
     protocol.handle('app', async (request) => {
-        // Парсим URL, чтобы правильно извлечь хост (local, lib) и путь
         const urlObj = new URL(request.url);
         let host = urlObj.host;
         let pathname = urlObj.pathname;
 
-        // Если хост 'local' или '-', мы не включаем его в путь к файлу
         if (host === 'local' || host === '-') {
             host = '';
         }
 
         let filePath = host ? `${host}${pathname}` : pathname;
-
-        // Убираем ведущий слеш
         if (filePath.startsWith('/')) filePath = filePath.slice(1);
 
-        // Если это корень, отдаем index-desktop.html
+        // ★ Умная маршрутизация для HTML
         if (filePath === '' || filePath === 'index.html') {
-            filePath = 'index-desktop.html';
+            const settings = getSettings();
+
+            // Если включен совместимый режим - отдаем legacy-файл
+            if (settings.useLegacy) {
+                filePath = 'index-desktop-legacy.html';
+            } else {
+                filePath = 'index-desktop.html';
+            }
         }
 
-        // Декодируем пробелы (например, Arial%20Narrow -> Arial Narrow)
         filePath = decodeURIComponent(filePath);
 
         const baseDir = updater.getCurrentBundlePath() || __dirname;
@@ -372,7 +375,6 @@ function registerAppProtocol() {
         }
     });
 }
-
 // ============================================================
 //  ЗАПУСК
 // ============================================================
