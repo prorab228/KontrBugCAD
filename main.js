@@ -13,6 +13,7 @@ try {
 } catch (e) {
     // Пакет не установлен локально — MCP-режим будет недоступен, но приложение запустится
 }
+
 // ============================================================
 //  ИНИЦИАЛИЗАЦИЯ LIVE-UPDATE
 // ============================================================
@@ -277,23 +278,11 @@ function createWindow() {
         webPreferences: {
             nodeIntegration: false,
             contextIsolation: true,
-            sandbox: false, // <--- КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Отключаем песочницу, чтобы preload мог загружать npm-модули
+            sandbox: false,
             preload: fsSync.existsSync(preloadPath) ? preloadPath : undefined
         }
     });
 
-//    // ★ Грузим index.html — обработчик протокола сам подставит нужный файл
-//    mainWindow.loadURL('app://local/index.html').then(() => {
-//        mainWindow.maximize();
-//        mainWindow.show();
-//    });
-//       mainWindow.loadURL('app://local/index-desktop.html').then(() => {
-//        mainWindow.maximize();
-//        mainWindow.show();
-//    });
-
-        // Стучимся к корню. Обработчик протокола сам разберется, какой файл отдать.
-        // Явно грузим десктопный файл
     mainWindow.loadURL('app://local/index-desktop.html').then(() => {
         mainWindow.maximize();
         mainWindow.show();
@@ -311,7 +300,7 @@ function createWindow() {
 
     createMenu();
 
-    // ★ ДОБАВЛЯЕМ ЗАПУСК WEBSOCKET-СЕРВЕРА
+    // ★ Запуск WebSocket-сервера для MCP
     if (Server && StdioServerTransport) {
         try {
             const wss = new WebSocketServer({ port: 3100, path: '/mcp' });
@@ -325,7 +314,6 @@ function createWindow() {
                     { capabilities: { tools: {} } }
                 );
 
-                // Создаем транспорт, который будет читать/писать в WebSocket
                 const transport = {
                     onmessage: null,
                     onclose: null,
@@ -339,7 +327,6 @@ function createWindow() {
                     }
                 };
 
-                // Связываем WebSocket-сообщения с MCP-сервером
                 ws.on('message', (data) => {
                     try {
                         const message = JSON.parse(data.toString());
@@ -361,14 +348,10 @@ function createWindow() {
                     if (transport.onerror) transport.onerror(error);
                 });
 
-                // Подключаем MCP-сервер к нашему транспорту
                 server.connect(transport);
 
-                // Настраиваем обработчики (как в STDIO-режиме)
-                // Запрашиваем список инструментов у рендерера
                 mainWindow.webContents.send('mcp-get-tools');
 
-                // Временно подписываемся на ответ, чтобы получить список
                 const onToolsResponse = (event, tools) => {
                     ipcMain.removeListener('mcp-tools-response', onToolsResponse);
 
@@ -421,13 +404,10 @@ function registerAppProtocol() {
         let filePath = host ? `${host}${pathname}` : pathname;
         if (filePath.startsWith('/')) filePath = filePath.slice(1);
 
-      //  let baseDir = updater.getCurrentBundlePath() || __dirname;
-
         const currentBundlePath = updater.getCurrentBundlePath();
         let baseDir = currentBundlePath ? path.dirname(currentBundlePath) : __dirname;
 
-        // ★ ИСПРАВЛЕНИЕ: Проверяем, есть ли реальные файлы в папке обновления.
-        // Если папка пустая (свежая установка) или битая, откатываемся к встроенным файлам.
+        // ★ Если в папке обновления нет index-файлов — полностью откатываемся на встроенную версию
         const hasIndex = fsSync.existsSync(path.join(baseDir, 'index-desktop.html')) ||
                          fsSync.existsSync(path.join(baseDir, 'index.html'));
 
@@ -436,12 +416,11 @@ function registerAppProtocol() {
             baseDir = __dirname;
         }
 
-        // ★ УМНЫЙ ВЫБОР ФАЙЛА
+        // ★ Умный выбор файла для «корня»
         if (filePath === '' || filePath === 'index.html' || filePath === 'index-desktop.html') {
             const settings = getSettings();
             const isLegacy = settings.useLegacy;
 
-            // Приоритет файлов в зависимости от режима
             const candidates = isLegacy
                 ? ['index-desktop-legacy.html', 'index-legacy.html', 'index-desktop.html', 'index.html']
                 : ['index-desktop.html', 'index.html', 'index-desktop-legacy.html'];
@@ -462,9 +441,27 @@ function registerAppProtocol() {
         }
 
         filePath = decodeURIComponent(filePath);
-        const fullPath = path.join(baseDir, filePath);
 
-        if (!fullPath.startsWith(baseDir)) {
+        // Защита от path traversal ДО склейки с baseDir
+        const normalized = path.normalize(filePath);
+        if (normalized.startsWith('..') || path.isAbsolute(normalized)) {
+            return new Response('Forbidden', { status: 403 });
+        }
+
+        let fullPath = path.join(baseDir, filePath);
+
+        // ★ Per-file fallback: если файла нет в папке обновления — берём из установки.
+        // Это спасает шрифты/картинки/модули, если live-update бандл неполный.
+        if (!fsSync.existsSync(fullPath) && baseDir !== __dirname) {
+            const fallback = path.join(__dirname, filePath);
+            if (fsSync.existsSync(fallback)) {
+                console.log(`[app://] Fallback на установку: ${filePath}`);
+                fullPath = fallback;
+            }
+        }
+
+        // Финальная проверка, что путь остался внутри разрешённых директорий
+        if (!fullPath.startsWith(baseDir) && !fullPath.startsWith(__dirname)) {
             return new Response('Forbidden', { status: 403 });
         }
 
@@ -474,7 +471,10 @@ function registerAppProtocol() {
             const contentType = {
                 '.js': 'application/javascript', '.wasm': 'application/wasm', '.json': 'application/json',
                 '.css': 'text/css', '.html': 'text/html', '.png': 'image/png', '.jpg': 'image/jpeg',
-                '.svg': 'image/svg+xml', '.woff': 'font/woff', '.woff2': 'font/woff2', '.ttf': 'font/ttf'
+                '.jpeg': 'image/jpeg', '.gif': 'image/gif', '.svg': 'image/svg+xml',
+                '.woff': 'font/woff', '.woff2': 'font/woff2', '.ttf': 'font/ttf', '.otf': 'font/otf',
+                '.ico': 'image/x-icon', '.stl': 'model/stl', '.obj': 'model/obj',
+                '.3mf': 'model/3mf', '.gltf': 'model/gltf+json', '.glb': 'model/gltf-binary'
             }[ext] || 'application/octet-stream';
 
             return new Response(data, {
@@ -491,6 +491,7 @@ function registerAppProtocol() {
         }
     });
 }
+
 // ============================================================
 //  ЗАПУСК
 // ============================================================
@@ -522,11 +523,10 @@ app.whenReady().then(async () => {
         }
     });
 
-    // 1. Инициализация апдейтера (БЕЗ аргументов)
     await updater.initialize();
     setupIPCHandlers(updater);
 
-    // ★ ДОБАВЛЕНА ПРОВЕРКА: запускаем MCP только если пакет установлен
+    // MCP STDIO-режим (по флагу --mcp)
     if (process.argv.includes('--mcp')) {
         if (!Server || !StdioServerTransport) {
             console.error('[MCP] SDK не установлен. Выполните npm install @modelcontextprotocol/sdk');
@@ -585,13 +585,9 @@ app.whenReady().then(async () => {
         return;
     }
 
-    // 2. Регистрация протокола (теперь updater уже инициализирован)
     registerAppProtocol();
-
-    // 3. Создание главного окна
     createWindow();
 
-    // 4. Передаем окно в апдейтер, если такой метод существует (для корректной работы событий)
     if (typeof updater.setWindow === 'function') {
         updater.setWindow(mainWindow);
     }
