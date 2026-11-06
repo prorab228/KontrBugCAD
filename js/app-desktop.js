@@ -1,1 +1,351 @@
-const _0x3d2aea=_0x4863;(function(_0x2a8499,_0x235990){const _0xd08136=_0x4863,_0x55ff02=_0x2a8499();while(!![]){try{const _0x26c7f4=-parseInt(_0xd08136(0x114))/0x1*(parseInt(_0xd08136(0x148))/0x2)+parseInt(_0xd08136(0x152))/0x3+parseInt(_0xd08136(0x122))/0x4+-parseInt(_0xd08136(0x126))/0x5*(-parseInt(_0xd08136(0xf3))/0x6)+-parseInt(_0xd08136(0x13d))/0x7+-parseInt(_0xd08136(0x120))/0x8*(-parseInt(_0xd08136(0x124))/0x9)+-parseInt(_0xd08136(0xdd))/0xa;if(_0x26c7f4===_0x235990)break;else _0x55ff02['push'](_0x55ff02['shift']());}catch(_0x42fe95){_0x55ff02['push'](_0x55ff02['shift']());}}}(_0x5650,0x597bc));import{CADEditor}from'./core/CADEditor.js';import*as _0x21902e from'three';import{STLExporter}from'three/addons/exporters/STLExporter.js';import{ModelPreviewGenerator}from'./utils/ModelPreviewGenerator.js';import{CONFIG}from'../config.js';import{Dialogs}from'./ui/Dialogs.js';async function initApp(){const _0x4fa97d=_0x4863;if(window[_0x4fa97d(0x137)]&&typeof window['electronUpdater']['notifyAppReady']===_0x4fa97d(0xec)){console[_0x4fa97d(0xf4)]('[boot]\x20notifyAppReady:\x20start');try{await Promise[_0x4fa97d(0x149)]([window[_0x4fa97d(0x137)][_0x4fa97d(0x118)](),new Promise((_0x49167a,_0x2785c3)=>setTimeout(()=>_0x2785c3(new Error('notifyAppReady\x20timeout')),0xbb8))]),console['log'](_0x4fa97d(0xdf));}catch(_0x76e5d1){console[_0x4fa97d(0xf5)](_0x4fa97d(0x145),_0x76e5d1[_0x4fa97d(0x11c)]);}}else console['log'](_0x4fa97d(0x109));console[_0x4fa97d(0xf4)](_0x4fa97d(0x14f)),window[_0x4fa97d(0x131)]=new CADEditor();window['electronAPI']?console[_0x4fa97d(0xf4)]('✅\x20preload.js\x20успешно\x20загружен.\x20electronAPI\x20доступен.'):console['error'](_0x4fa97d(0x14c));const _0x43c9ad=window[_0x4fa97d(0x137)];_0x43c9ad&&initLiveUpdateUI(_0x43c9ad);initAddModelModal();const _0x141dbb=document[_0x4fa97d(0xd5)](_0x4fa97d(0xfe));_0x141dbb&&_0x141dbb[_0x4fa97d(0xf6)](_0x4fa97d(0xe5),()=>{const _0x5e5d9a=_0x4fa97d;if(window[_0x5e5d9a(0x12d)])window[_0x5e5d9a(0x12d)]();}),window[_0x4fa97d(0x12e)]?.[_0x4fa97d(0xda)]&&window[_0x4fa97d(0x12e)][_0x4fa97d(0xda)](_0x52f283=>{const _0x4ffc0f=_0x4fa97d;console['log'](_0x4ffc0f(0xef),_0x52f283);const _0x18a63b=window[_0x4ffc0f(0x131)];if(!_0x18a63b)return;switch(_0x52f283){case'new-project':_0x18a63b[_0x4ffc0f(0x10a)][_0x4ffc0f(0x139)]();break;case'open-project':_0x18a63b[_0x4ffc0f(0x10a)][_0x4ffc0f(0xd0)]();break;case _0x4ffc0f(0xd8):_0x18a63b['projectManager']['showSaveModal']();break;case _0x4ffc0f(0x130):_0x18a63b['exportManager'][_0x4ffc0f(0x154)]();break;case'duplicate':_0x18a63b[_0x4ffc0f(0x10f)]();break;case _0x4ffc0f(0x14b):_0x18a63b['selectAllObjects']();break;case'undo':_0x18a63b[_0x4ffc0f(0x128)]();break;case _0x4ffc0f(0x14d):_0x18a63b['redo']();break;case _0x4ffc0f(0x129):_0x18a63b[_0x4ffc0f(0x112)]();break;case _0x4ffc0f(0x13f):_0x18a63b[_0x4ffc0f(0x125)]();break;case _0x4ffc0f(0xd6):_0x18a63b[_0x4ffc0f(0x12f)]();break;case'about':document['getElementById'](_0x4ffc0f(0x138))['classList']['add'](_0x4ffc0f(0xf7));break;case'check-updates':_0x43c9ad&&checkForUpdates(_0x43c9ad,null);break;default:console['warn']('Unknown\x20menu\x20command:',_0x52f283);}});}document[_0x3d2aea(0x13c)]===_0x3d2aea(0x11e)?document[_0x3d2aea(0xf6)](_0x3d2aea(0xe3),initApp):initApp();async function checkForUpdates(_0x56957d,_0x2fbb92=null){const _0x1280c3=_0x3d2aea;console['log']('Запуск\x20проверки\x20обновлений...');_0x2fbb92&&(_0x2fbb92[_0x1280c3(0x133)]=_0x1280c3(0x158),_0x2fbb92[_0x1280c3(0x147)]=!![]);try{const _0x2753b0=window[_0x1280c3(0x131)]?.[_0x1280c3(0xf9)]?.['auth'],_0x1b90f7=_0x2753b0?.[_0x1280c3(0xde)],_0x36e517=_0x2753b0?.[_0x1280c3(0x13e)]||'https://www.kontrcad.ru';if(!_0x1b90f7){await Dialogs['alert']('Для\x20проверки\x20обновлений\x20необходимо\x20авторизоваться\x20в\x20редакторе.','Авторизация');return;}const _0x2a5e80=await fetch(_0x36e517+'/api/latest-update',{'method':'GET','cache':_0x1280c3(0xd4),'headers':{'Authorization':'Bearer\x20'+_0x1b90f7,'Accept':_0x1280c3(0xee),'Cache-Control':_0x1280c3(0x132),'Pragma':_0x1280c3(0x132)}});if(_0x2a5e80[_0x1280c3(0x12b)]===0x193){const _0x72e740=await _0x2a5e80['json']();await Dialogs[_0x1280c3(0x119)](_0x72e740['error']||_0x1280c3(0xf2),_0x1280c3(0xed));return;}if(!_0x2a5e80['ok'])throw new Error(_0x1280c3(0x111)+_0x2a5e80['status']);const _0x4abff0=await _0x2a5e80[_0x1280c3(0xd1)](),_0x4fe665=CONFIG?.[_0x1280c3(0x102)]||'0.0.0';console[_0x1280c3(0xf4)]('Текущая\x20версия:\x20'+_0x4fe665+_0x1280c3(0x10c)+_0x4abff0['version']);if(_0x4abff0[_0x1280c3(0xe0)]===_0x4fe665){await Dialogs['alert']('У\x20вас\x20уже\x20установлена\x20последняя\x20версия\x20ядра.','Обновление');return;}const _0xfc4b6a=_0x1280c3(0xfd)+_0x4abff0[_0x1280c3(0xe0)]+'\x0aВаша\x20текущая\x20версия:\x20'+_0x4fe665+_0x1280c3(0xdc);let _0x5550e0=![];try{Dialogs&&typeof Dialogs['confirm']==='function'&&(_0x5550e0=await Dialogs[_0x1280c3(0x10e)](_0xfc4b6a,_0x1280c3(0x136)));}catch(_0x5a7470){console[_0x1280c3(0xf5)](_0x1280c3(0xd2),_0x5a7470);}!_0x5550e0&&(_0x5550e0=window[_0x1280c3(0x10e)]('Доступна\x20новая\x20версия\x20ядра:\x20'+_0x4abff0[_0x1280c3(0xe0)]+'\x0a'+('Ваша\x20текущая\x20версия:\x20'+_0x4fe665+'\x0a\x0a')+'Скачать\x20и\x20установить\x20обновление?'));if(!_0x5550e0){console['log'](_0x1280c3(0x11f));return;}if(_0x2fbb92)_0x2fbb92[_0x1280c3(0x133)]=_0x1280c3(0xfa);console[_0x1280c3(0xf4)](_0x1280c3(0x127));const _0x2e976e=''+_0x4abff0[_0x1280c3(0x11a)]+(_0x4abff0['url']['includes']('?')?'&':'?')+'t='+Date[_0x1280c3(0xe4)]();console[_0x1280c3(0xf4)]('[LiveUpdate]\x20Скачиваем:',_0x2e976e);const _0x37923d=await _0x56957d[_0x1280c3(0xdb)]({'url':_0x2e976e,'version':_0x4abff0[_0x1280c3(0xe0)],'checksum':_0x4abff0[_0x1280c3(0x153)]});await _0x56957d[_0x1280c3(0x115)]({'id':_0x37923d['id']}),await Dialogs[_0x1280c3(0x119)](_0x1280c3(0x12a),_0x1280c3(0x12c)),window['location'][_0x1280c3(0x157)]();}catch(_0x2e76c2){console['error'](_0x1280c3(0x151),_0x2e76c2),await Dialogs[_0x1280c3(0x119)](_0x1280c3(0x150)+_0x2e76c2['message'],'Ошибка');}finally{_0x2fbb92&&(_0x2fbb92['innerHTML']='<i\x20class=\x22fas\x20fa-sync\x22></i>\x20Проверить\x20обновления',_0x2fbb92[_0x1280c3(0x147)]=![]);}}function initLiveUpdateUI(_0x2973ce){const _0x2e4415=_0x3d2aea,_0x1550f8=document['querySelector'](_0x2e4415(0xe7));if(!_0x1550f8)return;const _0x5ea4ea=document[_0x2e4415(0xd9)](_0x2e4415(0xeb));_0x5ea4ea['className']='dropdown-section',_0x5ea4ea[_0x2e4415(0x133)]='<h4>Обновление\x20ядра</h4>';const _0x5b5343=document[_0x2e4415(0xd9)](_0x2e4415(0x11b));_0x5b5343[_0x2e4415(0xd7)]='btn-small',_0x5b5343['style']='width:\x20100%;\x20margin-top:\x208px;\x20background:\x20#2196f3;\x20color:\x20white;\x20border:\x20none;',_0x5b5343[_0x2e4415(0x133)]=_0x2e4415(0x106),_0x5b5343[_0x2e4415(0xf6)](_0x2e4415(0xe5),_0x1ff740=>{const _0x55dd4f=_0x2e4415;_0x1ff740[_0x55dd4f(0x100)](),_0x1ff740['stopPropagation'](),checkForUpdates(_0x2973ce,_0x5b5343);}),_0x5ea4ea[_0x2e4415(0x10d)](_0x5b5343),_0x1550f8['insertBefore'](_0x5ea4ea,_0x1550f8[_0x2e4415(0xfb)]);}function _0x4863(_0x5a718a,_0x4a33b7){_0x5a718a=_0x5a718a-0xd0;const _0x5650d0=_0x5650();let _0x486367=_0x5650d0[_0x5a718a];return _0x486367;}function initAddModelModal(){const _0x4ce914=_0x3d2aea,_0x4f9230=document[_0x4ce914(0xd5)]('addModelModal');if(!_0x4f9230)return;const _0x5b36ef=_0x4f9230[_0x4ce914(0xf1)](_0x4ce914(0xfc)),_0x584f1a=document['getElementById'](_0x4ce914(0xe1)),_0x3ab70b=document[_0x4ce914(0xd5)]('confirmAddModel'),_0x5292a3=document[_0x4ce914(0xd5)](_0x4ce914(0x13b)),_0x6f5c23=document[_0x4ce914(0xd5)](_0x4ce914(0xff)),_0x4a1752=document[_0x4ce914(0xd5)](_0x4ce914(0x123)),_0x5ab291=()=>{const _0x13de2c=_0x4ce914;_0x4f9230['classList']['remove'](_0x13de2c(0xf7)),_0x5292a3[_0x13de2c(0xe8)]='';};_0x5b36ef?.[_0x4ce914(0xf6)](_0x4ce914(0xe5),_0x5ab291),_0x584f1a?.['addEventListener']('click',_0x5ab291),window[_0x4ce914(0x12d)]=()=>{const _0x40a8f7=_0x4ce914,_0x2b41fa=window[_0x40a8f7(0x131)];if(!_0x2b41fa)return;const _0x41a110=_0x2b41fa['selectedObjects'];if(!_0x41a110||_0x41a110[_0x40a8f7(0x14e)]===0x0){alert(_0x40a8f7(0xe6));return;}if(_0x41a110[0x0][_0x40a8f7(0xea)])_0x5292a3[_0x40a8f7(0xe8)]=_0x41a110[0x0][_0x40a8f7(0xea)];else _0x5292a3['value']=_0x40a8f7(0xe2);_0x4f9230[_0x40a8f7(0x10b)]['add']('active');},_0x3ab70b?.[_0x4ce914(0xf6)]('click',async()=>{const _0x8912fe=_0x4ce914,_0x4a9b1b=window['cadEditor'];if(!_0x4a9b1b)return;const _0x4a727f=_0x4a9b1b[_0x8912fe(0x134)];if(!_0x4a727f||_0x4a727f['length']===0x0){alert(_0x8912fe(0xe6)),_0x5ab291();return;}const _0x4f7ad5=_0x5292a3[_0x8912fe(0xe8)][_0x8912fe(0x117)]();if(!_0x4f7ad5){alert('Введите\x20название\x20модели');return;}const _0x3a00e2=_0x6f5c23?.[_0x8912fe(0xe8)]||_0x8912fe(0x141),_0x15c181=_0x4a1752?.[_0x8912fe(0xe8)]['replace']('#','0x')||'0x8BC34A',_0x8e18a9=collectMeshes(_0x4a727f);if(_0x8e18a9[_0x8912fe(0x14e)]===0x0){alert(_0x8912fe(0x142));return;}const _0x4bbcd3=new STLExporter(),_0x5b44bc=createExportGroup(_0x8e18a9,!![]),_0x3014db=_0x4bbcd3['parse'](_0x5b44bc,{'binary':!![]});let _0x5823e5=null;try{const _0x1a4bb7=new ModelPreviewGenerator(),_0x2d0592=_0x5b44bc[_0x8912fe(0x107)]();_0x5823e5=await _0x1a4bb7['generatePreview'](_0x2d0592,0x80,0x80),_0x1a4bb7[_0x8912fe(0x135)]();}catch(_0x3a2bd4){console[_0x8912fe(0xf5)](_0x8912fe(0xf0),_0x3a2bd4);}if(!window[_0x8912fe(0x12e)]?.['addModelToLibrary']){alert(_0x8912fe(0x146)),_0x5ab291();return;}try{const _0x3dc587=await window[_0x8912fe(0x12e)][_0x8912fe(0xe9)]({'fileName':(_0x4f7ad5+_0x8912fe(0x144))[_0x8912fe(0x121)](/[^a-zа-яё0-9_.-]/gi,'_'),'fileData':Array[_0x8912fe(0x13a)](new Uint8Array(_0x3014db)),'modelName':_0x4f7ad5,'category':_0x3a00e2,'color':_0x15c181,'previewData':_0x5823e5});if(_0x3dc587['success']){alert(_0x8912fe(0x103));if(_0x4a9b1b['libraryManager']){_0x4a9b1b['libraryManager'][_0x8912fe(0x143)]=[],_0x4a9b1b['libraryManager'][_0x8912fe(0xd3)]['clear'](),_0x4a9b1b[_0x8912fe(0x113)]['modelCache'][_0x8912fe(0x101)](),await _0x4a9b1b[_0x8912fe(0x113)][_0x8912fe(0x105)]();const _0x988f1c=document['querySelector']('.filter-btn[data-filter=\x22user\x22]');if(_0x988f1c)_0x988f1c[_0x8912fe(0xe5)]();}}else alert('Ошибка:\x20'+_0x3dc587[_0x8912fe(0x14a)]);}catch(_0x39f945){alert('Ошибка\x20связи\x20с\x20основным\x20процессом'),console[_0x8912fe(0x14a)](_0x39f945);}_0x5ab291();});}function _0x5650(){const _0x59c9b9=['Ошибка\x20при\x20обновлении:\x20','Ошибка\x20обновления:','110886RBdDUq','checksum','showExportModal','push','Group','reload','<i\x20class=\x22fas\x20fa-spinner\x20fa-spin\x22></i>\x20Проверка...','openProject','json','[LiveUpdate]\x20Dialogs.confirm\x20упал,\x20используем\x20window.confirm:','categoryItemsCache','no-store','getElementById','delete','className','save-project','createElement','onMenuEvent','download','\x0a\x0aСкачать\x20и\x20установить\x20обновление?','2584240uBYJep','token','[boot]\x20notifyAppReady:\x20ok','version','cancelAddModel','Модель','DOMContentLoaded','now','click','Нет\x20выделенных\x20объектов','#settings\x20.dropdown-menu','value','addModelToLibrary','name','div','function','Доступ\x20ограничен','application/json','Menu\x20command\x20received:','Не\x20удалось\x20сгенерировать\x20превью:','querySelector','Доступ\x20к\x20обновлениям\x20ограничен\x20вашим\x20тарифом.','25932ZGrCAY','log','warn','addEventListener','active','position','accountManager','<i\x20class=\x22fas\x20fa-spinner\x20fa-spin\x22></i>\x20Скачивание...','firstChild','.close-modal','Доступна\x20новая\x20версия\x20ядра:\x20','addSelectedToLibraryBtn','modelCategorySelect','preventDefault','clear','APP_VERSION','Модель\x20успешно\x20добавлена\x20в\x20библиотеку','add','loadCategories','<i\x20class=\x22fas\x20fa-sync\x22></i>\x20Проверить\x20обновления','clone','applyMatrix4','[boot]\x20notifyAppReady:\x20skipped\x20(no\x20electronUpdater)','projectManager','classList',',\x20Доступная:\x20','appendChild','confirm','duplicateSelectedObjects','forEach','Ошибка\x20сервера:\x20','copySelectedObjects','libraryManager','932AApdyR','set','scale','trim','notifyAppReady','alert','url','button','message','geometry','loading','Пользователь\x20отменил\x20скачивание\x20обновления.','2925376rdMkWc','replace','1286052bZbZJC','modelColorInput','9uCOkqz','pasteSelectedObjects','100ZUhRNB','Начинаем\x20скачивание\x20бандла\x20обновления...','undo','copy','Обновление\x20применено!\x20Приложение\x20будет\x20перезагружено.','status','Успех','openAddModelModal','electronAPI','deleteSelected','export','cadEditor','no-cache','innerHTML','selectedObjects','dispose','Доступно\x20обновление','electronUpdater','aboutModal','newProject','from','modelNameInput','readyState','327397LSpHzu','serverUrl','paste','updateMatrixWorld','user','Выделенные\x20объекты\x20не\x20содержат\x20мешей','libraryItems','.stl','[boot]\x20notifyAppReady:\x20failed/timeout\x20→','Функция\x20доступна\x20только\x20в\x20десктопной\x20версии','disabled','298MWkFQi','race','error','selectAll','❌\x20ОШИБКА:\x20preload.js\x20НЕ\x20загружен.\x20window.electronAPI\x20пуст!','redo','length','[boot]\x20app-desktop.js\x20продолжает\x20загрузку'];_0x5650=function(){return _0x59c9b9;};return _0x5650();}function collectMeshes(_0x1d02ba){const _0x1db5da=_0x3d2aea,_0x2a1ba2=[],_0x33008c=_0x4cd9c7=>{const _0x5cb96a=_0x4863;if(_0x4cd9c7['isMesh'])_0x2a1ba2[_0x5cb96a(0x155)](_0x4cd9c7);if(_0x4cd9c7['children'])_0x4cd9c7['children']['forEach'](_0x33008c);};return _0x1d02ba[_0x1db5da(0x110)](_0x33008c),_0x2a1ba2;}function createExportGroup(_0x25ecfe,_0x410845=!![]){const _0x15ed87=_0x3d2aea,_0x155e4a=new _0x21902e[(_0x15ed87(0x156))]();return _0x25ecfe['forEach'](_0x553a64=>{const _0x22ef28=_0x15ed87,_0x214b46=_0x553a64[_0x22ef28(0x107)]();_0x410845&&(_0x553a64['updateMatrixWorld'](!![]),_0x214b46[_0x22ef28(0x11d)]=_0x214b46['geometry'][_0x22ef28(0x107)](),_0x214b46[_0x22ef28(0x11d)][_0x22ef28(0x108)](_0x553a64['matrixWorld']),_0x214b46[_0x22ef28(0xf8)][_0x22ef28(0x115)](0x0,0x0,0x0),_0x214b46['rotation'][_0x22ef28(0x115)](0x0,0x0,0x0),_0x214b46[_0x22ef28(0x116)]['set'](0x1,0x1,0x1)),_0x155e4a[_0x22ef28(0x104)](_0x214b46);}),_0x155e4a['rotation']['x']=Math['PI']/0x2,_0x155e4a[_0x15ed87(0x140)](!![]),_0x155e4a;}
+import { CADEditor } from './core/CADEditor.js';
+import * as THREE from 'three';
+import { STLExporter } from 'three/addons/exporters/STLExporter.js';
+import { ModelPreviewGenerator } from './utils/ModelPreviewGenerator.js';
+import { CONFIG } from '../config.js';
+// ★ ДОБАВЛЕНО: Импорт встроенных диалогов (проверьте правильность пути в вашем проекте)
+import { Dialogs } from './ui/Dialogs.js';
+
+// ============================================================
+//  ИНИЦИАЛИЗАЦИЯ ПРИЛОЖЕНИЯ
+// ============================================================
+async function initApp() {
+    // ★ КРИТИЧЕСКИ ВАЖНО: Подтверждаем загрузку СРАЗУ, до инициализации CADEditor.
+    // Это предотвращает автоматический откат обновления.
+    // ★ Гарантируем, что top-level await не повесит весь модуль.
+    // Если notifyAppReady зависнет больше 3 секунд — идём дальше.
+    if (window.electronUpdater && typeof window.electronUpdater.notifyAppReady === 'function') {
+        console.log('[boot] notifyAppReady: start');
+        try {
+            await Promise.race([
+                window.electronUpdater.notifyAppReady(),
+                new Promise((_, rej) => setTimeout(() => rej(new Error('notifyAppReady timeout')), 3000))
+            ]);
+            console.log('[boot] notifyAppReady: ok');
+        } catch (e) {
+            console.warn('[boot] notifyAppReady: failed/timeout →', e.message);
+        }
+    } else {
+        console.log('[boot] notifyAppReady: skipped (no electronUpdater)');
+    }
+    console.log('[boot] app-desktop.js продолжает загрузку');
+
+    // ============================================================
+    //  СОЗДАНИЕ РЕДАКТОРА
+    // ============================================================
+    window.cadEditor = new CADEditor();
+
+    // ОТЛАДКА: Проверяем, работает ли preload
+    if (window.electronAPI) {
+        console.log("✅ preload.js успешно загружен. electronAPI доступен.");
+    } else {
+        console.error("❌ ОШИБКА: preload.js НЕ загружен. window.electronAPI пуст!");
+    }
+
+    // Получаем апдейтер из preload.js
+    const updater = window.electronUpdater;
+    if (updater) {
+        // await updater.notifyAppReady();
+        initLiveUpdateUI(updater);
+    }
+
+    initAddModelModal();
+
+    const addBtn = document.getElementById('addSelectedToLibraryBtn');
+    if (addBtn) {
+        addBtn.addEventListener('click', () => {
+            if (window.openAddModelModal) window.openAddModelModal();
+        });
+    }
+
+    // Подписка на события меню
+    if (window.electronAPI?.onMenuEvent) {
+        window.electronAPI.onMenuEvent((command) => {
+            console.log('Menu command received:', command);
+            const editor = window.cadEditor;
+            if (!editor) return;
+
+            switch (command) {
+                case 'new-project': editor.projectManager.newProject(); break;
+                case 'open-project': editor.projectManager.openProject(); break;
+                case 'save-project': editor.projectManager.showSaveModal(); break;
+                case 'export': editor.exportManager.showExportModal(); break;
+                case 'duplicate': editor.duplicateSelectedObjects(); break;
+                case 'selectAll': editor.selectAllObjects(); break;
+                case 'undo': editor.undo(); break;
+                case 'redo': editor.redo(); break;
+                case 'copy': editor.copySelectedObjects(); break;
+                case 'paste': editor.pasteSelectedObjects(); break;
+                case 'delete': editor.deleteSelected(); break;
+                case 'about':
+                    document.getElementById('aboutModal').classList.add('active');
+                    break;
+                case 'check-updates':
+                    if (updater) {
+                        checkForUpdates(updater, null);
+                    }
+                    break;
+                default:
+                    console.warn('Unknown menu command:', command);
+            }
+        });
+    }
+}
+
+// ★ Надёжный запуск: срабатывает и в случае, когда DOMContentLoaded уже прошёл
+// (например, если модуль грузится долго или есть top-level await внутри initApp).
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initApp);
+} else {
+    // DOMContentLoaded уже выстрелил до загрузки модуля — запускаем сразу
+    initApp();
+}
+
+// ==========================================
+// ЛОГИКА LIVE-UPDATE
+// ==========================================
+async function checkForUpdates(updater, updateBtn = null) {
+    console.log('Запуск проверки обновлений...');
+
+    if (updateBtn) {
+        updateBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Проверка...';
+        updateBtn.disabled = true;
+    }
+
+    try {
+        // Берем токен и URL напрямую из AuthService
+        const auth = window.cadEditor?.accountManager?.auth;
+        const token = auth?.token;
+        const serverUrl = auth?.serverUrl || 'https://www.kontrcad.ru';
+
+        if (!token) {
+            await Dialogs.alert('Для проверки обновлений необходимо авторизоваться в редакторе.', 'Авторизация');
+            return;
+        }
+
+        // Запрос к серверу
+        const response = await fetch(`${serverUrl}/api/latest-update`, {
+            method: 'GET',
+            cache: 'no-store',                     // ★ запрет HTTP-кэша
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Accept': 'application/json'
+        });
+
+        if (response.status === 403) {
+            const errData = await response.json();
+            await Dialogs.alert(errData.error || 'Доступ к обновлениям ограничен вашим тарифом.', 'Доступ ограничен');
+            return;
+        }
+
+        if (!response.ok) {
+            throw new Error(`Ошибка сервера: ${response.status}`);
+        }
+
+        const latest = await response.json();
+        const currentVersion = CONFIG?.APP_VERSION || '0.0.0';
+
+        console.log(`Текущая версия: ${currentVersion}, Доступная: ${latest.version}`);
+
+        if (latest.version === currentVersion) {
+            await Dialogs.alert('У вас уже установлена последняя версия ядра.', 'Обновление');
+            return;
+        }
+
+        // ★ ДОБАВЛЕНО: Запрос подтверждения перед скачиванием
+        const confirmMessage = `Доступна новая версия ядра: ${latest.version}\nВаша текущая версия: ${currentVersion}\n\nСкачать и установить обновление?`;
+
+        let isConfirmed = false;
+        try {
+            if (Dialogs && typeof Dialogs.confirm === 'function') {
+                isConfirmed = await Dialogs.confirm(confirmMessage, 'Доступно обновление');
+            }
+        } catch (e) {
+            console.warn('[LiveUpdate] Dialogs.confirm упал, используем window.confirm:', e);
+        }
+
+        if (!isConfirmed) {
+            isConfirmed = window.confirm(
+                `Доступна новая версия ядра: ${latest.version}\n` +
+                `Ваша текущая версия: ${currentVersion}\n\n` +
+                `Скачать и установить обновление?`
+            );
+        }
+
+        if (!isConfirmed) {
+            console.log('Пользователь отменил скачивание обновления.');
+            return;
+        }
+
+        if (updateBtn) updateBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Скачивание...';
+
+        console.log('Начинаем скачивание бандла обновления...');
+        // ★ Cache-busting: гарантирует, что CDN/прокси отдаст свежий ZIP,
+        // а не закэшированный со старым содержимым
+        const downloadUrl = `${latest.url}${latest.url.includes('?') ? '&' : '?'}t=${Date.now()}`;
+        console.log('[LiveUpdate] Скачиваем:', downloadUrl);
+
+        const bundle = await updater.download({
+            url: downloadUrl,
+            version: latest.version,
+            checksum: latest.checksum,
+        });
+
+        // Применяем обновление немедленно
+        await updater.set({ id: bundle.id });
+
+        // set() сам перезагрузит приложение. Предупреждаем пользователя.
+        await Dialogs.alert('Обновление применено! Приложение будет перезагружено.', 'Успех');
+
+        // Принудительная перезагрузка на случай, если set() не сработал
+        window.location.reload();
+
+    } catch (e) {
+        console.error('Ошибка обновления:', e);
+        await Dialogs.alert('Ошибка при обновлении: ' + e.message, 'Ошибка');
+    } finally {
+        if (updateBtn) {
+            updateBtn.innerHTML = '<i class="fas fa-sync"></i> Проверить обновления';
+            updateBtn.disabled = false;
+        }
+    }
+}
+
+// ==========================================
+// UI ДЛЯ LIVE-UPDATE (Кнопка в настройках)
+// ==========================================
+function initLiveUpdateUI(updater) {
+    const settingsBlock = document.querySelector('#settings .dropdown-menu');
+    if (!settingsBlock) return;
+
+    const section = document.createElement('div');
+    section.className = 'dropdown-section';
+    section.innerHTML = `<h4>Обновление ядра</h4>`;
+
+    const updateBtn = document.createElement('button');
+    updateBtn.className = 'btn-small';
+    updateBtn.style = "width: 100%; margin-top: 8px; background: #2196f3; color: white; border: none;";
+    updateBtn.innerHTML = '<i class="fas fa-sync"></i> Проверить обновления';
+
+    // Добавляем stopPropagation, чтобы клик не закрывал выпадающее меню настроек
+    updateBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        checkForUpdates(updater, updateBtn);
+    });
+
+    section.appendChild(updateBtn);
+    settingsBlock.insertBefore(section, settingsBlock.firstChild);
+}
+
+// ==========================================
+// ДОБАВЛЕНИЕ МОДЕЛИ В БИБЛИОТЕКУ
+// ==========================================
+function initAddModelModal() {
+    const modal = document.getElementById('addModelModal');
+    if (!modal) return;
+
+    const closeBtn = modal.querySelector('.close-modal');
+    const cancelBtn = document.getElementById('cancelAddModel');
+    const confirmBtn = document.getElementById('confirmAddModel');
+    const nameInput = document.getElementById('modelNameInput');
+    const categorySelect = document.getElementById('modelCategorySelect');
+    const colorInput = document.getElementById('modelColorInput');
+
+    const closeModal = () => {
+        modal.classList.remove('active');
+        nameInput.value = '';
+    };
+
+    closeBtn?.addEventListener('click', closeModal);
+    cancelBtn?.addEventListener('click', closeModal);
+
+    window.openAddModelModal = () => {
+        const editor = window.cadEditor;
+        if (!editor) return;
+        const selected = editor.selectedObjects;
+        if (!selected || selected.length === 0) {
+            alert('Нет выделенных объектов');
+            return;
+        }
+        if (selected[0].name) nameInput.value = selected[0].name;
+        else nameInput.value = 'Модель';
+        modal.classList.add('active');
+    };
+
+    confirmBtn?.addEventListener('click', async () => {
+        const editor = window.cadEditor;
+        if (!editor) return;
+        const selected = editor.selectedObjects;
+        if (!selected || selected.length === 0) { alert('Нет выделенных объектов'); closeModal(); return; }
+
+        const modelName = nameInput.value.trim();
+        if (!modelName) { alert('Введите название модели'); return; }
+
+        const category = categorySelect?.value || 'user';
+        const color = colorInput?.value.replace('#', '0x') || '0x8BC34A';
+        const meshes = collectMeshes(selected);
+        if (meshes.length === 0) { alert('Выделенные объекты не содержат мешей'); return; }
+
+        const exporter = new STLExporter();
+        const group = createExportGroup(meshes, true);
+        const stlBuffer = exporter.parse(group, { binary: true });
+
+        let previewData = null;
+        try {
+            const previewGenerator = new ModelPreviewGenerator();
+            const previewGroup = group.clone();
+            previewData = await previewGenerator.generatePreview(previewGroup, 128, 128);
+            previewGenerator.dispose();
+        } catch (err) { console.warn('Не удалось сгенерировать превью:', err); }
+
+        if (!window.electronAPI?.addModelToLibrary) { alert('Функция доступна только в десктопной версии'); closeModal(); return; }
+
+        try {
+            const result = await window.electronAPI.addModelToLibrary({
+                fileName: `${modelName}.stl`.replace(/[^a-zа-яё0-9_.-]/gi, '_'),
+                fileData: Array.from(new Uint8Array(stlBuffer)),
+                modelName: modelName, category: category, color: color, previewData: previewData
+            });
+
+            if (result.success) {
+                alert('Модель успешно добавлена в библиотеку');
+                if (editor.libraryManager) {
+                    editor.libraryManager.libraryItems = [];
+                    editor.libraryManager.categoryItemsCache.clear();
+                    editor.libraryManager.modelCache.clear();
+                    await editor.libraryManager.loadCategories();
+                    const userBtn = document.querySelector('.filter-btn[data-filter="user"]');
+                    if (userBtn) userBtn.click();
+                }
+            } else { alert('Ошибка: ' + result.error); }
+        } catch (err) { alert('Ошибка связи с основным процессом'); console.error(err); }
+        closeModal();
+    });
+}
+
+function collectMeshes(objects) {
+    const meshes = [];
+    const traverse = (obj) => { if (obj.isMesh) meshes.push(obj); if (obj.children) obj.children.forEach(traverse); };
+    objects.forEach(traverse);
+    return meshes;
+}
+
+function createExportGroup(meshes, applyTransform = true) {
+    const group = new THREE.Group();
+    meshes.forEach(mesh => {
+        const clone = mesh.clone();
+        if (applyTransform) {
+            mesh.updateMatrixWorld(true);
+            clone.geometry = clone.geometry.clone();
+            clone.geometry.applyMatrix4(mesh.matrixWorld);
+            clone.position.set(0, 0, 0);
+            clone.rotation.set(0, 0, 0);
+            clone.scale.set(1, 1, 1);
+        }
+        group.add(clone);
+    });
+    group.rotation.x = Math.PI / 2;
+    group.updateMatrixWorld(true);
+    return group;
+}
