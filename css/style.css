@@ -610,7 +610,162 @@ a:hover {
 
 
 
+/* ========== ИИ-ассистент: шапка провайдеров ========== */
+.ai-provider-bar {
+    flex: 0 0 auto;
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border-primary);
+}
 
+.ai-provider-bar .property-select {
+    flex: 1 1 0;
+    min-width: 0;
+    font-size: 12px;
+    padding: 6px 8px;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-primary);
+    border-radius: var(--border-radius);
+    cursor: pointer;
+}
+
+.ai-provider-bar .tool-btn {
+    width: 32px;
+    height: 32px;
+    font-size: 13px;
+    flex-shrink: 0;
+}
+
+/* Панель ключа */
+.ai-key-panel {
+    flex: 0 0 auto;
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border-primary);
+}
+
+.ai-key-panel .modal-input {
+    flex: 1;
+    font-size: 13px;
+    padding: 6px 10px;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-primary);
+    border-radius: var(--border-radius);
+}
+
+.ai-key-panel .btn-small {
+    padding: 6px 10px;
+    font-size: 12px;
+    flex-shrink: 0;
+}
+
+/* ========== Чат ========== */
+#aiContent { padding: 0 10px; }
+
+.ai-chat-history {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px 2px;
+}
+
+.ai-chat-welcome {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-secondary);
+    text-align: center;
+    padding: 24px 12px;
+    font-size: 13px;
+    gap: 4px;
+}
+.ai-chat-welcome i {
+    font-size: 36px;
+    color: var(--primary-color);
+    margin-bottom: 10px;
+}
+
+.ai-message {
+    padding: 8px 12px;
+    border-radius: var(--border-radius);
+    max-width: 92%;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    font-size: 13px;
+    line-height: 1.45;
+    white-space: pre-wrap;
+}
+
+.ai-message-user {
+    background: var(--secondary-color);
+    color: #fff;
+    align-self: flex-end;
+    border-bottom-right-radius: 4px;
+}
+
+.ai-message-assistant {
+    background: var(--hover-overlay);
+    color: var(--text-primary);
+    align-self: flex-start;
+    border: 1px solid var(--border-primary);
+    border-bottom-left-radius: 4px;
+}
+
+.ai-message-error {
+    background: rgba(244, 67, 54, 0.15);
+    color: #ef9a9a;
+    align-self: center;
+    font-size: 12px;
+    text-align: center;
+    border: 1px solid rgba(244, 67, 54, 0.3);
+}
+
+/* ========== Ввод ========== */
+.ai-chat-input-wrapper {
+    flex: 0 0 auto;
+    display: flex;
+    gap: 6px;
+    align-items: flex-end;
+    border-top: 1px solid var(--border-primary);
+    padding: 10px 0;
+}
+
+.ai-chat-input {
+    flex: 1;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-primary);
+    border-radius: var(--border-radius);
+    padding: 8px 10px;
+    font-family: inherit;
+    font-size: 13px;
+    resize: none;
+    outline: none;
+    min-height: 36px;
+    max-height: 140px;
+    line-height: 1.4;
+    transition: border-color 0.2s;
+}
+.ai-chat-input:focus    { border-color: var(--primary-color); }
+.ai-chat-input:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.ai-send-btn {
+    padding: 8px 12px;
+    height: 36px;
+    flex-shrink: 0;
+    border-radius: var(--border-radius);
+}
+.ai-send-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .tool-section {
     display: flex;
@@ -2263,7 +2418,7 @@ input:checked + .toggle-slider:before {
 .distance-input-container,
 .numeric-input-controller
 {
-    position: absolute;
+    position: fixed;
     z-index: 10000;
     background: var(--bg-surface);
     border-radius: 4px;
