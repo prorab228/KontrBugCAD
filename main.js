@@ -3,15 +3,25 @@ const path = require('path');
 const fs = require('fs').promises;
 const fsSync = require('fs');
 const { v4: uuidv4 } = require('uuid');
-const { ElectronUpdater, setupIPCHandlers, setupEventForwarding } = require('@capgo/electron-updater');
-// ★ Безопасное подключение MCP SDK (чтобы не падало без пакета)
-const { WebSocketServer } = require('ws');
-let Server, StdioServerTransport;
+const { ElectronUpdater, setupIPCHandlers } = require('@capgo/electron-updater');
+
+// ============================================================
+//  MCP SDK / EXPRESS — БЕЗОПАСНЫЙ ИМПОРТ
+//  Если пакет не установлен — приложение всё равно запустится,
+//  просто MCP-режим будет недоступен.
+// ============================================================
+let Server, StdioServerTransport, StreamableHTTPServerTransport, express;
 try {
     Server = require('@modelcontextprotocol/sdk/server/index.js').Server;
     StdioServerTransport = require('@modelcontextprotocol/sdk/server/stdio.js').StdioServerTransport;
+    StreamableHTTPServerTransport = require('@modelcontextprotocol/sdk/server/streamableHttp.js').StreamableHTTPServerTransport;
 } catch (e) {
-    // Пакет не установлен локально — MCP-режим будет недоступен, но приложение запустится
+    console.warn('[MCP] MCP SDK недоступен:', e.message);
+}
+try {
+    express = require('express');
+} catch (e) {
+    console.warn('[MCP] express недоступен:', e.message);
 }
 
 // ============================================================
@@ -26,6 +36,11 @@ const updater = new ElectronUpdater({
 //  ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ
 // ============================================================
 let mainWindow = null;
+
+// MCP-состояние
+let mcpToolsList = null;              // кэш инструментов от рендерера
+let mcpCallMutex = Promise.resolve(); // сериализация tool calls (защита от гонок)
+let mcpHttpServer = null;             // инстанс HTTP-сервера (для shutdown)
 
 // ============================================================
 //  НАСТРОЙКИ ПОЛЬЗОВАТЕЛЯ
@@ -173,6 +188,166 @@ ipcMain.on('focus-window', () => {
 });
 
 // ============================================================
+//  MCP: МОСТ МЕЖДУ HTTP-СЕРВЕРОМ И RENDERER-ПРОЦЕССОМ
+// ============================================================
+
+// Кэшируем список инструментов, приходящий от рендерера
+ipcMain.on('mcp-tools-response', (event, tools) => {
+    if (Array.isArray(tools)) {
+        mcpToolsList = tools;
+        console.log(`[MCP] Получен список инструментов: ${tools.length}`);
+    } else {
+        console.warn('[MCP] mcp-tools-response: некорректный формат', tools);
+    }
+});
+
+/**
+ * Вызов инструмента в renderer-процессе через IPC.
+ * Сериализуем вызовы мьютексом, чтобы избежать коллизий при одновременных
+ * запросах от нескольких клиентов (ответы приходят без requestId, поэтому
+ * параллельные вызовы однозначно перепутались бы).
+ */
+async function callToolInRenderer(name, args) {
+    // Захватываем мьютекс
+    const prev = mcpCallMutex;
+    let release;
+    mcpCallMutex = new Promise(r => { release = r; });
+    await prev;
+
+    try {
+        return await new Promise((resolve) => {
+            if (!mainWindow || mainWindow.isDestroyed()) {
+                resolve({
+                    content: [{ type: 'text', text: 'Окно редактора недоступно' }],
+                    isError: true
+                });
+                return;
+            }
+
+            const timeout = setTimeout(() => {
+                ipcMain.removeListener('mcp-call-response', handler);
+                resolve({
+                    content: [{ type: 'text', text: 'Таймаут выполнения инструмента' }],
+                    isError: true
+                });
+            }, 120000);
+
+            const handler = (event, res) => {
+                clearTimeout(timeout);
+                if (res && res.error) {
+                    resolve({ content: [{ type: 'text', text: String(res.error) }], isError: true });
+                } else if (res && res.result) {
+                    resolve(res.result);
+                } else {
+                    resolve({ content: [{ type: 'text', text: 'Пустой ответ от инструмента' }], isError: true });
+                }
+            };
+
+            ipcMain.once('mcp-call-response', handler);
+            mainWindow.webContents.send('mcp-call', { name, arguments: args });
+        });
+    } finally {
+        release();
+    }
+}
+
+/**
+ * Ждём, пока рендерер пришлёт список инструментов. Таймаут — 15 сек.
+ */
+function waitForMcpToolsReady(timeoutMs = 15000) {
+    if (mcpToolsList !== null) return Promise.resolve(mcpToolsList);
+
+    return new Promise((resolve) => {
+        const timeout = setTimeout(() => {
+            ipcMain.removeListener('mcp-tools-response', handler);
+            console.warn('[MCP] Таймаут ожидания списка инструментов');
+            resolve(null);
+        }, timeoutMs);
+
+        const handler = () => {
+            clearTimeout(timeout);
+            resolve(mcpToolsList);
+        };
+        ipcMain.once('mcp-tools-response', handler);
+    });
+}
+
+/**
+ * Запуск Streamable HTTP MCP-сервера на localhost.
+ * Stateless-режим: сессия не сохраняется между запросами.
+ */
+function setupMcpHttpServer(port = 3100) {
+    if (!express || !Server || !StreamableHTTPServerTransport) {
+        console.warn('[MCP] Пропускаем запуск HTTP-сервера: нет необходимых модулей');
+        return null;
+    }
+
+    const httpApp = express();
+    httpApp.use(express.json({ limit: '10mb' }));
+
+    // --- POST /mcp — основной маршрут ---
+    httpApp.post('/mcp', async (req, res) => {
+        try {
+            const server = new Server(
+                { name: 'kontrcad-mcp', version: '1.0.0' },
+                { capabilities: { tools: {} } }
+            );
+
+            server.setRequestHandler('tools/list', async () => ({
+                tools: mcpToolsList || [],
+            }));
+
+            server.setRequestHandler('tools/call', async (req) => {
+                const { name, arguments: args } = req.params;
+                return await callToolInRenderer(name, args);
+            });
+
+            const transport = new StreamableHTTPServerTransport({
+                sessionIdGenerator: undefined, // ★ stateless
+                enableJsonResponse: true,       // отвечаем JSON, а не SSE
+            });
+
+            res.on('close', () => {
+                try { transport.close(); } catch (e) {}
+            });
+
+            await server.connect(transport);
+            await transport.handleRequest(req, res, req.body);
+        } catch (err) {
+            console.error('[MCP] Ошибка обработки запроса:', err);
+            if (!res.headersSent) {
+                res.status(500).json({
+                    jsonrpc: '2.0',
+                    error: { code: -32603, message: 'Internal error' },
+                    id: null,
+                });
+            }
+        }
+    });
+
+    // --- GET / DELETE — в stateless-режиме не поддерживаются ---
+    const methodNotAllowed = (req, res) => {
+        res.status(405).json({
+            jsonrpc: '2.0',
+            error: { code: -32000, message: 'Method Not Allowed' },
+            id: null,
+        });
+    };
+    httpApp.get('/mcp', methodNotAllowed);
+    httpApp.delete('/mcp', methodNotAllowed);
+
+    // ★ Биндимся на 127.0.0.1 — сервер доступен только с локальной машины
+    mcpHttpServer = httpApp.listen(port, '127.0.0.1', () => {
+        console.log(`[MCP] Streamable HTTP server: http://localhost:${port}/mcp`);
+    });
+    mcpHttpServer.on('error', (err) => {
+        console.error('[MCP] Ошибка HTTP-сервера:', err.message);
+    });
+
+    return mcpHttpServer;
+}
+
+// ============================================================
 //  МЕНЮ
 // ============================================================
 function createMenu() {
@@ -294,93 +469,16 @@ function createWindow() {
         mainWindow.focus();
     });
 
+    // ★ Запрашиваем у рендерера список MCP-инструментов после загрузки
+    mainWindow.webContents.once('did-finish-load', () => {
+        mainWindow.webContents.send('mcp-get-tools');
+    });
+
     mainWindow.on('closed', () => {
         mainWindow = null;
     });
 
     createMenu();
-
-    // ★ Запуск WebSocket-сервера для MCP
-    if (Server && StdioServerTransport) {
-        try {
-            const wss = new WebSocketServer({ port: 3100, path: '/mcp' });
-            console.log('[MCP-WS] WebSocket-сервер запущен на ws://localhost:3100/mcp');
-
-            wss.on('connection', (ws) => {
-                console.log('[MCP-WS] Клиент подключился');
-
-                const server = new Server(
-                    { name: 'kontrcad', version: '1.0.0' },
-                    { capabilities: { tools: {} } }
-                );
-
-                const transport = {
-                    onmessage: null,
-                    onclose: null,
-                    onerror: null,
-                    async start() {},
-                    async close() { ws.close(); },
-                    send(message) {
-                        if (ws.readyState === ws.OPEN) {
-                            ws.send(JSON.stringify(message));
-                        }
-                    }
-                };
-
-                ws.on('message', (data) => {
-                    try {
-                        const message = JSON.parse(data.toString());
-                        if (transport.onmessage) {
-                            transport.onmessage(message);
-                        }
-                    } catch (e) {
-                        console.error('[MCP-WS] Ошибка парсинга сообщения:', e);
-                    }
-                });
-
-                ws.on('close', () => {
-                    console.log('[MCP-WS] Клиент отключился');
-                    if (transport.onclose) transport.onclose();
-                });
-
-                ws.on('error', (error) => {
-                    console.error('[MCP-WS] Ошибка WebSocket:', error);
-                    if (transport.onerror) transport.onerror(error);
-                });
-
-                server.connect(transport);
-
-                mainWindow.webContents.send('mcp-get-tools');
-
-                const onToolsResponse = (event, tools) => {
-                    ipcMain.removeListener('mcp-tools-response', onToolsResponse);
-
-                    server.setRequestHandler('tools/list', async () => ({ tools }));
-
-                    server.setRequestHandler('tools/call', async (req) => {
-                        return new Promise((resolve) => {
-                            mainWindow.webContents.send('mcp-call', req.params);
-
-                            const onCallResponse = (e, res) => {
-                                ipcMain.removeListener('mcp-call-response', onCallResponse);
-                                if (res.error) {
-                                    resolve({ content: [{ type: 'text', text: res.error }], isError: true });
-                                } else {
-                                    resolve(res.result);
-                                }
-                            };
-                            ipcMain.once('mcp-call-response', onCallResponse);
-                        });
-                    });
-                };
-                ipcMain.once('mcp-tools-response', onToolsResponse);
-            });
-        } catch (e) {
-            console.error('[MCP-WS] Не удалось запустить WebSocket-сервер:', e);
-        }
-    } else {
-        console.warn('[MCP-WS] SDK не установлен, WebSocket-сервер не запущен.');
-    }
 }
 
 // ============================================================
@@ -451,7 +549,6 @@ function registerAppProtocol() {
         let fullPath = path.join(baseDir, filePath);
 
         // ★ Per-file fallback: если файла нет в папке обновления — берём из установки.
-        // Это спасает шрифты/картинки/модули, если live-update бандл неполный.
         if (!fsSync.existsSync(fullPath) && baseDir !== __dirname) {
             const fallback = path.join(__dirname, filePath);
             if (fsSync.existsSync(fallback)) {
@@ -515,7 +612,12 @@ app.whenReady().then(async () => {
             headers['Access-Control-Allow-Origin'] = [origin];
             headers['Access-Control-Allow-Credentials'] = ['true'];
             headers['Access-Control-Allow-Methods'] = ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'];
-            headers['Access-Control-Allow-Headers'] = ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'];
+            // ★ Добавлены Cache-Control и Pragma — чтобы preflight не отваливался,
+            //   если они где-то ещё используются в fetch.
+            headers['Access-Control-Allow-Headers'] = [
+                'Content-Type', 'Authorization', 'X-Requested-With', 'Accept',
+                'Cache-Control', 'Pragma'
+            ];
 
             callback({ responseHeaders: headers });
         } else {
@@ -526,7 +628,9 @@ app.whenReady().then(async () => {
     await updater.initialize();
     setupIPCHandlers(updater);
 
-    // MCP STDIO-режим (по флагу --mcp)
+    // ============================================================
+    //  MCP STDIO-режим (по флагу --mcp)
+    // ============================================================
     if (process.argv.includes('--mcp')) {
         if (!Server || !StdioServerTransport) {
             console.error('[MCP] SDK не установлен. Выполните npm install @modelcontextprotocol/sdk');
@@ -585,12 +689,21 @@ app.whenReady().then(async () => {
         return;
     }
 
+    // ============================================================
+    //  ОБЫЧНЫЙ РЕЖИМ: окно + MCP HTTP
+    // ============================================================
     registerAppProtocol();
     createWindow();
 
     if (typeof updater.setWindow === 'function') {
         updater.setWindow(mainWindow);
     }
+
+    // ★ Запускаем MCP HTTP-сервер только после того, как рендерер
+    //   пришлёт список инструментов (иначе первый tools/list вернёт пусто).
+    waitForMcpToolsReady(15000).then(() => {
+        setupMcpHttpServer(3100);
+    });
 
     app.on('activate', () => {
         if (BrowserWindow.getAllWindows().length === 0) createWindow();
@@ -599,4 +712,17 @@ app.whenReady().then(async () => {
 
 app.on('window-all-closed', () => {
     if (process.platform !== 'darwin') app.quit();
+});
+
+// ★ Корректное завершение HTTP-сервера
+app.on('before-quit', () => {
+    if (mcpHttpServer) {
+        try {
+            mcpHttpServer.close();
+            console.log('[MCP] HTTP-сервер остановлен');
+        } catch (e) {
+            console.error('[MCP] Ошибка остановки HTTP-сервера:', e.message);
+        }
+        mcpHttpServer = null;
+    }
 });
