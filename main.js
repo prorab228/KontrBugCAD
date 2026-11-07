@@ -4,6 +4,12 @@ const fs = require('fs').promises;
 const fsSync = require('fs');
 const { v4: uuidv4 } = require('uuid');
 const { ElectronUpdater, setupIPCHandlers } = require('@capgo/electron-updater');
+// ============================================================
+//  FIX: Глобальный polyfill для crypto (требуется MCP SDK в Node.js/Electron)
+// ============================================================
+if (typeof globalThis.crypto === 'undefined') {
+    globalThis.crypto = require('crypto').webcrypto;
+}
 
 // ============================================================
 //  MCP SDK / EXPRESS — БЕЗОПАСНЫЙ ИМПОРТ
@@ -11,18 +17,29 @@ const { ElectronUpdater, setupIPCHandlers } = require('@capgo/electron-updater')
 //  просто MCP-режим будет недоступен.
 // ============================================================
 let Server, StdioServerTransport, StreamableHTTPServerTransport, express;
+let ListToolsRequestSchema, CallToolRequestSchema; // ★ ОБЪЯВЛЯЕМ ПЕРЕМЕННЫЕ
+
 try {
-    Server = require('@modelcontextprotocol/sdk/server/index.js').Server;
+    const sdkServer = require('@modelcontextprotocol/sdk/server/index.js');
+    Server = sdkServer.Server;
+
+    // ★ КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Схемы импортируются из types.js, а не из server!
+    const sdkTypes = require('@modelcontextprotocol/sdk/types.js');
+    ListToolsRequestSchema = sdkTypes.ListToolsRequestSchema;
+    CallToolRequestSchema = sdkTypes.CallToolRequestSchema;
+
     StdioServerTransport = require('@modelcontextprotocol/sdk/server/stdio.js').StdioServerTransport;
     StreamableHTTPServerTransport = require('@modelcontextprotocol/sdk/server/streamableHttp.js').StreamableHTTPServerTransport;
 } catch (e) {
     console.warn('[MCP] MCP SDK недоступен:', e.message);
 }
+
 try {
     express = require('express');
 } catch (e) {
     console.warn('[MCP] express недоступен:', e.message);
 }
+
 
 // ============================================================
 //  ИНИЦИАЛИЗАЦИЯ LIVE-UPDATE
@@ -30,6 +47,7 @@ try {
 const updater = new ElectronUpdater({
     appId: 'com.kontrbugtech.cad',
     autoUpdate: false,
+    disableStats: true,
 });
 
 // ============================================================
@@ -278,14 +296,13 @@ function waitForMcpToolsReady(timeoutMs = 15000) {
  */
 function setupMcpHttpServer(port = 3100) {
     if (!express || !Server || !StreamableHTTPServerTransport) {
-        console.warn('[MCP] Пропускаем запуск HTTP-сервера: нет необходимых модулей');
+        console.warn('[MCP] Пропускаем запуск HTTP-Server: нет необходимых модулей');
         return null;
     }
 
     const httpApp = express();
     httpApp.use(express.json({ limit: '10mb' }));
 
-    // --- POST /mcp — основной маршрут ---
     httpApp.post('/mcp', async (req, res) => {
         try {
             const server = new Server(
@@ -293,18 +310,18 @@ function setupMcpHttpServer(port = 3100) {
                 { capabilities: { tools: {} } }
             );
 
-            server.setRequestHandler('tools/list', async () => ({
-                tools: mcpToolsList || [],
-            }));
-
-            server.setRequestHandler('tools/call', async (req) => {
-                const { name, arguments: args } = req.params;
-                return await callToolInRenderer(name, args);
-            });
+            // ★ ИСПРАВЛЕНО: Используем объекты схем вместо строк
+              server.setRequestHandler(ListToolsRequestSchema, async () => ({
+                  tools: mcpToolsList || [],
+              }));
+              server.setRequestHandler(CallToolRequestSchema, async (req) => {
+                  const { name, arguments: args } = req.params;
+                  return await callToolInRenderer(name, args);
+              });
 
             const transport = new StreamableHTTPServerTransport({
-                sessionIdGenerator: undefined, // ★ stateless
-                enableJsonResponse: true,       // отвечаем JSON, а не SSE
+                sessionIdGenerator: undefined,
+                enableJsonResponse: true,
             });
 
             res.on('close', () => {
@@ -315,11 +332,11 @@ function setupMcpHttpServer(port = 3100) {
             await transport.handleRequest(req, res, req.body);
         } catch (err) {
             console.error('[MCP] Ошибка обработки запроса:', err);
-            if (!res.headersSent) {
+ if (!res.headersSent) {
                 res.status(500).json({
                     jsonrpc: '2.0',
-                    error: { code: -32603, message: 'Internal error' },
-                    id: null,
+                    error: { code: -32603, message: `Internal error: ${err.message}` },
+                    id: req.body?.id || null,
                 });
             }
         }
@@ -336,10 +353,10 @@ function setupMcpHttpServer(port = 3100) {
     httpApp.get('/mcp', methodNotAllowed);
     httpApp.delete('/mcp', methodNotAllowed);
 
-    // ★ Биндимся на 127.0.0.1 — сервер доступен только с локальной машины
     mcpHttpServer = httpApp.listen(port, '127.0.0.1', () => {
         console.log(`[MCP] Streamable HTTP server: http://localhost:${port}/mcp`);
     });
+
     mcpHttpServer.on('error', (err) => {
         console.error('[MCP] Ошибка HTTP-сервера:', err.message);
     });
@@ -469,9 +486,23 @@ function createWindow() {
         mainWindow.focus();
     });
 
-    // ★ Запрашиваем у рендерера список MCP-инструментов после загрузки
+    // ★ Ретраи: рендерер регистрирует onMcpGetTools не сразу
+    //   (initApp сначала ждёт notifyAppReady, потом создаёт CADEditor,
+    //   потом McpManager.init() вешает обработчик). Шлём несколько раз,
+    //   пока не получим ответ.
     mainWindow.webContents.once('did-finish-load', () => {
-        mainWindow.webContents.send('mcp-get-tools');
+        let attempts = 0;
+        const sendRequest = () => {
+            if (mcpToolsList !== null) return; // уже получили ответ — прекращаем
+            if (attempts >= 8) {
+                console.warn('[MCP] Список инструментов так и не пришёл за ~15 сек');
+                return;
+            }
+            attempts++;
+            mainWindow.webContents.send('mcp-get-tools');
+            setTimeout(sendRequest, 500 * attempts); // 0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4 сек
+        };
+        sendRequest();
     });
 
     mainWindow.on('closed', () => {
@@ -643,6 +674,46 @@ app.whenReady().then(async () => {
             { capabilities: { tools: {} } }
         );
 
+        // ★ Читаем глобальный mcpToolsList — обновляется persistent-хендлером
+        server.setRequestHandler(ListToolsRequestSchema, async () => ({
+            tools: mcpToolsList || [],
+        }));
+
+        server.setRequestHandler(CallToolRequestSchema, async (req) => {
+            // сериализуем через тот же мьютекс, что и HTTP-сервер
+            const prev = mcpCallMutex;
+            let release;
+            mcpCallMutex = new Promise(r => { release = r; });
+            await prev;
+
+            try {
+                return await new Promise((resolve) => {
+                    if (!mcpWindow || mcpWindow.isDestroyed()) {
+                        resolve({ content: [{ type: 'text', text: 'Окно недоступно' }], isError: true });
+                        return;
+                    }
+                    const timeout = setTimeout(() => {
+                        ipcMain.removeListener('mcp-call-response', handler);
+                        resolve({ content: [{ type: 'text', text: 'Таймаут' }], isError: true });
+                    }, 120000);
+                    const handler = (e, res) => {
+                        clearTimeout(timeout);
+                        if (res?.error) {
+                            resolve({ content: [{ type: 'text', text: String(res.error) }], isError: true });
+                        } else if (res?.result) {
+                            resolve(res.result);
+                        } else {
+                            resolve({ content: [{ type: 'text', text: 'Пустой ответ' }], isError: true });
+                        }
+                    };
+                    ipcMain.once('mcp-call-response', handler);
+                    mcpWindow.webContents.send('mcp-call', req.params);
+                });
+            } finally {
+                release();
+            }
+        });
+
         const mcpWindow = new BrowserWindow({
             show: false,
             webPreferences: {
@@ -660,32 +731,9 @@ app.whenReady().then(async () => {
             mcpWindow.webContents.send('mcp-get-tools');
         });
 
-        let toolsList = [];
-
-        ipcMain.once('mcp-tools-response', (event, tools) => {
-            toolsList = tools;
-
-            server.setRequestHandler('tools/list', async () => ({ tools: toolsList }));
-
-            server.setRequestHandler('tools/call', async (req) => {
-                return new Promise((resolve) => {
-                    mcpWindow.webContents.send('mcp-call', req.params);
-
-                    ipcMain.once('mcp-call-response', (e, res) => {
-                        if (res.error) {
-                            resolve({ content: [{ type: 'text', text: res.error }], isError: true });
-                        } else {
-                            resolve(res.result);
-                        }
-                    });
-                });
-            });
-
-            const transport = new StdioServerTransport();
-            server.connect(transport);
-            console.error('[MCP] STDIO server started');
-        });
-
+        const transport = new StdioServerTransport();
+        server.connect(transport);
+        console.error('[MCP] STDIO server started');
         return;
     }
 
