@@ -948,6 +948,12 @@
                 <button class="panel-tab" data-tab="history" data-tooltip-title="История" data-tooltip-description="Нажмите ПКМ что-бы закрепить">
                     <i class="fas fa-history"></i>
                 </button>
+
+<!--                <button class="panel-tab" data-tab="ai"-->
+<!--                        data-tooltip-title="ИИ-ассистент"-->
+<!--                        data-tooltip-description="Чат с GigaChat / DeepSeek / OpenRouter / Ollama">-->
+<!--                    <i class="fas fa-robot"></i>-->
+<!--                </button>-->
             </div>
 
             <div class="panel-content active" id="libraryContent">
@@ -1019,8 +1025,55 @@
                         </div>
                     </div>
                 </div>
-
             </div>
+
+<!--            <div class="panel-content" id="aiContent">-->
+<!--                    &lt;!&ndash; Шапка: провайдер + модель + ключ + очистка &ndash;&gt;-->
+<!--                    <div class="ai-provider-bar">-->
+<!--                        <select id="aiProviderSelect" class="property-select"></select>-->
+<!--                        <select id="aiModelSelect" class="property-select"></select>-->
+<!--                        <button id="aiAddModelBtn" class="tool-btn" data-tooltip-title="Добавить свою модель">-->
+<!--                            <i class="fas fa-plus"></i>-->
+<!--                        </button>-->
+<!--                        <button id="aiKeyBtn" class="tool-btn" data-tooltip-title="Ключ доступа">-->
+<!--                            <i class="fas fa-key"></i>-->
+<!--                        </button>-->
+<!--                        <button id="aiChatClearBtn" class="tool-btn" data-tooltip-title="Очистить чат">-->
+<!--                            <i class="fas fa-trash"></i>-->
+<!--                        </button>-->
+<!--                    </div>-->
+
+<!--                    &lt;!&ndash; Скрытая панель ввода ключа &ndash;&gt;-->
+<!--                    <div class="ai-key-panel" id="aiKeyPanel" style="display: none;">-->
+<!--                        <input type="password" id="aiApiKeyInput" class="modal-input"-->
+<!--                               placeholder="API-ключ">-->
+<!--                        <button id="aiKeySaveBtn" class="btn-primary btn-small">-->
+<!--                            <i class="fas fa-check"></i> Сохранить-->
+<!--                        </button>-->
+<!--                    </div>-->
+
+<!--                    &lt;!&ndash; История чата &ndash;&gt;-->
+<!--                    <div class="ai-chat-history" id="aiChatHistory">-->
+<!--                        <div class="ai-chat-welcome">-->
+<!--                            <i class="fas fa-robot"></i>-->
+<!--                            <p>Привет! Я ИИ-ассистент КонтрCAD.</p>-->
+<!--                            <p class="property-hint" style="margin-top: 6px;">-->
+<!--                                Выберите провайдера и модель сверху-->
+<!--                            </p>-->
+<!--                        </div>-->
+<!--                    </div>-->
+
+<!--                    &lt;!&ndash; Поле ввода &ndash;&gt;-->
+<!--                    <div class="ai-chat-input-wrapper">-->
+<!--                        <textarea id="aiChatInput"-->
+<!--                                  class="ai-chat-input"-->
+<!--                                  rows="2"-->
+<!--                                  placeholder="Сообщение… (Enter — отправить, Shift+Enter — новая строка)"></textarea>-->
+<!--                        <button id="aiChatSendBtn" class="btn-primary ai-send-btn" data-tooltip-title="Отправить">-->
+<!--                            <i class="fas fa-paper-plane"></i>-->
+<!--                        </button>-->
+<!--                    </div>-->
+<!--                </div>-->
         </div>
 
         <div class="right-panel-elements">
