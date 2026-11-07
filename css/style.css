@@ -1465,6 +1465,29 @@ select option {
     font-size: 12px;
 }
 
+
+/* ───────── Папки-категории: модификатор поверх .scene-item ───────── */
+.scene-item.scene-folder {
+    color: var(--text-secondary);
+}
+.scene-item.scene-folder .scene-item-name {
+    cursor: pointer;
+    color: var(--text-secondary);
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+.scene-item.scene-folder .scene-item-name:hover {
+    background: transparent;   /* у обычных item-ов hover-фон на имени — тут не нужен */
+}
+.scene-item.scene-folder .scene-item-name .property-hint {
+    text-transform: none;
+    letter-spacing: 0;
+    margin-left: 4px;
+    font-weight: 400;
+}
+
 /* Модальные окна */
 .modal-overlay {
     display: none;
