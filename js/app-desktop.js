@@ -130,6 +130,8 @@ async function checkForUpdates(updater, updateBtn = null) {
             headers: {
                 'Authorization': `Bearer ${token}`,
                 'Accept': 'application/json'
+'
+            }
         });
 
         if (response.status === 403) {
