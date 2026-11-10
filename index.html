@@ -83,6 +83,14 @@
                 document.head.appendChild(appleStatus);
             }
 
+            // WebMCP-полифилл (document.modelContext) нужен только в браузере:
+            // в Electron MCP работает через IPC, а полифилл лишь ругается в консоль.
+            if (!isDesktop) {
+                var mcpPolyfill = document.createElement('script');
+                mcpPolyfill.src = 'lib/mcp-b/index.iife.js';
+                document.head.appendChild(mcpPolyfill);
+            }
+
             // Точка входа: веб или Electron
             var entry = document.createElement('script');
             entry.type = 'module';
@@ -93,9 +101,6 @@
             window.__CAD_ENV__ = { desktop: isDesktop, legacy: legacy, three: threeVersion };
         })();
     </script>
-
-    <!-- MCP: предоставляет document.modelContext (WebMCP) -->
-    <script src="lib/mcp-b/index.iife.js"></script>
 
 
     <script src="lib/jszip.min.js"></script>
