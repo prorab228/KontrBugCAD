@@ -436,6 +436,9 @@
         z-index: 20;
         transition: bottom 0.28s ease;
     }
+
+
+
     .properties-panel.hidden {
         bottom: -42vh !important;
         bottom: -42dvh !important;
@@ -488,6 +491,11 @@
     }
     .properties-panel:not(.hidden) + .right-panel-elements .panel-toggle-btn i {
         transform: rotate(90deg) !important;
+    }
+
+    .viewport-hints
+    {
+        right: 65px;
     }
 
     /* Status сообщений не должен прятаться под toolbar */

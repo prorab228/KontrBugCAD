@@ -36,8 +36,11 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
-    // 3. ДЛЯ HTML И CONFIG.JS: Network First (всегда проверяем обновления)
-    if (event.request.mode === 'navigate' || url.pathname.endsWith('config.js')) {
+    // 3. ДЛЯ HTML, CONFIG.JS И ФАЙЛОВ ПЕРЕВОДОВ: Network First (всегда проверяем обновления)
+    //    Переводы правятся часто — держать их вечно в кэше нельзя.
+    if (event.request.mode === 'navigate' ||
+        url.pathname.endsWith('config.js') ||
+        url.pathname.includes('/js/ui/languages/')) {
         event.respondWith(
             fetch(event.request)
                 .then((response) => {

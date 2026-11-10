@@ -475,7 +475,10 @@ function createWindow() {
         }
     });
 
-    mainWindow.loadURL('app://local/index-desktop.html').then(() => {
+    // Единый index.html: окружение (desktop) определяется на странице по protocol app://,
+    // legacy-режим передаём флагом — он выбирает three 0.162.0 вместо 0.185.1
+    const legacyQuery = getSettings().useLegacy ? '?legacy=1' : '';
+    mainWindow.loadURL('app://local/index.html' + legacyQuery).then(() => {
         mainWindow.maximize();
         mainWindow.show();
     });
@@ -547,12 +550,9 @@ function registerAppProtocol() {
 
         // ★ Умный выбор файла для «корня»
         if (filePath === '' || filePath === 'index.html' || filePath === 'index-desktop.html') {
-            const settings = getSettings();
-            const isLegacy = settings.useLegacy;
-
-            const candidates = isLegacy
-                ? ['index-desktop-legacy.html', 'index-legacy.html', 'index-desktop.html', 'index.html']
-                : ['index-desktop.html', 'index.html', 'index-desktop-legacy.html'];
+            // index.html — единый entrypoint. Старые имена оставлены для бандлов,
+            // собранных предыдущими версиями сборки.
+            const candidates = ['index.html', 'index-desktop.html', 'index-legacy.html', 'index-desktop-legacy.html'];
 
             let resolvedPath = null;
             for (const candidate of candidates) {
@@ -725,7 +725,7 @@ app.whenReady().then(async () => {
         });
 
         registerAppProtocol();
-        mcpWindow.loadURL('app://local/index-desktop.html');
+        mcpWindow.loadURL('app://local/index.html');
 
         mcpWindow.webContents.on('did-finish-load', () => {
             mcpWindow.webContents.send('mcp-get-tools');

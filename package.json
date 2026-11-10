@@ -8,20 +8,20 @@
   "scripts": {
     "build": "node build.js",
     "start": "electron .",
+    "start:no-sandbox": "electron . --no-sandbox",
     "dist": "electron-builder",
     "dist:all": "electron-builder -mwl",
     "pack": "electron-builder --dir"
   },
-    "dependencies": {
-      "@capgo/electron-updater": "^0.0.6",
-      "@modelcontextprotocol/sdk": "^1.18.0",
-      "express": "^4.21.0",
-      "uuid": "^9.0.1",
-      "ws": "^8.18.0"
+  "dependencies": {
+    "@capgo/electron-updater": "^0.0.6",
+    "@modelcontextprotocol/sdk": "^1.18.0",
+    "express": "^4.21.0",
+    "uuid": "^9.0.1",
+    "ws": "^8.18.0"
   },
   "devDependencies": {
     "archiver": "^6.0.1",
-    "electron": "^28.0.0",
     "electron-builder": "^24.9.1",
     "javascript-obfuscator": "^4.1.0"
   },
