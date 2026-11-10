@@ -1,4 +1,6 @@
-const CACHE_NAME = 'kontrcad-cache-v1';
+// Версию меняем при выпуске нового JS: старый кэш удаляется в activate,
+// и клиенты сразу получают свежие файлы без «Полного сброса».
+const CACHE_NAME = 'kontrcad-cache-v2';
 let isHardReload = false; // Флаг для принудительного обхода HTTP-кэша
 
 self.addEventListener('install', (event) => {
@@ -6,7 +8,12 @@ self.addEventListener('install', (event) => {
 });
 
 self.addEventListener('activate', (event) => {
-    event.waitUntil(clients.claim());
+    event.waitUntil((async () => {
+        // Чистим кэши прошлых версий
+        const names = await caches.keys();
+        await Promise.all(names.map(name => (name === CACHE_NAME ? null : caches.delete(name))));
+        await clients.claim();
+    })());
 });
 
 self.addEventListener('fetch', (event) => {
