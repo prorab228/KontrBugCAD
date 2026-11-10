@@ -1085,8 +1085,22 @@
 
         <div class="right-panel-elements">
             <div class="status" id="status">Загрузка редактора, ожидайте...</div>
-            <div class="controls-hint" style="cursor: pointer;" onclick="this.style.display='none'" data-tooltip-title="Кликните чтобы скрыть">
-                <b>ЛКМ</b> - выделение, <br><b>ПКМ</b>  - вращение, <br><b>Колесико</b>  - перемещение камеры
+
+            <!-- Нижний правый угол: линейка масштаба и подсказка мыши.
+                 Один flex-контейнер: когда подсказка сворачивается,
+                 линейка сама опускается вниз — без JS. -->
+            <div class="viewport-hints">
+                <div class="grid-scale-bar is-hidden" id="gridScaleBar" data-tooltip-title="Текущий масштаб сетки чертежа">
+                    <div class="grid-scale-bar__body">
+                        <span class="grid-scale-bar__label" id="gridScaleBarLabel">10 мм</span>
+                        <div class="grid-scale-bar__ruler" id="gridScaleBarRuler"></div>
+                    </div>
+                    <div class="grid-scale-bar__cell" id="gridScaleBarCell">сетка 1 мм</div>
+                </div>
+
+                <div class="controls-hint" style="cursor: pointer;" onclick="this.classList.add('is-collapsed')" data-tooltip-title="Кликните чтобы скрыть">
+                    <b>ЛКМ</b> - выделение, <br><b>ПКМ</b>  - вращение, <br><b>Колесико</b>  - перемещение камеры
+                </div>
             </div>
              <button class="panel-toggle-btn" id="togglePanelBtn">
                 <i class="fas fa-chevron-right"></i>

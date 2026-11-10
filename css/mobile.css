@@ -315,6 +315,12 @@
         display: none !important;
     }
 
+    /* Линейка масштаба: подсказки нет, но снизу строка координат */
+    .viewport-hints {
+        right: 10px !important;
+        bottom: 85px !important;
+    }
+
     /* 15. ДЕЛАЕМ ВСЕ ПОЛЯ ВВОДА БОЛЬШЕ */
     input, select, textarea {
         font-size: 16px !important; /* Предотвращает масштабирование iOS */
