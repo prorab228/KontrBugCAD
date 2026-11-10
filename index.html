@@ -585,7 +585,7 @@
 
 
                         <div class=" sketch-tool-menu" data-collapse data-priority="10" data-collapse-target="#sketchMoreShapesMenu">
-                            <button class="tool-btn sketch-tool-btn" data-sketch-tool="curve" data-tooltip-title="Сглаженная кривая (7)" data-tooltip-image="images/sketch/curve_demo.png" data-tooltip-description="Создание и редактирование сглаженной кривой Безье">
+                            <button class="tool-btn sketch-tool-btn" data-sketch-tool="curve" data-tooltip-title="Сглаженная кривая (7)" data-tooltip-image="images/sketch/curve_demo.png" data-tooltip-description="Создание сглаженной кривой. Редактирование точек — при выделении кривой">
                                 <span class="cad-icon icon-bezier"></span>
                             </button>
                             <div class="dropdown">
@@ -593,7 +593,7 @@
                                     <i class="fas fa-caret-down"></i>
                                 </button>
                                 <div class="dropdown-menu">
-                                    <a href="#" class="sketch-tool-btn" data-sketch-tool="polyline" data-tooltip-title="Ломаная (7)" data-tooltip-image="images/sketch/polyline_demo.png" data-tooltip-description="Создать/редактировать ломаную линию из отрезков">
+                                    <a href="#" class="sketch-tool-btn" data-sketch-tool="polyline" data-tooltip-title="Ломаная (7)" data-tooltip-image="images/sketch/polyline_demo.png" data-tooltip-description="Создать ломаную линию из отрезков. Редактирование вершин — при выделении">
                                         <span class="cad-icon icon-polyline"></span>Ломаная
                                     </a>
                                 </div>
@@ -656,6 +656,13 @@
                                 data-tooltip-image="images/sketch/scissors_demo.png"
                                 data-tooltip-description="Обрезает линии в точках пересечения с другими">
                             <i class="fas fa-cut"></i>
+                        </button>
+                        <button class="tool-btn  sketch-tool-btn"
+                                data-sketch-tool="extend"
+                                data-collapse data-priority="36"
+                                data-tooltip-title="Продление (E)"
+                                data-tooltip-description="Продлевает отрезок, ломаную или дугу от края до ближайшего пересечения с другими элементами">
+                            <span class="cad-icon icon-extend"></span>
                         </button>
                          <button class="tool-btn sketch-tool-btn"
                                  data-sketch-tool="fillet" data-tooltip-title="Скругление"
