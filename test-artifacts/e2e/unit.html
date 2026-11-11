@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8">
+    <title>КонтрCAD — unit-тесты утилит</title>
+    <!--
+        Браузерные unit-тесты для чистых утилит (без запуска редактора).
+        Открывать через scripts/dev-server.mjs: http://127.0.0.1:8100/test-artifacts/e2e/unit.html
+        Результаты — в window.__unitResults и в тексте на странице.
+    -->
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "/lib/three@0.185.1/build/three.module.js",
+            "three/addons/": "/lib/three@0.185.1/examples/jsm/",
+            "core/": "/js/core/",
+            "generators/": "/js/generators/",
+            "tools/": "/js/tools/",
+            "utils/": "/js/utils/",
+            "lib/": "/lib/"
+        }
+    }
+    </script>
+</head>
+<body>
+<pre id="out">запуск…</pre>
+<script type="module">
+import * as THREE from 'three';
+import { sortPathEntities, buildPath3D } from 'core/geometry/create_geometry/PathChainUtils.js';
+import { makePreviewMaterialTransparent, markPreviewClone } from 'core/scene/PreviewMaterials.js';
+import { disposeObject3D } from 'core/scene/SceneCleanup.js';
+import { TransformToolBase } from '/js/tools/transform-tool-base.js';
+import { SelectionManager } from '/js/managers/SelectionManager.js';
+import { Constraint, PointLineDistanceConstraint, PointOnLineConstraint } from '/js/tools/sketch/constraints/SketchConstraint.js';
+import { buildThreadFields, updateMinorDiameter, applyThreadFieldValues } from '/js/core/parametric/executors/helpers/threadFields.js';
+import { GeometryUtils } from 'core/geometry/GeometryUtils.js';
+
+// Привязка живёт в SelectionManager — тестируем методы прототипа без редактора.
+const snapTarget = Object.create(SelectionManager.prototype);
+snapTarget.defaultVertexSnapThreshold = 1;
+
+const results = [];
+function check(name, fn) {
+    try {
+        const detail = fn();
+        results.push({ name, pass: true, detail: detail ?? null });
+    } catch (error) {
+        results.push({ name, pass: false, detail: String(error && (error.message || error)) });
+    }
+}
+function assert(condition, message) {
+    if (!condition) throw new Error(message);
+}
+function assertEqual(actual, expected, message) {
+    const a = JSON.stringify(actual);
+    const e = JSON.stringify(expected);
+    if (a !== e) throw new Error(`${message}: получено ${a}, ожидалось ${e}`);
+}
+
+/** Сущность-заглушка: точка/отрезок на плоскости (identity). */
+function fakeEntity(uuid, points, plane = new THREE.Object3D()) {
+    return {
+        userData: { uuid },
+        plane,
+        getPoints: () => points.map(([x, y, z = 0]) => new THREE.Vector3(x, y, z))
+    };
+}
+
+// ---------------------------------------------------------------- PathChainUtils
+
+check('sortPathEntities: пустой вход', () => {
+    assertEqual(sortPathEntities([]), [], 'результат');
+});
+
+check('sortPathEntities: одна сущность', () => {
+    const a = fakeEntity('a', [[0, 0], [10, 0]]);
+    const chain = sortPathEntities([a]);
+    assertEqual(chain.length, 1, 'длина цепочки');
+    assert(chain[0].entity === a, 'должна вернуться та же сущность');
+    assertEqual(chain[0].reverse, false, 'reverse');
+});
+
+check('sortPathEntities: собирает цепочку в правильном порядке', () => {
+    // A: 0→10, B: 20→10 (обратный), C: 20→30
+    const a = fakeEntity('a', [[0, 0], [10, 0]]);
+    const b = fakeEntity('b', [[20, 0], [10, 0]]);
+    const c = fakeEntity('c', [[20, 0], [30, 0]]);
+    const chain = sortPathEntities([c, a, b]);
+    assertEqual(chain.map(item => item.entity.userData.uuid), ['a', 'b', 'c'], 'порядок');
+    assertEqual(chain.map(item => item.reverse), [false, true, false], 'направления');
+});
+
+check('sortPathEntities: результат не зависит от порядка входа', () => {
+    const make = () => [
+        fakeEntity('a', [[0, 0], [10, 0]]),
+        fakeEntity('b', [[20, 0], [10, 0]]),
+        fakeEntity('c', [[20, 0], [30, 0]]),
+        fakeEntity('d', [[30, 0], [40, 0]])
+    ];
+    const first = sortPathEntities(make()).map(i => `${i.entity.userData.uuid}:${i.reverse}`);
+    const second = sortPathEntities(make().reverse()).map(i => `${i.entity.userData.uuid}:${i.reverse}`);
+    assertEqual(first, second, 'детерминизм');
+});
+
+check('sortPathEntities: сущности без точек отбрасываются', () => {
+    const a = fakeEntity('a', [[0, 0], [10, 0]]);
+    const empty = { userData: { uuid: 'empty' }, plane: new THREE.Object3D(), getPoints: () => [] };
+    const chain = sortPathEntities([a, empty]);
+    assertEqual(chain.map(item => item.entity.userData.uuid), ['a'], 'осталась одна');
+});
+
+check('buildPath3D: склеивает стыки без дублей', () => {
+    const a = fakeEntity('a', [[0, 0], [10, 0]]);
+    const b = fakeEntity('b', [[20, 0], [10, 0]]);
+    const c = fakeEntity('c', [[20, 0], [30, 0]]);
+    const basePlane = new THREE.Object3D();
+    const path = buildPath3D([c, a, b], basePlane);
+    assertEqual(path.map(p => [p.x, p.y, p.z]), [[0, 0, 0], [10, 0, 0], [20, 0, 0], [30, 0, 0]], 'точки пути');
+});
+
+check('buildPath3D: переводит точки в координаты плоскости профиля', () => {
+    const entityPlane = new THREE.Object3D();
+    entityPlane.position.set(5, 0, 0);
+    const a = fakeEntity('a', [[0, 0], [10, 0]], entityPlane);
+
+    const basePlane = new THREE.Object3D();
+    basePlane.position.set(5, 0, 0);
+
+    const path = buildPath3D([a], basePlane);
+    assertEqual(path.map(p => [round(p.x), round(p.y)]), [[0, 0], [10, 0]], 'локальные координаты');
+});
+
+check('buildPath3D: без плоскости у сущности сегмент выпадает', () => {
+    const a = { userData: { uuid: 'a' }, plane: null, getPoints: () => [new THREE.Vector3(0, 0, 0)] };
+    const path = buildPath3D([a], new THREE.Object3D());
+    assertEqual(path, [], 'пустой путь');
+});
+
+// ------------------------------------------------------------- PreviewMaterials
+
+check('makePreviewMaterialTransparent: клонирует материал и делает прозрачным', () => {
+    const material = new THREE.MeshStandardMaterial({ color: 0xff0000 });
+    const root = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), material);
+    makePreviewMaterialTransparent(root);
+
+    assert(root.material !== material, 'материал должен быть клонирован');
+    assertEqual(round(root.material.opacity), 0.4, 'opacity');
+    assertEqual(root.material.transparent, true, 'transparent');
+    assertEqual(round(material.opacity), 1, 'исходный материал не изменён');
+});
+
+check('makePreviewMaterialTransparent: работает с массивом материалов и без материала', () => {
+    const root = new THREE.Group();
+    const mesh1 = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial());
+    const mesh2 = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial());
+    mesh2.material = [mesh2.material, new THREE.MeshBasicMaterial()];
+    const line = new THREE.Object3D(); // без материала
+    root.add(mesh1, mesh2, line);
+
+    makePreviewMaterialTransparent(root);
+
+    assertEqual(round(mesh1.material.opacity), 0.4, 'одиночный материал');
+    assert(Array.isArray(mesh2.material), 'массив сохранился');
+    assertEqual(mesh2.material.map(m => round(m.opacity)), [0.4, 0.4], 'массив материалов');
+});
+
+// ------------------------------------------------------------------- VertexSnap
+
+check('findNearestVertexIndex: uv (Vector2) выбирает ближайшую вершину грани', () => {
+    const geometry = triangleGeometry();
+    const face = { a: 0, b: 1, c: 2 };
+
+    const nearFirst = snapTarget._nearestVertexIndex({ face, uv: new THREE.Vector2(0.9, 0.05) }, geometry);
+    assertEqual(nearFirst, 0, 'uv у вершины 0');
+
+    const nearSecond = snapTarget._nearestVertexIndex({ face, uv: new THREE.Vector2(0.05, 0.9) }, geometry);
+    assertEqual(nearSecond, 1, 'uv у вершины 1');
+
+    const nearThird = snapTarget._nearestVertexIndex({ face, uv: new THREE.Vector2(0.05, 0.05) }, geometry);
+    assertEqual(nearThird, 2, 'uv у вершины 2');
+});
+
+check('findNearestVertexIndex: без uv возвращает -1 (нужен перебор вершин)', () => {
+    const geometry = triangleGeometry();
+    const index = snapTarget._nearestVertexIndex({ face: { a: 0, b: 1, c: 2 }, point: new THREE.Vector3(0, 0, 0) }, geometry);
+    assertEqual(index, -1, 'нет барицентрики — нет индекса');
+});
+
+check('snapToVertex: находит ближайшую вершину перебором', () => {
+    const mesh = triangleMesh();
+    const result = snapTarget.snapToVertex({ object: mesh, point: new THREE.Vector3(9.8, 0.1, 0) }, 1);
+    assert(result !== null, 'привязка должна сработать');
+    assertEqual([round(result.point.x), round(result.point.y), round(result.point.z)], [10, 0, 0], 'вершина');
+});
+
+check('snapToVertex: уважает порог привязки', () => {
+    const mesh = triangleMesh();
+    const result = snapTarget.snapToVertex({ object: mesh, point: new THREE.Vector3(5, 5, 5) }, 1);
+    assertEqual(result, null, 'вне порога — привязки нет');
+});
+
+check('snapToVertex: использует uv, если он есть', () => {
+    const mesh = triangleMesh();
+    const result = snapTarget.snapToVertex({
+        object: mesh,
+        uv: new THREE.Vector2(0.05, 0.9),
+        face: { a: 0, b: 1, c: 2 },
+        point: new THREE.Vector3(9.9, 0.2, 0)
+    }, 1);
+    assert(result !== null, 'привязка должна сработать');
+    assertEqual([round(result.point.x), round(result.point.y)], [10, 0], 'вершина по uv');
+});
+
+function triangleGeometry() {
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array([
+        0, 0, 0,
+        10, 0, 0,
+        0, 10, 0
+    ]), 3));
+    geometry.setIndex([0, 1, 2]);
+    return geometry;
+}
+
+function triangleMesh() {
+    const mesh = new THREE.Mesh(triangleGeometry(), new THREE.MeshBasicMaterial());
+    mesh.updateMatrixWorld();
+    return mesh;
+}
+
+function round(value, digits = 4) {
+    return Number(Number(value).toFixed(digits));
+}
+
+// ------------------------------------------- Constraint._resolvePointIndices
+// Проверяем, что вынесенный резолвер эквивалентен старому инлайн-коду
+// из градиентов (он был скопирован в 5 местах).
+
+const constraintTarget = (pointName) => {
+    const instance = Object.create(Constraint.prototype);
+    instance.pointName = pointName;
+    return instance;
+};
+
+/** Эталон — дословно старый инлайн-код из gradient(). */
+function referenceResolve(paramIndicesMap, entity, pointName) {
+    const pm = paramIndicesMap.get(entity);
+    if (!pm) return { idxX: undefined, idxY: undefined };
+    let idxX, idxY;
+    if (entity.type === 'point') {
+        idxX = pm.get('x'); idxY = pm.get('y');
+    } else if (entity.type === 'polyline' || entity.type === 'spline') {
+        let vidx = -1;
+        if (pointName && pointName.startsWith('vertex:')) vidx = parseInt(pointName.split(':')[1]);
+        else if (pointName === 'start') vidx = 0;
+        else if (pointName === 'end') {
+            const pts = entity.type === 'polyline' ? (entity._points || []) : (entity.controlPoints || []);
+            vidx = pts.length - 1;
+        }
+        if (vidx >= 0) {
+            idxX = pm.get(`vertex:${vidx}:x`);
+            idxY = pm.get(`vertex:${vidx}:y`);
+        }
+    } else if (pointName === 'start') {
+        idxX = pm.get('startX'); idxY = pm.get('startY');
+    } else if (pointName === 'end') {
+        idxX = pm.get('endX'); idxY = pm.get('endY');
+    } else if (pointName === 'center') {
+        idxX = pm.get('centerX'); idxY = pm.get('centerY');
+    }
+    return { idxX, idxY };
+}
+
+check('_resolvePointIndices: эквивалентен старому инлайн-коду во всех случаях', () => {
+    const cases = [];
+
+    const pointEntity = { type: 'point' };
+    cases.push([pointEntity, 'point', ['x', 'y']]);
+
+    const lineEntity = { type: 'line' };
+    cases.push([lineEntity, 'start', ['startX', 'startY']]);
+    cases.push([lineEntity, 'end', ['endX', 'endY']]);
+    cases.push([lineEntity, 'center', ['centerX', 'centerY']]);
+
+    const circleEntity = { type: 'circle' };
+    cases.push([circleEntity, 'center', ['centerX', 'centerY']]);
+
+    const polyline = { type: 'polyline', _points: [{}, {}, {}, {}] };
+    cases.push([polyline, 'start', ['vertex:0:x', 'vertex:0:y']]);
+    cases.push([polyline, 'end', ['vertex:3:x', 'vertex:3:y']]);
+    cases.push([polyline, 'vertex:2', ['vertex:2:x', 'vertex:2:y']]);
+
+    const spline = { type: 'spline', controlPoints: [{}, {}, {}] };
+    cases.push([spline, 'end', ['vertex:2:x', 'vertex:2:y']]);
+
+    // Неизвестная точка у обычной сущности — параметров нет.
+    cases.push([lineEntity, 'vertex:1', []]);
+
+    for (const [entity, pointName, keys] of cases) {
+        const map = new Map([[entity, new Map(keys.map((key, index) => [key, index]))]]);
+        const actual = constraintTarget(pointName)._resolvePointIndices(map, entity);
+        const expected = referenceResolve(map, entity, pointName);
+        assertEqual(actual, expected, `случай ${entity.type}/${pointName}`);
+    }
+});
+
+check('_resolvePointIndices: сущность вне якобиана даёт пустые индексы', () => {
+    const entity = { type: 'line' };
+    const actual = constraintTarget('start')._resolvePointIndices(new Map(), entity);
+    assertEqual(actual, { idxX: undefined, idxY: undefined }, 'нет записи в карте');
+});
+
+// --------------------------------------------------------- threadFields (#7)
+
+check('buildThreadFields: полный набор полей с значениями по умолчанию', () => {
+    const fields = buildThreadFields({});
+    assertEqual(fields.length, 10, 'количество полей');
+    assertEqual(fields.map(f => f.name), [
+        'type', 'diameter', 'pitch', 'length', 'threadType',
+        'direction', 'starts', 'threadAngle', 'quality', 'position'
+    ], 'порядок полей');
+
+    const byName = Object.fromEntries(fields.map(f => [f.name, f]));
+    assertEqual(byName.type.value, 'metric', 'тип по умолчанию');
+    assertEqual(byName.diameter.value, 10, 'диаметр по умолчанию');
+    assertEqual(byName.pitch.value, 1.5, 'шаг по умолчанию');
+    assertEqual(byName.length.value, 20, 'длина по умолчанию');
+    assertEqual(byName.starts.value, 1, 'заходы по умолчанию');
+    assertEqual(byName.threadAngle.value, 60, 'угол профиля по умолчанию');
+    assertEqual(byName.position.label, 'Позиция (мм)', 'подпись позиции по умолчанию');
+});
+
+check('buildThreadFields: значения из параметров и своя подпись позиции', () => {
+    const fields = buildThreadFields(
+        { diameter: 12, pitch: 1.75, length: 30, type: 'inch' },
+        { position: [1, 2, 3], positionLabel: 'Позиция резьбы (мм)' }
+    );
+    const byName = Object.fromEntries(fields.map(f => [f.name, f]));
+    assertEqual([byName.diameter.value, byName.pitch.value, byName.length.value], [12, 1.75, 30], 'значения');
+    assertEqual(byName.type.value, 'inch', 'стандарт');
+    assertEqual(byName.position.value, [1, 2, 3], 'позиция из options');
+    assertEqual(byName.position.label, 'Позиция резьбы (мм)', 'подпись позиции');
+});
+
+check('updateMinorDiameter: расчёт по стандартам', () => {
+    const metric = { diameter: 10, pitch: 1.5, type: 'metric' };
+    updateMinorDiameter(metric);
+    assertEqual(round(metric.minorDiameter), 8.3762, 'метрическая');
+
+    const trapezoidal = { diameter: 10, pitch: 2, type: 'trapezoidal' };
+    updateMinorDiameter(trapezoidal);
+    assertEqual(round(trapezoidal.minorDiameter), 7, 'трапецеидальная');
+
+    const pipe = { diameter: 10, pitch: 1.5, type: 'pipe' };
+    updateMinorDiameter(pipe);
+    assertEqual(round(pipe.minorDiameter), 8.5593, 'трубная');
+
+    const custom = { diameter: 10, pitch: 1.5, type: 'custom' };
+    updateMinorDiameter(custom);
+    assertEqual(round(custom.minorDiameter), 8.2, 'произвольная');
+});
+
+check('applyThreadFieldValues: пишет числа числами и пересчитывает minorDiameter', () => {
+    const target = {};
+    applyThreadFieldValues(target, { diameter: '12', pitch: '1.75', length: '25', type: 'metric', quality: 'high' });
+    assertEqual([target.diameter, target.pitch, target.length], [12, 1.75, 25], 'числовые поля');
+    assertEqual(target.quality, 'high', 'строковое поле');
+    assertEqual(round(target.minorDiameter), 10.1056, 'minorDiameter');
+});
+
+check('applyThreadFieldValues: позиция уходит в onPosition, если он задан', () => {
+    const target = {};
+    const positions = [];
+    applyThreadFieldValues(target, { position: [5, 6, 7], diameter: '8' }, {
+        onPosition: (value) => positions.push(value)
+    });
+    assertEqual(positions, [[5, 6, 7]], 'колбэк позиции');
+    assertEqual(target.position, undefined, 'в target позиция не попадает');
+    assertEqual(target.diameter, 8, 'остальные поля применились');
+});
+
+// ------------------------------------------- GeometryUtils.normalizeFigures (#8)
+
+check('normalizeFigures: плоский массив и форма {points}', () => {
+    const fromFlat = GeometryUtils.normalizeFigures([{ outer: [0, 0, 10, 0, 10, 10, 0, 10] }]);
+    const fromPoints = GeometryUtils.normalizeFigures([{
+        outer: { points: [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }, { x: 0, y: 10 }] }
+    }]);
+
+    assertEqual(fromFlat.length, 1, 'одна фигура');
+    assertEqual(fromFlat[0].outer.points.map(p => [p.x, p.y]), [[0, 0], [10, 0], [10, 10], [0, 10]], 'плоский массив');
+    assertEqual(fromFlat[0].outer.area, 100, 'площадь');
+    assertEqual(fromFlat[0].outer.isClockwise, false, 'внешний контур против часовой');
+    assertEqual(fromPoints[0].outer.points.length, 4, 'форма {points} даёт те же 4 точки');
+});
+
+check('normalizeFigures: контур в виде массива пар (регрессия)', () => {
+    // Раньше такие фигуры молча отбрасывались: revolve, loft и sweep
+    // возвращали успех, но не создавали объект.
+    const result = GeometryUtils.normalizeFigures([{ outer: [[0, 0], [10, 0], [10, 10], [0, 10]] }]);
+    assertEqual(result.length, 1, 'фигура не должна теряться');
+    assertEqual(result[0].outer.points.map(p => [p.x, p.y]), [[0, 0], [10, 0], [10, 10], [0, 10]], 'точки');
+    assertEqual(result[0].outer.area, 100, 'площадь');
+});
+
+check('normalizeFigures: отверстие разворачивается по часовой', () => {
+    // Внешний контур CCW, отверстие тоже CCW — нормализатор должен его развернуть.
+    const [figure] = GeometryUtils.normalizeFigures([{
+        outer: [0, 0, 20, 0, 20, 20, 0, 20],
+        holes: [[5, 5, 15, 5, 15, 15, 5, 15]]
+    }]);
+    assertEqual(figure.holes.length, 1, 'одно отверстие');
+    assertEqual(figure.holes[0].isClockwise, true, 'отверстие по часовой');
+    assertEqual(figure.holes[0].area, 100, 'площадь отверстия');
+
+    const points = figure.holes[0].points.map(p => [p.x, p.y]);
+    assertEqual(points, [[5, 15], [15, 15], [15, 5], [5, 5]], 'точки развёрнуты');
+});
+
+check('normalizeFigures: уже часовое отверстие не переворачивается', () => {
+    const [figure] = GeometryUtils.normalizeFigures([{
+        outer: [0, 0, 20, 0, 20, 20, 0, 20],
+        holes: [[5, 15, 15, 15, 15, 5, 5, 5]] // по часовой
+    }]);
+    assertEqual(figure.holes[0].points.map(p => [p.x, p.y]), [[5, 15], [15, 15], [15, 5], [5, 5]], 'порядок сохранён');
+    assertEqual(figure.holes[0].area, 100, 'площадь');
+});
+
+check('normalizeFigures: некорректные фигуры пропускаются', () => {
+    const result = GeometryUtils.normalizeFigures([
+        { outer: [0, 0, 1, 1] },        // меньше 3 точек
+        { outer: null },                // нет контура
+        { outer: [0, 0, 10, 0, 0, 10] } // валидная
+    ]);
+    assertEqual(result.length, 1, 'осталась одна фигура');
+});
+
+// ------------------------------------------------ Preview-материалы и сцена
+
+check('markPreviewClone: помечает клон как превью', () => {
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial());
+    mesh.castShadow = true;
+    markPreviewClone(mesh);
+
+    assertEqual(mesh.userData.isPreview, true, 'isPreview');
+    assertEqual(mesh.userData.isTemporary, true, 'isTemporary');
+    assertEqual(mesh.castShadow, false, 'castShadow');
+    assertEqual(mesh.receiveShadow, false, 'receiveShadow');
+    assertEqual(round(mesh.material.opacity), 0.4, 'прозрачность');
+    assertEqual(mesh.material.transparent, true, 'transparent');
+});
+
+check('disposeObject3D: убирает из родителя и освобождает ресурсы', () => {
+    const parent = new THREE.Group();
+    const root = new THREE.Group();
+    const geometry = new THREE.BoxGeometry(1, 1, 1);
+    const material = new THREE.MeshStandardMaterial();
+    const mesh = new THREE.Mesh(geometry, material);
+    root.add(mesh);
+    parent.add(root);
+
+    let geometryDisposed = false;
+    let materialDisposed = false;
+    geometry.addEventListener('dispose', () => { geometryDisposed = true; });
+    material.addEventListener('dispose', () => { materialDisposed = true; });
+
+    disposeObject3D(root, parent);
+
+    assertEqual(parent.children.length, 0, 'родитель очищен');
+    assertEqual(geometryDisposed, true, 'geometry.dispose');
+    assertEqual(materialDisposed, true, 'material.dispose');
+});
+
+check('disposeObject3D: массив материалов и пустой вход', () => {
+    const root = new THREE.Group();
+    const m1 = new THREE.MeshBasicMaterial();
+    const m2 = new THREE.MeshBasicMaterial();
+    let disposed = 0;
+    m1.addEventListener('dispose', () => { disposed++; });
+    m2.addEventListener('dispose', () => { disposed++; });
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), [m1, m2]);
+    root.add(mesh);
+
+    disposeObject3D(root);
+    assertEqual(disposed, 2, 'оба материала освобождены');
+
+    disposeObject3D(null);
+    disposeObject3D(undefined, null);
+});
+
+// ------------------------------------------- TransformToolBase (move/rotate/scale)
+
+function transformStub({ attached = [], local = true, axisColors = null } = {}) {
+    const stub = Object.create(TransformToolBase.prototype);
+    stub.attachedObjects = attached;
+    stub.useLocalCoordinates = local;
+    stub.baseDimensionsMap = new Map();
+    stub.axisColors = axisColors;
+    return stub;
+}
+
+check('computeGizmoSize: локальный режим берёт базовые размеры с масштабом', () => {
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1));
+    mesh.scale.set(2, 3, 4);
+    const tool = transformStub({ attached: [mesh], local: true });
+    tool.baseDimensionsMap.set(mesh.uuid, new THREE.Vector3(1, 2, 3));
+
+    const size = tool.computeGizmoSize();
+    assertEqual([size.x, size.y, size.z], [2, 6, 12], 'базовые размеры × масштаб');
+});
+
+check('computeGizmoSize: мировой режим считает bounding box', () => {
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(2, 4, 6));
+    mesh.updateMatrixWorld(true);
+    const tool = transformStub({ attached: [mesh], local: false });
+
+    const size = tool.computeGizmoSize();
+    assertEqual([round(size.x), round(size.y), round(size.z)], [2, 4, 6], 'bbox');
+});
+
+check('computeGizmoSize: local можно переопределить (режим scale-tool)', () => {
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(2, 2, 2));
+    mesh.updateMatrixWorld(true);
+    const tool = transformStub({ attached: [mesh], local: false });
+
+    const size = tool.computeGizmoSize({ local: true });
+    assertEqual([round(size.x), round(size.y), round(size.z)], [2, 2, 2], 'bbox без базовых размеров');
+});
+
+check('getBaseLocalDimensions: игнорирует поворот и масштаб объекта', () => {
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(2, 4, 6));
+    mesh.scale.set(5, 5, 5);
+    mesh.rotation.set(0.7, 0.3, 0.1);
+    mesh.updateMatrixWorld(true);
+
+    const tool = transformStub();
+    const size = tool.getBaseLocalDimensions(mesh);
+    assertEqual([round(size.x), round(size.y), round(size.z)], [2, 4, 6], 'исходные размеры');
+
+    // Объект восстановлен: масштаб и поворот вернулись.
+    assertEqual([mesh.scale.x, mesh.scale.y, mesh.scale.z], [5, 5, 5], 'масштаб восстановлен');
+    assertEqual(round(mesh.rotation.y), round(0.3), 'поворот восстановлен');
+});
+
+check('getAxisColorCss: цвет оси или серый по умолчанию', () => {
+    const tool = transformStub({ axisColors: { x: 0xff0000, y: 0x00ff00 } });
+    assertEqual(tool.getAxisColorCss('x'), '#ff0000', 'ось X');
+    assertEqual(tool.getAxisColorCss('y'), '#00ff00', 'ось Y');
+    assertEqual(tool.getAxisColorCss('z'), '#888', 'нет цвета — серый');
+});
+
+// -------------------------------------- Градиенты ограничений эскиза (численно)
+
+/** Точка-сущность с параметрами x/y. */
+function makePointEntity(params = { x: 3, y: 4 }) {
+    return { type: 'point', params: { ...params } };
+}
+
+/** Отрезок с параметрами startX/startY/endX/endY. */
+function makeLineEntity(params = { startX: 0, startY: 0, endX: 10, endY: 0 }) {
+    return {
+        type: 'line',
+        params: { ...params },
+        get start() { return new THREE.Vector3(this.params.startX, this.params.startY, 0); },
+        get end() { return new THREE.Vector3(this.params.endX, this.params.endY, 0); }
+    };
+}
+
+const PARAM_KEYS = {
+    point: ['x', 'y'],
+    line: ['startX', 'startY', 'endX', 'endY'],
+    circle: ['centerX', 'centerY', 'radius']
+};
+
+function buildParamIndices(entities) {
+    const paramIndicesMap = new Map();
+    const entries = [];
+    let index = 0;
+
+    for (const entity of entities) {
+        const map = new Map();
+        for (const key of PARAM_KEYS[entity.type] || []) {
+            map.set(key, index);
+            entries.push({ entity, key, index });
+            index++;
+        }
+        paramIndicesMap.set(entity, map);
+    }
+
+    return { paramIndicesMap, entries };
+}
+
+/**
+ * Сверяет аналитический градиент ограничения с центральной разностью по каждому параметру.
+ * Так проверяется, что вынос формул в общие методы не изменил значения и знаки.
+ */
+function assertGradientMatchesNumeric(constraint, entities, tolerance = 1e-4) {
+    const { paramIndicesMap, entries } = buildParamIndices(entities);
+    const grad = constraint.gradient(paramIndicesMap);
+    const h = 1e-6;
+
+    for (const { entity, key, index } of entries) {
+        const original = entity.params[key];
+
+        entity.params[key] = original + h;
+        const plus = constraint.error();
+        entity.params[key] = original - h;
+        const minus = constraint.error();
+        entity.params[key] = original;
+
+        const numeric = (plus - minus) / (2 * h);
+        const analytical = grad.get(index) ?? 0;
+
+        if (!Number.isFinite(analyticSafe(analytical)) || Math.abs(numeric - analytical) > tolerance) {
+            throw new Error(`${key}: численно ${numeric.toFixed(6)}, аналитически ${String(analytical)}`);
+        }
+    }
+
+    return [...grad.keys()].length + ' индексов';
+}
+
+function analyticSafe(value) {
+    return value === undefined ? 0 : value;
+}
+
+check('PointLineDistanceConstraint: градиент = численная производная', () => {
+    const point = makePointEntity();
+    const line = makeLineEntity();
+    const constraint = new PointLineDistanceConstraint(point, 'point', line, 2);
+    return assertGradientMatchesNumeric(constraint, [point, line]);
+});
+
+check('PointOnLineConstraint: градиент = численная производная', () => {
+    const point = makePointEntity();
+    const line = makeLineEntity();
+    const constraint = new PointOnLineConstraint(point, 'point', line);
+    return assertGradientMatchesNumeric(constraint, [point, line]);
+});
+
+check('point-to-line градиент: точка на другой стороне прямой (знак)', () => {
+    const below = makePointEntity({ x: 3, y: -4 });
+    const line = makeLineEntity();
+    const constraint = new PointLineDistanceConstraint(below, 'point', line, 2);
+    return assertGradientMatchesNumeric(constraint, [below, line]);
+});
+
+// ------------------------------------------------ Разбор контуров (все форматы)
+
+check('_parsePolygonPoints: плоский массив чисел', () => {
+    const points = GeometryUtils._parsePolygonPoints([0, 0, 10, 0, 10, 10]);
+    assertEqual(points.map(p => [p.x, p.y]), [[0, 0], [10, 0], [10, 10]], 'плоский массив');
+});
+
+check('_parsePolygonPoints: массив пар и массив точек', () => {
+    const fromPairs = GeometryUtils._parsePolygonPoints([[0, 0], [10, 0], [10, 10]]);
+    const fromObjects = GeometryUtils._parsePolygonPoints([{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }]);
+    assertEqual(fromPairs.map(p => [p.x, p.y]), [[0, 0], [10, 0], [10, 10]], 'пары');
+    assertEqual(fromObjects.map(p => [p.x, p.y]), [[0, 0], [10, 0], [10, 10]], 'объекты');
+});
+
+check('_parsePolygonPoints: форма {points} и мусор', () => {
+    const fromForm = GeometryUtils._parsePolygonPoints({ points: [{ x: 1, y: 2 }, { x: 3, y: 4 }, new THREE.Vector2(5, 6)] });
+    assertEqual(fromForm.map(p => [p.x, p.y]), [[1, 2], [3, 4], [5, 6]], 'форма {points}');
+    assertEqual(GeometryUtils._parsePolygonPoints(null), null, 'null');
+    assertEqual(GeometryUtils._parsePolygonPoints([]), null, 'пустой массив');
+    assertEqual(GeometryUtils._parsePolygonPoints(['a', 'b']), null, 'нечисловые значения');
+});
+
+const failed = results.filter(r => !r.pass);
+window.__unitResults = { total: results.length, failed: failed.length, results };
+document.getElementById('out').textContent = JSON.stringify(window.__unitResults, null, 2);
+</script>
+</body>
+</html>

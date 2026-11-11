@@ -1,0 +1,20 @@
+{
+  "_comment": "Шаг B: остатки js/utils раскладываются по слоям. Геометрия уже в js/core/geometry (см. коммит про перенос геометрических ядер).",
+  "moves": [
+    { "from": "js/utils/exporters/STEPExporter.js", "to": "js/core/io/STEPExporter.js" },
+    { "from": "js/utils/font-converter.js", "to": "js/core/text/font-converter.js" },
+    { "from": "js/utils/ModelPreviewGenerator.js", "to": "js/core/preview/ModelPreviewGenerator.js" },
+    { "from": "js/utils/TextureUtils.js", "to": "js/core/preview/TextureUtils.js" },
+    { "from": "js/utils/helpers/PreviewMaterials.js", "to": "js/core/scene/PreviewMaterials.js" },
+    { "from": "js/utils/helpers/SceneCleanup.js", "to": "js/core/scene/SceneCleanup.js" },
+    { "from": "js/utils/helpers/DimensionPen.js", "to": "js/ui/gizmo/DimensionPen.js" },
+    { "from": "js/utils/helpers/DragArrow.js", "to": "js/ui/gizmo/DragArrow.js" },
+    { "from": "js/utils/helpers/GizmoFactory.js", "to": "js/ui/gizmo/GizmoFactory.js" },
+    { "from": "js/utils/helpers/MoveLineRenderer.js", "to": "js/ui/gizmo/MoveLineRenderer.js" },
+    { "from": "js/utils/ui/ExpressionEvaluator.js", "to": "js/ui/controls/ExpressionEvaluator.js" },
+    { "from": "js/utils/ui/floatingPosition.js", "to": "js/ui/controls/floatingPosition.js" },
+    { "from": "js/utils/ui/LoadingIndicator.js", "to": "js/ui/controls/LoadingIndicator.js" },
+    { "from": "js/utils/ui/NumericInputController.js", "to": "js/ui/controls/NumericInputController.js" },
+    { "from": "js/utils/ui/UiUtils.js", "to": "js/ui/controls/UiUtils.js" }
+  ]
+}

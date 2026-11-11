@@ -1,0 +1,1064 @@
+﻿<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8">
+    <title>КонтрCAD — тесты экспорта/импорта SVG и DXF</title>
+    <!--
+        Браузерные тесты экспорта/импорта чертежа и размеров (без редактора).
+        Открывать через scripts/dev-server.mjs:
+            http://127.0.0.1:8100/test-artifacts/e2e/sketch-io.html
+        Результаты — window.__ioResults (JSON-строка), файлы — window.__ioArtifacts.
+    -->
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "/lib/three@0.185.1/build/three.module.js",
+            "three/addons/": "/lib/three@0.185.1/examples/jsm/",
+            "core/": "/js/core/",
+            "generators/": "/js/generators/",
+            "tools/": "/js/tools/",
+            "utils/": "/js/utils/",
+            "lib/": "/lib/"
+        }
+    }
+    </script>
+    <style>
+        body { font: 13px/1.45 Consolas, monospace; margin: 16px; background: #16181d; color: #d7dae0; }
+        h1 { font-size: 16px; }
+        h2 { font-size: 14px; margin-top: 22px; color: #9fb3c8; }
+        .pass { color: #57d977; }
+        .fail { color: #ff6b6b; }
+        .detail { color: #8b93a1; }
+        pre { white-space: pre-wrap; }
+    </style>
+</head>
+<body>
+<h1>Экспорт/импорт SVG и DXF — тесты</h1>
+<div id="summary">запуск…</div>
+<pre id="out"></pre>
+<script type="module">
+import * as THREE from 'three';
+
+import { LineEntity } from '/js/tools/sketch/entities/LineEntity.js';
+import { CircleEntity } from '/js/tools/sketch/entities/CircleEntity.js';
+import { ArcEntity } from '/js/tools/sketch/entities/ArcEntity.js';
+import { OvalEntity } from '/js/tools/sketch/entities/OvalEntity.js';
+import { PolylineEntity } from '/js/tools/sketch/entities/PolylineEntity.js';
+import { SplineEntity } from '/js/tools/sketch/entities/SplineEntity.js';
+import { PointEntity } from '/js/tools/sketch/entities/PointEntity.js';
+
+import { SketchDXFImportManager } from '/js/tools/sketch/managers/SketchDXFImportManager.js';
+import { SketchImportManager } from '/js/tools/sketch/managers/sketch-import-manager.js';
+
+import { buildSVG } from '/js/tools/sketch/managers/export/svg-writer.js';
+import { buildDXF } from '/js/tools/sketch/managers/export/dxf-writer.js';
+import { collectDimensionPrimitives, collectSketchDimensions, autoTextHeightMM, computeExportBBox } from '/js/tools/sketch/managers/export/dimension-collector.js';
+import { sanitizeOptions, SVG_DEFAULTS, DXF_DEFAULTS } from '/js/tools/sketch/managers/export/export-options.js';
+import { aciToColor, expandEntities } from '/js/tools/sketch/managers/export/export-utils.js';
+import { settings } from 'core/settings.js';
+import { Dialogs } from '/js/ui/Dialogs.js';
+
+import {
+    DistanceConstraint,
+    TwoPointDistanceConstraint,
+    PointLineDistanceConstraint,
+    LineLineDistanceConstraint,
+    AngleConstraint
+} from '/js/tools/sketch/constraints/SketchConstraint.js';
+
+// ---------------------------------------------------------------- каркас тестов
+
+const results = [];
+const artifacts = {};
+window.__ioArtifacts = artifacts;
+let currentSection = '';
+
+function section(title) {
+    currentSection = title;
+    results.push({ section: title });
+}
+
+function check(name, fn) {
+    try {
+        const detail = fn();
+        results.push({ name, pass: true, detail: detail ?? null });
+    } catch (error) {
+        results.push({ name, pass: false, detail: String(error && (error.message || error)) });
+    }
+}
+
+async function checkAsync(name, fn) {
+    try {
+        const detail = await fn();
+        results.push({ name, pass: true, detail: detail ?? null });
+    } catch (error) {
+        results.push({ name, pass: false, detail: String(error && (error.message || error)) });
+    }
+}
+
+function assert(condition, message) {
+    if (!condition) throw new Error(message);
+}
+function near(actual, expected, message, eps = 1e-6) {
+    const a = Number(actual), e = Number(expected);
+    if (!isFinite(a) || !isFinite(e) || Math.abs(a - e) > eps) {
+        throw new Error(`${message}: получено ${actual}, ожидалось ${expected} (eps=${eps})`);
+    }
+}
+function nearPoint(p, x, y, message, eps = 1e-6) {
+    near(p.x, x, message + '.x', eps);
+    near(p.y, y, message + '.y', eps);
+}
+function lengthOf(points) {
+    let sum = 0;
+    for (let i = 1; i < points.length; i++) sum += points[i].distanceTo(points[i - 1]);
+    return sum;
+}
+
+// ---------------------------------------------------------------- фейковый sketchManager
+
+function makeSketchManager() {
+    const sm = {
+        currentPlane: new THREE.Object3D(),
+        currentSketch: { name: 'io-test' },
+        dimensionColor: 0xff9e3e,
+        sketchColor: 0x111111,
+        statuses: [],
+        editor: {
+            showStatus(message, type) { sm.statuses.push({ message, type }); }
+        },
+        entityManager: {
+            entities: [],
+            addEntities(list) { this.entities.push(...list); }
+        }
+    };
+    return sm;
+}
+
+function importDXF(dxfText) {
+    const sm = makeSketchManager();
+    const mgr = new SketchDXFImportManager(sm);
+    mgr.importDXF(dxfText, 'test.dxf');
+    return { entities: sm.entityManager.entities, statuses: sm.statuses };
+}
+
+function importSVG(svgText) {
+    const sm = makeSketchManager();
+    const mgr = new SketchImportManager(sm);
+    mgr.importSVG(svgText, 'test.svg');
+    return { entities: sm.entityManager.entities, statuses: sm.statuses };
+}
+
+const dxfOpts = (over = {}) => sanitizeOptions('dxf', { ...DXF_DEFAULTS, ...over });
+const svgOpts = (over = {}) => sanitizeOptions('svg', { ...SVG_DEFAULTS, ...over });
+
+function exportDXF(entities, over = {}, dimensions = []) {
+    return buildDXF({ entities, dimensions, options: dxfOpts(over) });
+}
+function exportSVG(entities, over = {}, dimensions = []) {
+    return buildSVG({ entities, dimensions, options: svgOpts(over) });
+}
+
+function dimGroups(constraints, over = {}) {
+    return collectDimensionPrimitives(constraints, over);
+}
+
+/** Авто-высота цифр для набора сущностей (та же формула, что в экспорте). */
+function autoTextFor(entities) {
+    const bbox = computeExportBBox(expandEntities(entities), []);
+    return autoTextHeightMM(bbox ? Math.max(bbox.width, bbox.height) : 0);
+}
+function countKind(groups, kind) {
+    let count = 0;
+    for (const g of groups) for (const p of g.primitives) if (p.kind === kind) count++;
+    return count;
+}
+
+/** Разбор DXF на пары [код, значение]. */
+function parsePairs(dxf) {
+    const lines = dxf.split(/\r?\n/);
+    const pairs = [];
+    for (let i = 0; i + 1 < lines.length; i += 2) {
+        const code = parseInt(lines[i].trim(), 10);
+        if (isNaN(code)) continue;
+        pairs.push([code, lines[i + 1]?.trim()]);
+    }
+    return pairs;
+}
+function findHeaderValue(pairs, varName, code) {
+    for (let i = 0; i < pairs.length; i++) {
+        if (pairs[i][0] === 9 && pairs[i][1] === varName) {
+            for (let j = i + 1; j < pairs.length; j++) {
+                if (pairs[j][0] === 9) break;
+                if (pairs[j][0] === code) return parseFloat(pairs[j][1]);
+            }
+        }
+    }
+    return null;
+}
+
+const V = (x, y) => new THREE.Vector3(x, y, 0);
+
+// ---------------------------------------------------------------- DXF: roundtrip
+
+section('DXF: геометрия');
+
+check('DXF: LINE roundtrip', () => {
+    const line = new LineEntity({ start: V(0, 0), end: V(50, 25), color: 0xff0000 });
+    const { entities } = importDXF(exportDXF([line]));
+    assert(entities.length === 1, `ожидалась 1 сущность, получено ${entities.length}`);
+    const got = entities[0];
+    assert(got.type === 'line', `тип ${got.type}`);
+    nearPoint(got.start, 0, 0, 'start');
+    nearPoint(got.end, 50, 25, 'end');
+    near(got.userData.originalColor, 0xff0000, 'цвет');
+});
+
+check('DXF: CIRCLE roundtrip', () => {
+    const circle = new CircleEntity({ center: V(10, 20), radius: 7.5, color: 0x00ff00 });
+    const { entities } = importDXF(exportDXF([circle]));
+    const got = entities[0];
+    assert(got?.type === 'circle', `тип ${got?.type}`);
+    nearPoint(got.center, 10, 20, 'center');
+    near(got.radius, 7.5, 'radius');
+    near(got.userData.originalColor, 0x00ff00, 'цвет');
+});
+
+check('DXF: ARC CCW roundtrip', () => {
+    const arc = new ArcEntity({ center: V(0, 0), radius: 10, startAngle: 0, endAngle: Math.PI / 2 });
+    const { entities } = importDXF(exportDXF([arc]));
+    const got = entities[0];
+    assert(got?.type === 'arc', `тип ${got?.type}`);
+    near(got.params.radius, 10, 'radius');
+    near(got.params.startAngle, 0, 'startAngle');
+    near(got.params.endAngle, Math.PI / 2, 'endAngle');
+});
+
+check('DXF: ARC CW — та же геометрия', () => {
+    const arc = new ArcEntity({ center: V(0, 0), radius: 10, startAngle: Math.PI / 2, endAngle: 0 });
+    const original = lengthOf(arc.getPoints());
+    const { entities } = importDXF(exportDXF([arc]));
+    const got = entities[0];
+    assert(got?.type === 'arc', `тип ${got?.type}`);
+    near(lengthOf(got.getPoints()), original, 'длина дуги', 0.05);
+});
+
+check('DXF R2000: OVAL с поворотом roundtrip (ELLIPSE)', () => {
+    const oval = new OvalEntity({ center: V(5, 5), radiusX: 10, radiusY: 5, rotation: Math.PI / 4 });
+    const { entities } = importDXF(exportDXF([oval], { dxfVersion: 'R2000', ellipseMode: 'ellipse' }));
+    const got = entities[0];
+    assert(got?.type === 'oval', `тип ${got?.type}`);
+    near(got.params.radiusX, 10, 'radiusX', 1e-2);
+    near(got.params.radiusY, 5, 'radiusY', 1e-2);
+    near(got.params.rotation, Math.PI / 4, 'rotation', 1e-3);
+});
+
+check('DXF R12: OVAL понижается до полилинии (геометрия цела)', () => {
+    const oval = new OvalEntity({ center: V(5, 5), radiusX: 10, radiusY: 5, rotation: Math.PI / 4 });
+    const { entities } = importDXF(exportDXF([oval]));
+    const got = entities[0];
+    assert(got?.type === 'polyline', `тип ${got?.type}`);
+    assert(got.closed === true, 'должна быть замкнутой');
+    const xs = got._points.map(p => p.x), ys = got._points.map(p => p.y);
+    // Повёрнутый на 45° эллипс 10×5: габарит по осям = sqrt((10²+5²)/2) ≈ 7.906
+    near((Math.max(...xs) - Math.min(...xs)) / 2, 7.906, 'полуось X', 0.12);
+    near((Math.max(...ys) - Math.min(...ys)) / 2, 7.906, 'полуось Y', 0.12);
+});
+
+check('DXF: POLYLINE (открытая) roundtrip', () => {
+    const poly = new PolylineEntity({ points: [V(0, 0), V(10, 0), V(10, 10)], closed: false });
+    const { entities } = importDXF(exportDXF([poly]));
+    const got = entities[0];
+    assert(got?.type === 'polyline', `тип ${got?.type}`);
+    assert(got._points.length === 3, `точек ${got._points.length}`);
+    nearPoint(got._points[2], 10, 10, 'точка 2');
+    assert(got.closed === false, 'должна быть открытой');
+});
+
+check('DXF: POLYLINE (замкнутая) roundtrip', () => {
+    const poly = new PolylineEntity({ points: [V(0, 0), V(10, 0), V(10, 10), V(0, 10)], closed: true });
+    const { entities } = importDXF(exportDXF([poly]));
+    const got = entities[0];
+    assert(got?.type === 'polyline', `тип ${got?.type}`);
+    assert(got._points.length === 4, `точек ${got._points.length}`);
+    assert(got.closed === true, 'должна быть замкнутой');
+});
+
+check('DXF R2000: LWPOLYLINE roundtrip', () => {
+    const poly = new PolylineEntity({ points: [V(0, 0), V(10, 0), V(10, 10)], closed: true });
+    const dxf = exportDXF([poly], { dxfVersion: 'R2000' });
+    assert(/LWPOLYLINE/.test(dxf), 'нет LWPOLYLINE');
+    const { entities } = importDXF(dxf);
+    const got = entities[0];
+    assert(got?.type === 'polyline', `тип ${got?.type}`);
+    assert(got._points.length === 3, `точек ${got._points.length}`);
+});
+
+check('DXF R2000: SPLINE — контрольные точки и корректные узлы', () => {
+    const spline = new SplineEntity({ controlPoints: [V(0, 0), V(10, 0), V(10, 10), V(20, 10)] });
+    const dxf = exportDXF([spline], { dxfVersion: 'R2000', splineMode: 'spline' });
+    const pairs = parsePairs(dxf);
+    const start = pairs.findIndex(([c, v]) => c === 0 && v === 'SPLINE');
+    assert(start >= 0, 'SPLINE не найден');
+    let knots = 0, degree = null, nCtrl = null;
+    for (let i = start + 1; i < pairs.length && pairs[i][0] !== 0; i++) {
+        if (pairs[i][0] === 40) knots++;
+        if (pairs[i][0] === 71) degree = parseInt(pairs[i][1], 10);
+        if (pairs[i][0] === 73) nCtrl = parseInt(pairs[i][1], 10);
+    }
+    near(knots, nCtrl + degree + 1, 'число узлов');
+    const { entities } = importDXF(dxf);
+    const got = entities[0];
+    assert(got?.type === 'spline', `тип ${got?.type}`);
+    assert(got.controlPoints.length === 4, `точек ${got.controlPoints.length}`);
+    nearPoint(got.controlPoints[3], 20, 10, 'последняя точка');
+});
+
+check('DXF R12: SPLINE понижается до полилинии (геометрия цела)', () => {
+    const spline = new SplineEntity({ controlPoints: [V(0, 0), V(10, 0), V(10, 10), V(20, 10)] });
+    const { entities } = importDXF(exportDXF([spline]));
+    const got = entities[0];
+    assert(got?.type === 'polyline', `тип ${got?.type}`);
+    const pts = got.getPoints();
+    nearPoint(pts[0], 0, 0, 'начало');
+    nearPoint(pts[pts.length - 1], 20, 10, 'конец', 1e-3);
+});
+
+check('DXF: POINT roundtrip', () => {
+    const point = new PointEntity({ x: 3, y: 4, color: 0x0000ff });
+    const { entities } = importDXF(exportDXF([point]));
+    const got = entities[0];
+    assert(got?.type === 'point', `тип ${got?.type}`);
+    nearPoint(got.getPoints()[0], 3, 4, 'point');
+});
+
+check('DXF: пунктир сохраняется', () => {
+    const line = new LineEntity({ start: V(0, 0), end: V(10, 0), dashed: true });
+    const { entities } = importDXF(exportDXF([line]));
+    assert(entities[0]?.dashed === true, 'dashed потерян при импорте');
+});
+
+check('DXF: произвольный цвет (0x3366cc) сохраняется', () => {
+    const line = new LineEntity({ start: V(0, 0), end: V(10, 0), color: 0x3366cc });
+    const { entities } = importDXF(exportDXF([line]));
+    near(entities[0].userData.originalColor, 0x3366cc, 'цвет');
+});
+
+check('DXF: ACI-цвета читаются без true color', () => {
+    const line = new LineEntity({ start: V(0, 0), end: V(10, 0), color: 0xff0000 });
+    const dxf = exportDXF([line], { trueColor: false });
+    assert(!/\n420\n/.test(dxf), 'true color не должен писаться');
+    const { entities } = importDXF(dxf);
+    near(entities[0].userData.originalColor, 0xff0000, 'цвет');
+});
+
+check('DXF: $EXTMIN/$EXTMAX по габаритам', () => {
+    const line = new LineEntity({ start: V(0, 0), end: V(120, 40) });
+    const pairs = parsePairs(exportDXF([line]));
+    near(findHeaderValue(pairs, '$EXTMIN', 10), 0, 'EXTMIN.x', 1e-3);
+    near(findHeaderValue(pairs, '$EXTMAX', 10), 120, 'EXTMAX.x', 1e-3);
+    near(findHeaderValue(pairs, '$EXTMAX', 20), 40, 'EXTMAX.y', 1e-3);
+});
+
+check('DXF: $INSUNITS = мм', () => {
+    const pairs = parsePairs(exportDXF([new LineEntity({ start: V(0, 0), end: V(1, 0) })]));
+    near(findHeaderValue(pairs, '$INSUNITS', 70), 4, '$INSUNITS');
+});
+
+check('DXF: слои GEOMETRY и DIMENSIONS', () => {
+    const dxf = exportDXF([new LineEntity({ start: V(0, 0), end: V(1, 0) })]);
+    assert(/\nLAYER\n  2\nGEOMETRY\n/.test(dxf), 'нет слоя GEOMETRY');
+});
+
+check('DXF: без слоёв всё на слое 0', () => {
+    const dxf = exportDXF([new LineEntity({ start: V(0, 0), end: V(1, 0) })], { layers: false });
+    assert(!/\nLAYER\n  2\nGEOMETRY\n/.test(dxf), 'слой GEOMETRY не должен создаваться');
+    const { entities } = importDXF(dxf);
+    assert(entities.length === 1, `сущностей ${entities.length}`);
+});
+
+// ---------------------------------------------------------------- SVG: roundtrip
+
+section('SVG: геометрия');
+
+check('SVG: LINE roundtrip', () => {
+    const line = new LineEntity({ start: V(0, 0), end: V(50, 25) });
+    const { entities } = importSVG(exportSVG([line]));
+    const got = entities[0];
+    assert(got?.type === 'line', `тип ${got?.type}`);
+    nearPoint(got.start, 0, 0, 'start');
+    nearPoint(got.end, 50, 25, 'end');
+});
+
+check('SVG: CIRCLE roundtrip', () => {
+    const circle = new CircleEntity({ center: V(10, 20), radius: 7.5 });
+    const { entities } = importSVG(exportSVG([circle]));
+    const got = entities[0];
+    assert(got?.type === 'circle', `тип ${got?.type}`);
+    nearPoint(got.center, 10, 20, 'center');
+    near(got.radius, 7.5, 'radius');
+});
+
+check('SVG: OVAL (без поворота) roundtrip', () => {
+    const oval = new OvalEntity({ center: V(5, 5), radiusX: 10, radiusY: 5 });
+    const { entities } = importSVG(exportSVG([oval]));
+    const got = entities[0];
+    assert(got?.type === 'oval', `тип ${got?.type}`);
+    near(got.params.radiusX, 10, 'radiusX');
+    near(got.params.radiusY, 5, 'radiusY');
+});
+
+check('SVG: OVAL с поворотом roundtrip', () => {
+    const oval = new OvalEntity({ center: V(5, 5), radiusX: 10, radiusY: 5, rotation: Math.PI / 4 });
+    const { entities } = importSVG(exportSVG([oval]));
+    const got = entities[0];
+    assert(got?.type === 'oval', `тип ${got?.type}`);
+    near(got.params.rotation, Math.PI / 4, 'rotation', 1e-6);
+});
+
+check('SVG: POLYLINE (открытая) roundtrip', () => {
+    const poly = new PolylineEntity({ points: [V(0, 0), V(10, 0), V(10, 10)], closed: false });
+    const { entities } = importSVG(exportSVG([poly]));
+    const got = entities[0];
+    assert(got?.type === 'polyline', `тип ${got?.type}`);
+    assert(got._points.length === 3, `точек ${got._points.length}`);
+    assert(got.closed === false, 'должна быть открытой');
+});
+
+check('SVG: POLYLINE (замкнутая) roundtrip', () => {
+    const poly = new PolylineEntity({ points: [V(0, 0), V(10, 0), V(10, 10), V(0, 10)], closed: true });
+    const { entities } = importSVG(exportSVG([poly]));
+    const got = entities[0];
+    assert(got?.type === 'polyline', `тип ${got?.type}`);
+    assert(got.closed === true, 'должна быть замкнутой');
+});
+
+check('SVG: ARC — геометрия сохраняется', () => {
+    const arc = new ArcEntity({ center: V(0, 0), radius: 10, startAngle: 0, endAngle: Math.PI / 2 });
+    const { entities } = importSVG(exportSVG([arc]));
+    const got = entities[0];
+    assert(got, 'ничего не импортировано');
+    const pts = got.getPoints();
+    nearPoint(pts[0], 10, 0, 'первая точка');
+    nearPoint(pts[pts.length - 1], 0, 10, 'последняя точка');
+});
+
+check('SVG: SPLINE — геометрия сохраняется', () => {
+    const spline = new SplineEntity({ controlPoints: [V(0, 0), V(10, 0), V(10, 10), V(20, 10)] });
+    const { entities } = importSVG(exportSVG([spline]));
+    const got = entities[0];
+    assert(got, 'ничего не импортировано');
+    const pts = got.getPoints();
+    nearPoint(pts[0], 0, 0, 'первая точка');
+    nearPoint(pts[pts.length - 1], 20, 10, 'последняя точка', 1e-3);
+});
+
+check('SVG: POINT roundtrip (маркер data-sketch-point)', () => {
+    const point = new PointEntity({ x: 3, y: 4 });
+    const { entities } = importSVG(exportSVG([point]));
+    const got = entities[0];
+    assert(got?.type === 'point', `тип ${got?.type}`);
+    nearPoint(got.getPoints()[0], 3, 4, 'point');
+});
+
+check('SVG: пунктир сохраняется', () => {
+    const line = new LineEntity({ start: V(0, 0), end: V(10, 0), dashed: true });
+    const { entities } = importSVG(exportSVG([line]));
+    assert(entities[0]?.dashed === true, 'dashed потерян при импорте');
+});
+
+check('SVG: цвет сущности сохраняется', () => {
+    const line = new LineEntity({ start: V(0, 0), end: V(10, 0), color: 0x3366cc });
+    const { entities } = importSVG(exportSVG([line]));
+    near(entities[0]?.userData.originalColor, 0x3366cc, 'цвет');
+});
+
+check('SVG: «один цвет» перекрашивает всё', () => {
+    const entities = [
+        new LineEntity({ start: V(0, 0), end: V(10, 0), color: 0xff0000 }),
+        new CircleEntity({ center: V(20, 0), radius: 5, color: 0x00ff00 })
+    ];
+    const imported = importSVG(exportSVG(entities, { colorMode: 'monochrome', monoColor: '#123456' })).entities;
+    for (const ent of imported) near(ent.userData.originalColor, 0x123456, 'цвет');
+});
+
+check('SVG: толщина линии из параметров', () => {
+    const svg = exportSVG([new LineEntity({ start: V(0, 0), end: V(10, 0) })], { lineWidth: 0.5 });
+    assert(/stroke-width="0.5"/.test(svg), 'толщина 0.5 не найдена');
+});
+
+check('SVG: единицы mm и viewBox согласованы', () => {
+    const svg = exportSVG([new LineEntity({ start: V(0, 0), end: V(100, 50) })]);
+    const m = svg.match(/<svg[^>]*width="([^"]+)"[^>]*height="([^"]+)"[^>]*viewBox="([^"]+)"/);
+    assert(m, 'не найдены width/height/viewBox');
+    const vb = m[3].split(/\s+/).map(Number);
+    near(parseFloat(m[1]), vb[2], 'width и viewBox.width');
+    assert(/mm/.test(m[1]), `width без mm: ${m[1]}`);
+});
+
+check('SVG: отступ от края учитывается', () => {
+    const line = new LineEntity({ start: V(0, 0), end: V(100, 0) });
+    const svg = exportSVG([line], { padding: 10 });
+    const m = svg.match(/viewBox="([^"]+)"/);
+    const vb = m[1].split(/\s+/).map(Number);
+    near(vb[2], 120, 'ширина viewBox');
+});
+
+// ---------------------------------------------------------------- размеры
+
+section('Размеры и стрелки');
+
+/** Демо-чертёж: все типы сущностей + все виды размерных ограничений. */
+function demoDrawing() {
+    const lineH = new LineEntity({ start: V(0, 0), end: V(120, 0), color: 0xff0000 });
+    const lineV = new LineEntity({ start: V(0, 0), end: V(0, 80), color: 0x00aa00, dashed: true });
+    const circle = new CircleEntity({ center: V(60, 40), radius: 20, color: 0x0000ff });
+    const arc = new ArcEntity({ center: V(140, 40), radius: 25, startAngle: 0, endAngle: Math.PI / 2 });
+    const oval = new OvalEntity({ center: V(30, 80), radiusX: 15, radiusY: 8, rotation: Math.PI / 6 });
+    const polylineOpen = new PolylineEntity({ points: [V(0, 120), V(40, 130), V(80, 120)], closed: false });
+    const polylineClosed = new PolylineEntity({ points: [V(100, 120), V(140, 120), V(140, 150), V(100, 150)], closed: true });
+    const spline = new SplineEntity({ controlPoints: [V(160, 120), V(190, 100), V(220, 140), V(250, 110)] });
+    const point = new PointEntity({ x: 280, y: 20, color: 0xff00ff });
+    const lineD = new LineEntity({ start: V(60, 0), end: V(60, 80) });
+    const parallel = new LineEntity({ start: V(0, 100), end: V(120, 100) });
+
+    const length = new DistanceConstraint(lineH, 'length', 120);
+    length.visualOffset = 14;
+    const diameter = new DistanceConstraint(circle, 'diameter', 40);
+    diameter.visualAngle = Math.PI / 6;
+    const radius = new DistanceConstraint(arc, 'radius', 25);
+    radius.visualAngle = Math.PI / 4;
+    const twoPoint = new TwoPointDistanceConstraint(lineH, 'start', lineD, 'end', 100);
+    twoPoint.visualOffset = 20;
+    const pointLine = new PointLineDistanceConstraint(point, 'center', lineH, 20);
+    pointLine.visualOffset = 25;
+    const lineLine = new LineLineDistanceConstraint(lineH, parallel, 100);
+    lineLine.visualOffset = 12;
+    const angle = new AngleConstraint(lineH, lineV, Math.PI / 2);
+    angle.setVisualRadius(30);
+
+    return {
+        entities: [lineH, lineV, circle, arc, oval, polylineOpen, polylineClosed, spline, point],
+        constraints: [length, diameter, radius, twoPoint, pointLine, lineLine, angle]
+    };
+}
+
+function demoConstraintSet() {
+    return demoDrawing().constraints;
+}
+
+check('Размеры: размеры строятся из всех типов ограничений', () => {
+    const constraints = demoConstraintSet();
+    const groups = dimGroups(constraints);
+    assert(groups.length === constraints.length,
+        `размеров ${groups.length} из ${constraints.length}`);
+    for (const g of groups) {
+        assert(g.primitives.length > 0, `пустая группа для ${g.constraint.type}`);
+    }
+});
+
+check('Размеры: есть сегменты, залитые наконечники и цифры', () => {
+    const constraints = demoConstraintSet();
+    const groups = dimGroups(constraints);
+    assert(countKind(groups, 'segment') > 20, `сегментов ${countKind(groups, 'segment')}`);
+    assert(countKind(groups, 'triangle') >= 12, `треугольников ${countKind(groups, 'triangle')}`);
+    assert(countKind(groups, 'text') === constraints.length,
+        `текстов ${countKind(groups, 'text')}`);
+});
+
+check('Размеры: стрелки и цифры масштабируются от габарита', () => {
+    const constraints = demoConstraintSet();
+    const area = (groups) => {
+        let sum = 0;
+        for (const g of groups) {
+            for (const p of g.primitives) {
+                if (p.kind !== 'triangle') continue;
+                const [a, b, c] = p.points;
+                sum += Math.abs((b.x - a.x) * (c.y - a.y) - (c.x - a.x) * (b.y - a.y)) / 2;
+            }
+        }
+        return sum;
+    };
+    const small = dimGroups(constraints, { contentSize: 90 });
+    const big = dimGroups(constraints, { contentSize: 300 });
+    assert(area(big) > area(small) * 2, `площадь стрелок не выросла: ${area(small)} → ${area(big)}`);
+    const smallText = small.flatMap(g => g.primitives).find(p => p.kind === 'text');
+    const bigText = big.flatMap(g => g.primitives).find(p => p.kind === 'text');
+    assert(bigText.height > smallText.height, `цифры не выросли: ${smallText.height} → ${bigText.height}`);
+});
+
+check('Размеры: высота цифр автоматическая и берётся из габарита', () => {
+    const groups = dimGroups(demoConstraintSet(), { contentSize: 90 });
+    const texts = groups.flatMap(g => g.primitives).filter(p => p.kind === 'text');
+    assert(texts.length > 0, 'нет текстов');
+    for (const t of texts) near(t.height, 2, 'высота текста');
+    near(autoTextHeightMM(10), 1.8, 'нижний зажим');
+    near(autoTextHeightMM(1000), 5, 'верхний зажим');
+});
+
+check('Размеры: экспортный путь сам считает высоту от геометрии', () => {
+    const demo = demoDrawing();
+    const sm = makeSketchManager();
+    sm.entityManager.entities = demo.entities;
+    sm.constraintManager = { constraints: demo.constraints };
+    const groups = collectSketchDimensions(sm);
+    const expected = autoTextFor(demo.entities);
+    const texts = groups.flatMap(g => g.primitives).filter(p => p.kind === 'text');
+    assert(texts.length > 0, 'нет текстов');
+    for (const t of texts) near(t.height, expected, 'авто-высота');
+});
+
+check('Размеры: цифры и стрелки не настраиваются по отдельности', () => {
+    const groups = dimGroups(demoConstraintSet());
+    assert(countKind(groups, 'text') > 0, 'цифры должны быть всегда');
+    assert(countKind(groups, 'triangle') > 0, 'стрелки должны быть всегда');
+});
+
+check('Размеры: скрытое ограничение не экспортируется', () => {
+    const constraints = demoConstraintSet();
+    constraints[0].visible = false;
+    const groups = dimGroups(constraints);
+    assert(groups.length === constraints.length - 1, `размеров ${groups.length}`);
+});
+
+check('Размеры: текст размера содержит значение', () => {
+    const constraints = demoConstraintSet();
+    const groups = dimGroups([constraints[0]]);
+    const text = groups[0].primitives.find(p => p.kind === 'text');
+    assert(text && /120/.test(text.text), `текст: ${text?.text}`);
+});
+
+check('Размеры: SVG содержит группу DIMENSIONS со стрелками и цифрами', () => {
+    const groups = dimGroups(demoConstraintSet(), { contentSize: 180 });
+    const svg = exportSVG([], {}, groups);
+    assert(/data-sketch-layer="dimensions"/.test(svg), 'нет группы размеров');
+    assert(/<polygon data-dimension="1"/.test(svg), 'нет залитых стрелок');
+    assert(/<line data-dimension="1"/.test(svg), 'нет размерных линий');
+    assert(/<text[^>]*data-dimension="1"/.test(svg), 'нет цифр');
+    const sizes = [...svg.matchAll(/font-size="([\d.]+)"/g)].map(m => Number(m[1]));
+    assert(sizes.length > 0 && sizes.every(s => s === 4), `высоты: ${sizes.join(',')}`);
+});
+
+check('Размеры: DXF содержит SOLID, TEXT и слой DIMENSIONS', () => {
+    const constraints = demoConstraintSet();
+    const groups = dimGroups(constraints);
+    const dxf = exportDXF([], {}, groups);
+    assert(/\nSOLID\n/.test(dxf), 'нет SOLID (залитых стрелок)');
+    assert(/\nTEXT\n/.test(dxf), 'нет TEXT');
+    assert(/DIMENSIONS/.test(dxf), 'нет слоя DIMENSIONS');
+    // Хотя бы один TEXT лежит на слое DIMENSIONS
+    assert(/TEXT\n  8\nDIMENSIONS\n/.test(dxf.replace(/\n 62\n\d+\n/g, '\n')), 'TEXT не на слое DIMENSIONS');
+});
+
+check('Размеры: диаметр пишется как %%c в DXF', () => {
+    const constraints = demoConstraintSet();
+    const diameterConstraint = constraints.find(c => c.dimensionKey === 'diameter');
+    const dxf = exportDXF([], {}, dimGroups([diameterConstraint]));
+    assert(/%%c/.test(dxf), 'нет ASCII-обозначения диаметра');
+});
+
+check('Размеры: высота цифр в DXF (код 40) автоматическая', () => {
+    const groups = dimGroups([demoConstraintSet()[0]], { contentSize: 180 });
+    const dxf = exportDXF([], {}, groups);
+    const pairs = parsePairs(dxf);
+    const i = pairs.findIndex(([c, v]) => c === 0 && v === 'TEXT');
+    assert(i >= 0, 'TEXT не найден');
+    let height = null;
+    for (let j = i + 1; j < pairs.length && pairs[j][0] !== 0; j++) {
+        if (pairs[j][0] === 40) height = parseFloat(pairs[j][1]);
+    }
+    near(height, 4, 'высота TEXT');
+});
+
+check('Размеры: импорт SVG пропускает слой размеров', () => {
+    const constraints = demoConstraintSet();
+    const groups = dimGroups(constraints);
+    const line = new LineEntity({ start: V(0, 0), end: V(10, 0) });
+    const svg = exportSVG([line], {}, groups);
+    const { entities } = importSVG(svg);
+    assert(entities.length === 1, `импортировано ${entities.length} (ожидалась только геометрия)`);
+    assert(entities[0].type === 'line', `тип ${entities[0].type}`);
+});
+
+check('Размеры: импорт DXF пропускает слой DIMENSIONS', () => {
+    const constraints = demoConstraintSet();
+    const groups = dimGroups(constraints);
+    const line = new LineEntity({ start: V(0, 0), end: V(200, 0) });
+    const dxf = exportDXF([line], {}, groups);
+    const { entities } = importDXF(dxf);
+    assert(entities.length === 1, `импортировано ${entities.length} (ожидалась только геометрия)`);
+    assert(entities[0].type === 'line', `тип ${entities[0].type}`);
+});
+
+// ---------------------------------------------------------------- параметры
+
+section('Параметры экспорта');
+
+check('Параметры: зажим чисел и значения по умолчанию', () => {
+    const dxf = sanitizeOptions('dxf', { dxfVersion: 'X' });
+    assert(dxf.dxfVersion === 'R12', `версия ${dxf.dxfVersion}`);
+    const svg = sanitizeOptions('svg', { lineWidth: 0, padding: -10, monoColor: 'red' });
+    near(svg.lineWidth, 0.01, 'lineWidth');
+    near(svg.padding, 0, 'padding');
+    assert(svg.monoColor === '#000000', `monoColor ${svg.monoColor}`);
+});
+
+check('Параметры: стрелки и цифры не настраиваются (убраны из опций)', () => {
+    for (const format of ['svg', 'dxf']) {
+        const opts = sanitizeOptions(format, { arrowSize: 9, textHeight: 9, showText: false });
+        assert(!('arrowSize' in opts), `${format}: arrowSize не должен быть опцией`);
+        assert(!('textHeight' in opts), `${format}: textHeight не должен быть опцией`);
+        assert(!('showText' in opts), `${format}: showText не должен быть опцией`);
+    }
+});
+
+check('Параметры: строгие булевы и enum', () => {
+    const opts = sanitizeOptions('svg', { includeDimensions: false, colorMode: 'x' });
+    assert(opts.includeDimensions === false, 'includeDimensions');
+    assert(opts.colorMode === 'original', 'colorMode');
+    const dxf = sanitizeOptions('dxf', { ellipseMode: 'nope', splineMode: 'nope' });
+    assert(dxf.ellipseMode === 'auto', 'ellipseMode');
+    assert(dxf.splineMode === 'auto', 'splineMode');
+});
+
+await checkAsync('Параметры: сохранение в settings (roundtrip)', async () => {
+    const { saveOptions, loadOptions } = await import('/js/tools/sketch/managers/export/export-options.js');
+    saveOptions('svg', { ...SVG_DEFAULTS, lineWidth: 0.35, includeDimensions: false });
+    const loaded = loadOptions('svg');
+    near(loaded.lineWidth, 0.35, 'lineWidth');
+    assert(loaded.includeDimensions === false, 'includeDimensions');
+    settings.set('export.svg', {});
+});
+
+// ---------------------------------------------------------------- диалоги
+
+section('Диалоги');
+
+await checkAsync('Dialogs.form: поле select работает', async () => {
+    const promise = Dialogs.form([
+        { id: 'version', type: 'select', label: 'Версия', value: 'R12',
+          options: [{ value: 'R12', label: 'R12' }, { value: 'R2000', label: 'R2000' }] }
+    ], { title: 'Тест' });
+    const modal = document.querySelector('.modal-overlay.custom-dialog');
+    assert(modal, 'модальное окно не создано');
+    try {
+        const select = modal.querySelector('#formField_version');
+        assert(select && select.tagName === 'SELECT', 'select не отрисован');
+        assert(select.value === 'R12', `значение по умолчанию ${select.value}`);
+        select.value = 'R2000';
+        modal.querySelector('.btn-primary').click();
+        const result = await promise;
+        assert(result && result.version === 'R2000', `вернулось ${JSON.stringify(result)}`);
+    } finally {
+        if (modal.isConnected) modal.remove();
+    }
+});
+
+await checkAsync('Диалог экспорта DXF: все поля и отмена', async () => {
+    const { askExportOptions } = await import('/js/tools/sketch/managers/export/export-options.js');
+    const promise = askExportOptions('dxf');
+    const modal = document.querySelector('.modal-overlay.custom-dialog');
+    assert(modal, 'диалог не открылся');
+    try {
+        const ids = ['includeDimensions',
+                     'dxfVersion', 'trueColor', 'layers', 'ellipseMode', 'splineMode'];
+        for (const id of ids) {
+            assert(modal.querySelector(`#formField_${id}`), `нет поля ${id}`);
+        }
+        modal.querySelector('.btn-secondary').click();
+        const result = await promise;
+        assert(result === null, `при отмене вернулось ${JSON.stringify(result)}`);
+    } finally {
+        if (modal.isConnected) modal.remove();
+    }
+});
+
+await checkAsync('Диалог экспорта SVG: значения из полей попадают в опции', async () => {
+    const { askExportOptions } = await import('/js/tools/sketch/managers/export/export-options.js');
+    const promise = askExportOptions('svg');
+    const modal = document.querySelector('.modal-overlay.custom-dialog');
+    assert(modal, 'диалог не открылся');
+    try {
+        modal.querySelector('#formField_lineWidth').value = '0.35';
+        modal.querySelector('.btn-primary').click();
+        const result = await promise;
+        assert(result, 'диалог вернул null');
+        near(result.lineWidth, 0.35, 'lineWidth');
+    } finally {
+        if (modal.isConnected) modal.remove();
+        settings.set('export.svg', {});
+    }
+});
+
+// ---------------------------------------------------------------- SVG: импорт внешних файлов
+
+section('Импорт внешних файлов');
+
+const EXT_SVG_PATH_ARC = `<?xml version="1.0"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="100mm" height="100mm" viewBox="0 0 100 100">
+  <path d="M 10 50 A 40 40 0 0 1 90 50" style="fill:none;stroke:#ff0000;stroke-width:1"/>
+</svg>`;
+
+check('SVG import: path с командой A (дуга)', () => {
+    const { entities } = importSVG(EXT_SVG_PATH_ARC);
+    assert(entities.length === 1, `сущностей ${entities.length}`);
+    const pts = entities[0].getPoints();
+    assert(pts.length > 5, `точек ${pts.length} — дуга не развёрнута`);
+    near(lengthOf(pts), Math.PI * 40, 'длина дуги', 2);
+    near(entities[0].userData.originalColor, 0xff0000, 'цвет');
+});
+
+const EXT_SVG_PATH_CURVES = `<?xml version="1.0"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="100mm" height="100mm" viewBox="0 0 100 100">
+  <path d="M 10 10 Q 50 90 90 10 S 150 -20 170 30 T 200 60"/>
+</svg>`;
+
+check('SVG import: path с Q/S/T', () => {
+    const { entities } = importSVG(EXT_SVG_PATH_CURVES);
+    assert(entities.length === 1, `сущностей ${entities.length}`);
+    const pts = entities[0].getPoints();
+    assert(pts.length > 5, `точек ${pts.length} — кривые не развёрнуты`);
+    // SVG y-down: точка (10,10) в эскизе = (10,−10)
+    nearPoint(pts[0], 10, -10, 'начало');
+});
+
+const EXT_SVG_TRANSFORM = `<?xml version="1.0"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="100mm" height="100mm" viewBox="0 0 100 100">
+  <g transform="translate(10,20)">
+    <rect x="0" y="0" width="30" height="20"/>
+  </g>
+</svg>`;
+
+check('SVG import: transform на группе (translate)', () => {
+    const { entities } = importSVG(EXT_SVG_TRANSFORM);
+    assert(entities.length === 1, `сущностей ${entities.length}`);
+    const pts = entities[0].getPoints();
+    const xs = pts.map(p => p.x), ys = pts.map(p => p.y);
+    near(Math.min(...xs), 10, 'min x');
+    near(Math.min(...ys), -40, 'min y (SVG y-down → CAD y-up)');
+});
+
+check('SVG import: поворот и масштаб в transform', () => {
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="100mm" height="100mm" viewBox="0 0 100 100">
+      <g transform="translate(50,50) rotate(90) scale(2)">
+        <line x1="0" y1="0" x2="10" y2="0"/>
+      </g>
+    </svg>`;
+    const { entities } = importSVG(svg);
+    const got = entities[0];
+    assert(got?.type === 'line', `тип ${got?.type}`);
+    // (0,0) → (50,50); (10,0) → scale 2 → (20,0) → rotate 90 → (0,20) → +50 → (50,70)
+    nearPoint(got.start, 50, -50, 'start');
+    nearPoint(got.end, 50, -70, 'end');
+});
+
+const EXT_SVG_STYLE = `<?xml version="1.0"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="100mm" height="100mm" viewBox="0 0 100 100">
+  <line x1="0" y1="0" x2="10" y2="0" stroke="#3366cc" stroke-width="2"/>
+</svg>`;
+
+check('SVG import: цвет из stroke', () => {
+    const { entities } = importSVG(EXT_SVG_STYLE);
+    near(entities[0]?.userData.originalColor, 0x3366cc, 'цвет');
+});
+
+const EXT_SVG_Y_INVERSION = `<?xml version="1.0"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="100mm" height="100mm" viewBox="0 0 100 100">
+  <g data-y-inversion="true">
+    <line x1="0" y1="0" x2="10" y2="0"/>
+  </g>
+</svg>`;
+
+check('SVG import: data-y-inversion учитывается', () => {
+    const { entities } = importSVG(EXT_SVG_Y_INVERSION);
+    assert(entities.length === 1, `сущностей ${entities.length}`);
+});
+
+const EXT_DXF_LWPOLYLINE_BULGE = `  0
+SECTION
+  2
+ENTITIES
+  0
+LWPOLYLINE
+  8
+0
+ 90
+2
+ 70
+0
+ 10
+0.0
+ 20
+0.0
+ 42
+1.0
+ 10
+20.0
+ 20
+0.0
+  0
+ENDSEC
+  0
+EOF
+`;
+
+check('DXF import: LWPOLYLINE с bulge (дуга)', () => {
+    const { entities } = importDXF(EXT_DXF_LWPOLYLINE_BULGE);
+    assert(entities.length >= 1, `сущностей ${entities.length}`);
+    const pts = entities[0].getPoints();
+    assert(pts.length > 2, `точек ${pts.length} — bulge не развёрнут`);
+    near(lengthOf(pts), Math.PI * 10, 'длина', 1.5);
+});
+
+const EXT_DXF_ELLIPSE_ROT = `  0
+SECTION
+  2
+ENTITIES
+  0
+ELLIPSE
+  8
+0
+ 10
+50.0
+ 20
+50.0
+ 30
+0.0
+ 11
+21.213203435596427
+ 21
+21.213203435596427
+ 31
+0.0
+ 40
+0.5
+ 41
+0.0
+ 42
+6.283185307179586
+  0
+ENDSEC
+  0
+EOF
+`;
+
+check('DXF import: ELLIPSE с поворотом', () => {
+    const { entities } = importDXF(EXT_DXF_ELLIPSE_ROT);
+    const got = entities[0];
+    assert(got?.type === 'oval', `тип ${got?.type}`);
+    near(got.params.radiusX, 30, 'radiusX', 1e-3);
+    near(got.params.radiusY, 15, 'radiusY', 1e-3);
+    near(got.params.rotation, Math.PI / 4, 'rotation', 1e-3);
+});
+
+const EXT_DXF_DIMENSION = `  0
+SECTION
+  2
+ENTITIES
+  0
+DIMENSION
+  8
+0
+  2
+*D1
+ 10
+0.0
+ 20
+0.0
+ 11
+0.0
+ 21
+10.0
+ 70
+0
+  1
+
+  3
+STANDARD
+ 13
+0.0
+ 23
+0.0
+ 14
+50.0
+ 24
+0.0
+  0
+ENDSEC
+  0
+EOF
+`;
+
+check('DXF import: DIMENSION не ломает импорт', () => {
+    const { entities, statuses } = importDXF(EXT_DXF_DIMENSION);
+    assert(Array.isArray(entities), 'импорт упал');
+    assert(!statuses.some(s => s.type === 'error'), 'появилась ошибка в статусе');
+});
+
+check('DXF import: ACI 1/3/5 → красный/зелёный/синий', () => {
+    const mk = (aci) => `  0
+SECTION
+  2
+ENTITIES
+  0
+LINE
+  8
+0
+ 62
+${aci}
+ 10
+0.0
+ 20
+0.0
+ 30
+0.0
+ 11
+10.0
+ 21
+0.0
+ 31
+0.0
+  0
+ENDSEC
+  0
+EOF
+`;
+    near(importDXF(mk(1)).entities[0].userData.originalColor, 0xff0000, 'ACI 1');
+    near(importDXF(mk(3)).entities[0].userData.originalColor, 0x00ff00, 'ACI 3');
+    near(importDXF(mk(5)).entities[0].userData.originalColor, 0x0000ff, 'ACI 5');
+    near(aciToColor(7), 0x111111, 'ACI 7 (чёрный на светлом фоне)');
+});
+
+// ---------------------------------------------------------------- вывод
+
+const failed = results.filter(r => r.pass === false);
+const total = results.filter(r => r.pass !== undefined).length;
+window.__ioResults = JSON.stringify({ total, failed: failed.length, results }, null, 2);
+
+const summary = document.getElementById('summary');
+summary.className = failed.length ? 'fail' : 'pass';
+summary.textContent = `Всего: ${total} · провалено: ${failed.length}`;
+
+document.getElementById('out').innerHTML = results.map(r => {
+    if (r.section) return `\n<span class="detail">— ${r.section} —</span>`;
+    const cls = r.pass ? 'pass' : 'fail';
+    const detail = r.detail
+        ? `\n    <span class="detail">${String(r.detail).replace(/[<>&]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]))}</span>`
+        : '';
+    return `<span class="${cls}">${r.pass ? 'PASS' : 'FAIL'}</span> <span class="name">${r.name}</span>${detail}`;
+}).join('\n');
+
+// Артефакты для проверки внешними программами.
+try {
+    const demo = demoDrawing();
+    const dims = dimGroups(demo.constraints, { contentSize: autoTextFor(demo.entities) });
+    artifacts.svg = exportSVG(demo.entities, {}, dims);
+    artifacts.dxf = exportDXF(demo.entities, {}, dims);
+    artifacts.dxfR2000 = exportDXF(demo.entities, { dxfVersion: 'R2000', ellipseMode: 'ellipse', splineMode: 'spline' }, dims);
+    artifacts.dimensionsOnly = exportSVG([], {}, dims);
+} catch (error) {
+    artifacts.error = String(error && (error.stack || error));
+}
+</script>
+</body>
+</html>

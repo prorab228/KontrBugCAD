@@ -4,3 +4,13 @@ dist
 project_content.txt
 project_parser.py
 renders
+
+# Локальные артефакты прогонов и отладки
+test-artifacts/*
+!test-artifacts/e2e/
+# Сгенерированные тестами файлы (svg/dxf)
+test-artifacts/e2e/out/
+e-start.out.txt
+e-start.err.txt
+electron-run.log
+preview*.png

@@ -7,8 +7,11 @@
   "main": "main.js",
   "scripts": {
     "build": "node build.js",
+    "dev": "node scripts/dev-server.mjs --port=8100",
     "check:imports": "node scripts/check-imports.mjs",
+    "check:syntax": "node --experimental-vm-modules --no-warnings scripts/check-syntax.mjs",
     "check:duplicates": "node scripts/find-duplicates.mjs --mode=lines --min=10 --top=40",
+    "check": "npm run check:syntax && npm run check:imports",
     "start": "electron .",
     "start:no-sandbox": "electron . --no-sandbox",
     "dist": "electron-builder",
