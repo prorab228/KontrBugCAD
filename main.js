@@ -220,6 +220,99 @@ ipcMain.on('mcp-tools-response', (event, tools) => {
 });
 
 /**
+ * Папки-кандидаты для рендеров, отданных ассистенту.
+ *
+ * Штатно — `userData/renders`. Но приложение могут запустить в песочнице
+ * (например, из терминала DSH с политикой workspace-write): тогда AppData
+ * доступен только на чтение. Поэтому пробуем по очереди userData → temp →
+ * папка приложения и пишем в первую доступную.
+ */
+function renderCacheDirs() {
+    const dirs = [];
+    try { dirs.push(path.join(app.getPath('userData'), 'renders')); } catch {}
+    try { dirs.push(path.join(require('os').tmpdir(), 'kontrCAD-renders')); } catch {}
+    dirs.push(path.join(__dirname, 'renders'));
+    return dirs;
+}
+
+/** Оставляет в папке рендеров только последние `keep` файлов. */
+async function pruneRenderFiles(dir, keep = 40) {
+    try {
+        const entries = await fs.readdir(dir, { withFileTypes: true });
+        const files = [];
+        for (const entry of entries) {
+            if (!entry.isFile() || !/\.(png|jpg)$/i.test(entry.name)) continue;
+            const full = path.join(dir, entry.name);
+            const stat = await fs.stat(full);
+            files.push({ full, mtime: stat.mtimeMs });
+        }
+        if (files.length <= keep) return;
+        files.sort((a, b) => b.mtime - a.mtime);
+        for (const file of files.slice(keep)) {
+            await fs.unlink(file.full).catch(() => {});
+        }
+    } catch {}
+}
+
+/**
+ * Сохраняет image-блоки ответа файлами и добавляет пути в текст.
+ *
+ * Зачем: часть MCP-клиентов (например, MCP Center) пробрасывает только
+ * текстовые блоки и молча выбрасывает картинки. Путь к PNG — текст, поэтому
+ * ассистент может открыть рендер сам (read_image) в любом клиенте.
+ */
+async function persistRenderImages(result) {
+    if (!result || !Array.isArray(result.content)) return result;
+
+    const images = result.content.filter(c => c && c.type === 'image' && typeof c.data === 'string');
+    if (images.length === 0) return result;
+
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    let files = [];
+    let lastError = null;
+
+    // Первая доступная папка из renderCacheDirs(): в песочнице AppData бывает read-only.
+    for (const dir of renderCacheDirs()) {
+        try {
+            await fs.mkdir(dir, { recursive: true });
+            const saved = [];
+            for (let i = 0; i < images.length; i++) {
+                const block = images[i];
+                const ext = String(block.mimeType || '').includes('jpeg') ? 'jpg' : 'png';
+                const file = path.join(dir, `${stamp}-${i + 1}.${ext}`);
+                await fs.writeFile(file, Buffer.from(block.data, 'base64'));
+                saved.push(file);
+            }
+            files = saved;
+            await pruneRenderFiles(dir);
+            break;
+        } catch (e) {
+            lastError = e;
+        }
+    }
+
+    if (files.length === 0) {
+        const message = lastError ? lastError.message : 'нет доступной папки';
+        console.warn('[MCP] Не удалось сохранить рендер файлом:', message);
+        return {
+            ...result,
+            content: [
+                ...result.content,
+                { type: 'text', text: `⚠️ Рендер не сохранён файлом: ${message}` }
+            ]
+        };
+    }
+
+    return {
+        ...result,
+        content: [
+            ...result.content,
+            { type: 'text', text: `Файл(ы) рендера:\n${files.join('\n')}` }
+        ]
+    };
+}
+
+/**
  * Вызов инструмента в renderer-процессе через IPC.
  * Сериализуем вызовы мьютексом, чтобы избежать коллизий при одновременных
  * запросах от нескольких клиентов (ответы приходят без requestId, поэтому
@@ -255,7 +348,7 @@ async function callToolInRenderer(name, args) {
                 if (res && res.error) {
                     resolve({ content: [{ type: 'text', text: String(res.error) }], isError: true });
                 } else if (res && res.result) {
-                    resolve(res.result);
+                    persistRenderImages(res.result).then(resolve, () => resolve(res.result));
                 } else {
                     resolve({ content: [{ type: 'text', text: 'Пустой ответ от инструмента' }], isError: true });
                 }
@@ -536,7 +629,11 @@ function registerAppProtocol() {
         let filePath = host ? `${host}${pathname}` : pathname;
         if (filePath.startsWith('/')) filePath = filePath.slice(1);
 
-        const currentBundlePath = updater.getCurrentBundlePath();
+        // ★ OTA-бандл подключаем только в собранном приложении: в dev-режиме
+        //   (`electron .` из репозитория) всегда отдаём актуальные файлы с диска.
+        //   Проверить скачанный бандл в dev можно флагом KONTRCAD_USE_BUNDLE=1.
+        const useBundle = app.isPackaged || process.env.KONTRCAD_USE_BUNDLE === '1';
+        const currentBundlePath = useBundle ? updater.getCurrentBundlePath() : null;
         let baseDir = currentBundlePath ? path.dirname(currentBundlePath) : __dirname;
 
         // ★ Если в папке обновления нет index-файлов — полностью откатываемся на встроенную версию
@@ -701,7 +798,7 @@ app.whenReady().then(async () => {
                         if (res?.error) {
                             resolve({ content: [{ type: 'text', text: String(res.error) }], isError: true });
                         } else if (res?.result) {
-                            resolve(res.result);
+                            persistRenderImages(res.result).then(resolve, () => resolve(res.result));
                         } else {
                             resolve({ content: [{ type: 'text', text: 'Пустой ответ' }], isError: true });
                         }

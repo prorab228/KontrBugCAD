@@ -3,3 +3,4 @@ package-lock.json
 dist
 project_content.txt
 project_parser.py
+renders
