@@ -402,6 +402,8 @@
         height: 40px;
         font-size: 15px;
     }
+
+    .dropdown-toggle .fa-caret-down {margin-right: -20px; margin-left: 0;}
     .toolbar-container .sketch-tool-menu { width: 100%; }
     .toolbar-container .sketch-tool-menu .tool-btn { width: 28px; }
     .toolbar-container .sketch-tool-menu .dropdown-toggle { width: 12px; }
@@ -463,6 +465,7 @@
         left: 0 !important;
         right: 0 !important;
     }
+
 
     .panel-toggle-btn {
         position: absolute;
