@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8">
+    <title>КонтрCAD — тесты панели свойств</title>
+    <!--
+        Браузерные тесты PropertyPanelBuilder (сворачиваемые группы).
+        Открывать через scripts/dev-server.mjs:
+            http://127.0.0.1:8100/test-artifacts/e2e/panel.html
+        Результаты — в window.__panelResults и в тексте на странице.
+    -->
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "/lib/three@0.185.1/build/three.module.js",
+            "three/addons/": "/lib/three@0.185.1/examples/jsm/",
+            "core/": "/js/core/",
+            "generators/": "/js/generators/",
+            "tools/": "/js/tools/",
+            "ui/": "/js/ui/",
+            "lib/": "/lib/"
+        }
+    }
+    </script>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<pre id="out">запуск…</pre>
+<div id="host" style="width: 320px;"></div>
+<script type="module">
+import { PropertyPanelBuilder } from '/js/ui/PropertyPanelBuilder.js';
+
+const results = [];
+function check(name, fn) {
+    try {
+        const detail = fn();
+        results.push({ name, pass: true, detail: detail ?? null });
+    } catch (error) {
+        results.push({ name, pass: false, detail: String(error && (error.message || error)) });
+    }
+}
+function assert(condition, message) {
+    if (!condition) throw new Error(message);
+}
+function assertEqual(actual, expected, message) {
+    const a = JSON.stringify(actual);
+    const e = JSON.stringify(expected);
+    if (a !== e) throw new Error(`${message}: получено ${a}, ожидалось ${e}`);
+}
+
+const builder = new PropertyPanelBuilder({ translateDynamic: (s) => s });
+const host = document.getElementById('host');
+
+function render(config) {
+    host.innerHTML = '';
+    const panel = builder.build(config);
+    host.appendChild(panel);
+    return panel;
+}
+
+const fieldConfig = {
+    id: 'test-panel',
+    title: { text: 'Тест' },
+    fields: [
+        {
+            type: 'group',
+            id: 'advanced',
+            title: 'Дополнительные параметры',
+            icon: 'fa-cog',
+            collapsible: true,
+            collapsed: true,
+            fields: [
+                { type: 'number', id: 'advNumber', label: 'Число:', value: 5 },
+                { type: 'hint', text: 'подсказка' }
+            ]
+        }
+    ]
+};
+
+const groupBody = (root) => root.querySelector('.property-subgroup-body');
+const groupTitle = (root) => root.querySelector('.property-subgroup-title');
+
+check('сворачиваемая группа: по умолчанию свёрнута', () => {
+    const panel = render(fieldConfig);
+    const body = groupBody(panel);
+    const title = groupTitle(panel);
+
+    assert(body, 'тело группы найдено');
+    assertEqual(getComputedStyle(body).display, 'none', 'тело скрыто');
+    assertEqual(title.getAttribute('aria-expanded'), 'false', 'aria-expanded');
+    assert(title.classList.contains('collapsible'), 'заголовок помечен как collapsible');
+    assert(title.querySelector('.property-subgroup-chevron').classList.contains('is-collapsed'), 'шеврон повёрнут');
+});
+
+check('сворачиваемая группа: клик по заголовку разворачивает и сворачивает', () => {
+    const panel = render(fieldConfig);
+    const body = groupBody(panel);
+    const title = groupTitle(panel);
+
+    title.click();
+    assertEqual(getComputedStyle(body).display, 'block', 'после клика тело видно');
+    assertEqual(title.getAttribute('aria-expanded'), 'true', 'aria-expanded=true');
+    assert(!title.querySelector('.property-subgroup-chevron').classList.contains('is-collapsed'), 'шеврон развёрнут');
+
+    title.click();
+    assertEqual(getComputedStyle(body).display, 'none', 'повторный клик сворачивает');
+    assertEqual(title.getAttribute('aria-expanded'), 'false', 'aria-expanded=false');
+});
+
+check('сворачиваемая группа: состояние переживает пересборку панели', () => {
+    render(fieldConfig);                 // сброс к состоянию по умолчанию
+    builder.setCollapsed('advanced', true);
+
+    let panel = render(fieldConfig);
+    groupTitle(panel).click();           // развернули
+    assertEqual(getComputedStyle(groupBody(panel)).display, 'block', 'развёрнуто');
+
+    panel = render(fieldConfig);          // панель пересобрана тем же builder
+    assertEqual(getComputedStyle(groupBody(panel)).display, 'block', 'осталось развёрнутым');
+    assertEqual(groupTitle(panel).getAttribute('aria-expanded'), 'true', 'aria-expanded сохранён');
+});
+
+check('сворачиваемая группа: клавиатура Enter/Space', () => {
+    builder.setCollapsed('advanced', true);
+    const panel = render(fieldConfig);
+    const title = groupTitle(panel);
+    const body = groupBody(panel);
+
+    title.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    assertEqual(getComputedStyle(body).display, 'block', 'Enter разворачивает');
+
+    title.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true }));
+    assertEqual(getComputedStyle(body).display, 'none', 'Space сворачивает');
+});
+
+check('вложенные поля реально отрисованы внутри тела', () => {
+    builder.setCollapsed('advanced', false);
+    const panel = render(fieldConfig);
+    const body = groupBody(panel);
+
+    assertEqual(body.querySelectorAll('.property-row').length, 2, 'два поля внутри группы');
+    assert(body.querySelector('#advNumber'), 'поле ввода на месте');
+    assertEqual(body.querySelector('#advNumber').value, '5', 'значение поля');
+});
+
+check('обычная группа без collapsible: заголовок не переключает, поля видны', () => {
+    const panel = render({
+        id: 'plain-panel',
+        fields: [
+            {
+                type: 'group',
+                id: 'plainGroup',
+                title: 'Обычная группа',
+                fields: [{ type: 'number', id: 'plainNumber', label: 'Число:', value: 1 }]
+            }
+        ]
+    });
+
+    const title = groupTitle(panel);
+    const body = groupBody(panel);
+
+    assert(!title.classList.contains('collapsible'), 'заголовок не интерактивный');
+    assertEqual(body, null, 'лишнего контейнера нет');
+    assertEqual(panel.querySelectorAll('.property-row').length, 2, 'заголовок + поле');
+    assert(panel.querySelector('#plainNumber'), 'поле на месте');
+});
+
+check('группа без id: состояние не запоминается между сборками', () => {
+    const config = {
+        id: 'noid-panel',
+        fields: [
+            {
+                type: 'group',
+                title: 'Без id',
+                collapsible: true,
+                collapsed: true,
+                fields: [{ type: 'number', id: 'noidNumber', label: 'Число:', value: 2 }]
+            }
+        ]
+    };
+
+    let panel = render(config);
+    groupTitle(panel).click();
+    assertEqual(getComputedStyle(groupBody(panel)).display, 'block', 'развёрнуто');
+
+    panel = render(config);
+    assertEqual(getComputedStyle(groupBody(panel)).display, 'none', 'после пересборки снова свёрнуто');
+});
+
+const failed = results.filter(r => !r.pass);
+window.__panelResults = { total: results.length, failed: failed.length, results };
+document.getElementById('out').textContent = JSON.stringify(window.__panelResults, null, 2);
+</script>
+</body>
+</html>

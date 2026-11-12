@@ -1,0 +1,189 @@
+<h1>ИИ-Ассистент в КонтрCAD: инструкция по подключению (MCP)</h1>
+<p>КонтрCAD начиная с версии <strong>0.9.80</strong> поддерживает <strong>Model Context Protocol (MCP)</strong> — открытый стандарт, который позволяет нейросетям (DeepSeek, Claude, ChatGPT, Cursor и другим) напрямую управлять вашей 3D-моделью.</p>
+<p>Вы просто пишете в чат: <em>«Создай корпус для Raspberry Pi 4»</em> — и ассистент строит его через историю операций: создаёт примитивы, эскизы, выдавливания, булевы операции и фаски. Всё это остаётся обычными параметрическими операциями, которые можно отменить (Ctrl+Z) или поправить в панели истории.</p>
+<p>Ниже — настройка для <strong>веб-версии</strong> и <strong>десктопного приложения</strong>, список инструментов и решение типовых проблем.</p>
+<hr>
+<h2>Что выбрать: веб или десктоп</h2>
+<table><thead><tr><th>Способ</th><th>Веб-версия</th><th>Десктопная версия</th></tr></thead><tbody><tr><td>Транспорт</td><td>WebMCP (встроенный в браузер)</td><td>Streamable HTTP (локальный сервер)</td></tr><tr><td>Что нужно</td><td>Chrome 126+ / Edge и расширение-клиент</td><td>Установленный КонтрCAD Desktop + любой MCP-клиент</td></tr><tr><td>Где живут инструменты</td><td>в открытой вкладке редактора</td><td>в приложении, пока оно запущено</td></tr><tr><td>Доступно сразу</td><td>16 инструментов (ядро), остальные — по группам</td><td>все 68 инструментов</td></tr></tbody></table>
+<p>Если работаете в браузере — берите первый вариант. Если нужен «полный» ассистент в Cursor/Claude Desktop/DeepSeek Harness — второй.</p>
+<hr>
+<h2>Настройка для веб-версии</h2>
+<p>Веб-версия использует <strong>WebMCP</strong>: редактор регистрирует свои инструменты в браузере, и ассистент «видит» открытую вкладку и управляет ей напрямую.</p>
+<h3>Что понадобится</h3>
+<ol><li>Браузер <strong>Google Chrome</strong> (версия 126 или новее) либо <strong>Microsoft Edge</strong>.</li><li>Клиент с поддержкой WebMCP — например, официальное расширение <strong>DeepSeek Harness</strong> (подойдёт и другой WebMCP-клиент).</li></ol>
+<h3>Пошаговая настройка</h3>
+<ol><li><strong>Установите расширение-клиент</strong> (для DeepSeek Harness — из Chrome Web Store).</li><li><strong>Настройте клиент</strong>: в настройках расширения укажите адрес локального сервера, например <code>http://127.0.0.1:3080</code>, если запускаете DSH локально. Обычно Harness сам предлагает команду для терминала, которая всё настроит.</li><li><strong>Откройте редактор</strong> в браузере: <code>kontrcad.ru/editor</code> или <code>dev.kontrcad.ru</code>.</li><li><strong>Начните диалог</strong>: откройте боковую панель расширения поверх редактора. Ассистент подхватит инструменты автоматически.</li></ol>
+<blockquote><p>Если инструменты не появились после обновления редактора — перезагрузите вкладку с <code>?nocache=1</code> (или сбросьте кэш кнопкой в редакторе): редактор кэшируется service worker'ом.</p></blockquote>
+<h3>Важно: группы инструментов</h3>
+<p>В веб-версии <strong>по умолчанию активны только 13 инструментов ядра + 3 мета-инструмента</strong> (16). Остальные — в группах, чтобы не забивать контекст модели:</p>
+<table><thead><tr><th>Группа</th><th>Что внутри</th></tr></thead><tbody><tr><td><code>core</code></td><td>чтение сцены, примитивы, трансформации, булевы операции *(активна всегда)*</td></tr><tr><td><code>history</code></td><td>undo/redo/jump, изменение параметров, описания операций</td></tr><tr><td><code>sketches</code></td><td>плоскости, эскизы, текст, DOF-анализ, extrude/revolve/sweep/loft</td></tr><tr><td><code>images</code></td><td>скриншот вьюпорта и рендер по ракурсам</td></tr><tr><td><code>library</code></td><td>встроенная библиотека моделей</td></tr><tr><td><code>files</code></td><td>проекты в локальной БД, экспорт STL/STEP/3MF/OBJ/PLY/GLTF</td></tr><tr><td><code>advanced</code></td><td>фаски, резьба, шестерни, массивы, группы, repair, decimate</td></tr></tbody></table>
+<p>Ассистент открывает нужную группу сам:</p>
+<pre><code>list_tool_groups()                                    → какие группы есть и что активно
+enable_tool_group({ groups: ["sketches", "advanced"] })  → включить</code></pre>
+<p><code>enable_tool_group</code> в десктопной версии просто отвечает «все инструменты доступны сразу» — там группы не нужны.</p>
+<h3>Промт для веб-версии</h3>
+<p>Скопируйте в чат ассистента:</p>
+<pre><code>Ты — инженер-ассистент в параметрическом CAD КонтрCAD (веб-версия, WebMCP).
+
+КАНАЛ: только mcp__chrome__evaluate → window.__kc.call(name, args).
+• Возвращает объект/JSON — работай с данными, не пересказывай их целиком.
+• Нет __kc → перезагрузи вкладку с ?nocache=1.
+• Рендер: get_multi_view(size=512…1024). Картинка появляется в #kc-render-canvas — снимай её
+  screenshot'ом по селектору; base64 в контекст не тяни. show:true — показать карточку пользователю.
+
+ГРУППЫ: по умолчанию активны только core (16 инструментов с мета).
+• Нужного инструмента нет в списке → list_tool_groups() → enable_tool_group({groups:[...]}).
+• sketches — эскизы/текст/DOF/профильные операции; advanced — фаски, резьба, массивы;
+images — превью; files — проекты и экспорт; library — библиотека; history — история.
+• Справка по теме: get_help({topic}) — вызывай вместо перебора инструментов.
+
+ДИСЦИПЛИНА:
+• get_scene_state — один раз в начале, дальше работай по известным UUID.
+• list_objects дешевле get_scene_state; get_object — для одного объекта.
+• Не перепроверяй успешные операции и не вызывай get_scene_state после каждого шага.
+• Несколько последовательных шагов → batch({steps:[...], rollback:true}).
+• get_multi_view — только в финале. Новая задача — новый чат.
+
+ИСТОРИЯ:
+• update_operation сливает параметры (передавай только изменения).
+• undo/redo/jump_to требуют expected_current_id.
+
+СТИЛЬ: кратко, прогресс галочками (✅ шаг N: …), финал — 3–5 предложений + превью.
+Не объясняй очевидное.</code></pre>
+<h3>Проверка</h3>
+<p>Отправьте: _«Создай куб 40×40×40, вычти цилиндр Ø24 высотой 60 и покажи результат через get_model_preview»_. Если через 10–15 секунд появилась деталь с отверстием — всё работает.</p>
+<hr>
+<h2>Настройка для десктопной версии (Electron + Streamable HTTP)</h2>
+<p>Десктопная версия не зависит от браузерных расширений и <strong>не требует Chrome</strong>. При обычном запуске КонтрCAD Desktop поднимает локальный MCP-сервер:</p>
+<pre><code>http://127.0.0.1:3100/mcp</code></pre>
+<p>Транспорт — <strong>Streamable HTTP</strong>, рекомендованный для актуальных MCP-клиентов (DeepSeek Harness, Cursor, Claude Desktop).</p>
+<blockquote><p>⚠️ Сервер доступен только пока запущено приложение «КонтрCAD». Закрыли редактор — соединение оборвалось. Сервер слушает только <code>127.0.0.1</code> и не требует авторизации, поэтому не пробрасывайте порт наружу.</p></blockquote>
+<h3>Что понадобится</h3>
+<ol><li>Запущенное приложение <strong>КонтрCAD Desktop</strong> — обычный запуск, без флагов: сервер живёт, пока открыто окно.</li><li>MCP-клиент. Ниже основной путь для <strong>DeepSeek Harness</strong> (<code>dsh web</code>); Cursor, Claude Desktop и другие подключают этот же адрес своими штатными средствами.</li></ol>
+<h3>Способ 1 — одна команда (рекомендуется)</h3>
+<p>Harness подключает внешние MCP-серверы встроенным плагином <code>@deepseek-ai/dsh-mcp-client</code> — он уже входит в поставку, устанавливать ничего не нужно. Нужно только дописать абзац в конфиг профиля, это делает одна команда.</p>
+<p>Откройте <strong>PowerShell</strong> и вставьте целиком:</p>
+<pre><code class="language-powershell">$p = "$env:USERPROFILE\.dsh\profiles\web\cordis.patch.yml"
+New-Item -ItemType Directory -Force (Split-Path $p) | Out-Null
+if (-not (Select-String -Path $p -Pattern 'mcp-kontrcad' -Quiet -ErrorAction SilentlyContinue)) {
+@"
+
+- id: mcp-kontrcad
+  name: '@deepseek-ai/dsh-mcp-client'
+  config:
+    serverName: kontrcad
+    transport: streamable-http
+    url: http://127.0.0.1:3100/mcp
+"@ | Add-Content -Path $p
+}</code></pre>
+<p>Перезапустите <code>dsh web</code> — при следующем запуске в чате появятся инструменты <code>mcp__kontrcad__*</code> (68 штук).</p>
+<p>Что важно:</p>
+<ul><li>профиль <code>web</code> — для браузерного <code>dsh web</code>; для приложения <strong>DeepSeek Harness Desktop</strong> замените в пути <code>web</code> на <code>desktop</code>;</li><li>если сервер уже был добавлен через <strong>MCP Center</strong>, сначала удалите его там (<strong>Settings → MCP Center → Remove</strong>): два клиента с одним именем <code>kontrcad</code> конфликтуют, и второй не загрузится;</li><li>команда идемпотентна: повторный запуск ничего не дублирует.</li></ul>
+<h3>Способ 2 — вручную (macOS / Linux или без PowerShell)</h3>
+<p>Откройте <code>~/.dsh/profiles/web/cordis.patch.yml</code> (в Windows — <code>%USERPROFILE%\.dsh\profiles\web\cordis.patch.yml</code>) и добавьте в конец файла:</p>
+<pre><code class="language-yaml">- id: mcp-kontrcad
+  name: '@deepseek-ai/dsh-mcp-client'
+  config:
+    serverName: kontrcad
+    transport: streamable-http
+    url: http://127.0.0.1:3100/mcp</code></pre>
+<p>Перезапустите <code>dsh web</code>: плагин подключится, вызовет <code>tools/list</code> и зарегистрирует все 68 инструментов.</p>
+<h3>Способ 3 — через MCP Center (быстро, но без картинок)</h3>
+<p>Плагин <code>dsh-mcp-center</code> добавляет в Harness отдельную страницу управления MCP-серверами. Установите его один раз:</p>
+<pre><code class="language-bash">dsh plugin --profile web add dsh-mcp-center</code></pre>
+<ol><li>Перезапустите <code>dsh web</code> и откройте <strong>Settings → MCP Center</strong>.</li><li>Нажмите <strong>＋ Add MCP server</strong> и заполните:<ul><li><strong>Name</strong>: <code>kontrcad</code> (станет префиксом инструментов: <code>mcp__kontrcad__*</code>)</li><li><strong>Type</strong>: <code>Streamable HTTP</code></li><li><strong>URL</strong>: <code>http://127.0.0.1:3100/mcp</code></li><li><strong>Auth Mode</strong>: <code>none</code> (сервер локальный, токен не нужен)</li></ul></li><li>Нажмите <strong>Save</strong>. Рядом с сервером появится статус <strong>Connected (68 tools)</strong>.</li></ol>
+<blockquote><p>⚠️ <strong>MCP Center передаёт ассистенту только текстовые блоки</strong> и молча выбрасывает изображения — рендеры (<code>get_multi_view</code> и др.) до модели не дойдут. В десктопе PNG всё равно сохраняется в <code>%APPDATA%\kontrbugcad\renders</code> (или в запасной папке), и путь приходит в ответе, так что рендер можно открыть файлом. Если нужен именно vision — используйте <strong>Способ 1</strong> или <strong>Способ 2</strong>.</p></blockquote>
+<h3>Способ 4 — STDIO (Claude Desktop и подобные)</h3>
+<p>Клиенты вроде Claude Desktop умеют сами запускать сторонние программы. КонтрCAD стартует в скрытом режиме, отдаёт инструменты и завершается при отключении клиента.</p>
+<pre><code class="language-json">{
+  "mcpServers": {
+    "kontrcad": {
+      "command": "C:\\Путь\\К\\Установленному\\КонтрCAD.exe",
+      "args": ["--mcp"]
+    }
+  }
+}</code></pre>
+<p>При запуске из исходников команда — <code>npm</code>, аргументы — <code>["start", "--", "--mcp"]</code>. После сохранения конфига перезапустите клиент.</p>
+<h3>Проверка подключения</h3>
+<p>Спросите ассистента: «вызови <code>get_scene_state</code>». Если вернулся JSON со сценой (пусть и пустой) — сервер подключён, видны все 68 инструментов.</p>
+<p>Если инструментов нет:</p>
+<ul><li>КонтрCAD не запущен — порт <code>3100</code> не отвечает;</li><li>сервер остался в MCP Center — уберите его оттуда (конфликт имён);</li><li>правился не тот профиль (<code>web</code> или <code>desktop</code>);</li><li><code>dsh web</code> не перезапускали после правки конфига.</li></ul>
+
+<h3>Промт для ассистента (десктопная версия)</h3>
+<pre><code>Ты — инженер-ассистент в параметрическом CAD КонтрCAD (десктопная версия).
+Ты управляешь моделью через MCP-сервер kontrcad (Streamable HTTP, локальный).
+
+ВОЗМОЖНОСТИ: доступны все 68 инструментов — чтение сцены, примитивы, эскизы и текст,
+DOF-анализ, профильные операции (extrude/revolve/sweep/loft), булевы операции,
+фаски, резьба, массивы, история, проекты, библиотека, изображения.
+
+ДИСЦИПЛИНА:
+• get_scene_state — один раз в начале, дальше работай по известным UUID.
+• list_objects дешевле get_scene_state; get_object — для одного объекта.
+• Не перепроверяй успешные операции.
+• Несколько шагов подряд → batch({steps:[...], rollback:true}).
+• Справка по теме: get_help({topic}) вместо перебора инструментов.
+• Рендер: get_multi_view (4 вида одной картинкой, size=512 для проверки, 1024 — для финала),
+  get_model_preview — один ракурс. Картинки приходят image-блоками (нужен vision у клиента);
+  если картинки в ответе нет — там будет путь к PNG, открой его файлом.
+
+ИСТОРИЯ:
+• update_operation сливает параметры (передавай только изменения) — так меняются размеры
+без потери зависимых операций.
+• undo/redo/jump_to требуют expected_current_id.
+
+СТИЛЬ: кратко, прогресс галочками (✅ шаг N: …), финал — 3–5 предложений + превью.</code></pre>
+<hr>
+<h2>Быстрый тест после подключения</h2>
+<p>Отправьте ассистенту:</p>
+<blockquote><p>Создай куб 40×40×40, вычти из него цилиндр Ø24 высотой 60 и покажи результат через <code>get_model_preview</code>.</p></blockquote>
+<p>Если через 10–15 секунд появится изображение детали с отверстием — интеграция работает.</p>
+<hr>
+<h2>Какие инструменты доступны ИИ</h2>
+<p>ИИ работает не с пикселями, а с <strong>параметрическим ядром</strong>: он создаёт настоящие операции, которые можно отменить (Ctrl+Z) или изменить параметры. Всего — <strong>68 инструментов</strong> (65 в группах + 3 мета-инструмента).</p>
+<h3>Ядро и чтение сцены (<code>core</code>, активна всегда)</h3>
+<ul><li><code>get_scene_state(include_objects?, include_operations?)</code> — полное состояние: объекты (UUID, имена, типы, позиции, размеры) и история операций.</li><li><code>list_objects()</code> — краткий список объектов. Дешевле, чем <code>get_scene_state</code>.</li><li><code>get_object(uuid)</code> — подробно про один объект: <code>bbox</code>, <code>size</code>, <code>position</code>, <code>position_bottom</code> (центр нижней грани).</li><li><code>body_topology(uuid, mode: "cylinders")</code> — найденные цилиндрические поверхности тела (валы/отверстия: тип, диаметр, глубина, ось).</li><li><code>create_primitive(type, …)</code> — 18 типов: куб, сфера, цилиндр, конус, тор, пирамида, шестигранник, труба, полусфера, звезда, сердце, клин, крыши и др.</li><li><code>move_object</code> / <code>rotate_object</code> / <code>scale_object</code> — трансформации. <code>move_object</code> поддерживает <code>position_mode: preserve | bottom | center</code>.</li><li><code>boolean_union</code> / <code>boolean_subtract</code> / <code>boolean_intersect</code> — булевы операции на Manifold (watertight-результат).</li><li><code>delete_objects(uuids)</code> — удаление (каскадно для групп).</li><li><code>batch(steps, rollback: true)</code> — несколько инструментов одним вызовом с откатом при ошибке.</li></ul>
+<h3>История операций (<code>history</code>)</h3>
+<ul><li><code>undo(expected_current_id)</code> / <code>redo(expected_current_id)</code> / <code>jump_to(target_index, expected_current_id)</code> — навигация по истории с защитой от гонки.</li><li><code>update_operation(operation_id, new_params)</code> — изменить параметры операции; зависимые операции перестраиваются автоматически.</li><li><code>update_object_parameter(uuid, param_name, value)</code> — упрощённо: один параметр по UUID объекта.</li><li><code>remove_operation(operation_id)</code> — удалить операцию (откажется, если на неё ссылаются).</li><li><code>describe_operation(operation_id | object_uuid, description)</code> — подписать операцию для туториала/истории.</li></ul>
+<p><strong>Зачем <code>expected_current_id</code>:</strong> пользователь может в любой момент нажать Ctrl+Z или добавить операцию руками. С проверкой ассистент получит ошибку и пересинхронизируется, без неё — сломал бы сцену. Это «оптимистичная блокировка».</p>
+<h3>Эскизы, текст и профильные операции (<code>sketches</code>)</h3>
+<ul><li><code>create_workplane(face_ref | position+normal, name, plane_type)</code> — плоскость эскиза (ассоциативно к грани или снапшотом).</li><li><code>add_sketch_entities(plane_id, entities)</code> — линии, окружности, дуги, овалы, полилинии, сплайны, точки; у каждой сущности можно задать <code>pinned</code>.</li><li><code>remove_sketch_entities</code> / <code>update_sketch_entity</code> — правка и удаление элементов (в т.ч. <code>pinned</code>).</li><li><code>add_sketch_constraint</code> / <code>remove_sketch_constraint</code> — ограничения: horizontal, vertical, parallel, perpendicular, angle, equality, coincident, point_on_line, tangent, distance и др.</li><li><strong><code>add_sketch_text(plane_id, text, position, height, font_name, anchor, direction, pinned)</code></strong> — текст в эскизе: глифы превращаются в замкнутые полилинии. По умолчанию текст <strong>закреплён</strong> (<code>pinned: true</code>), поэтому не увеличивает DOF.</li><li><code>get_sketch_state(plane_id)</code> — элементы, регионы (готовые профили для выдавливания), ограничения.</li><li><strong><code>get_sketch_dof(plane_id?, tolerance?, include_entities?)</code></strong> — анализ степеней свободы: зафиксирован ли чертёж, сколько степеней осталось, есть ли конфликт или избыточные связи, какие элементы ещё подвижны.</li><li><code>extrude</code> — выдавливание профиля (<code>figures</code> или <code>selected_regions_data</code>) с наклоном, скруткой и масштабированием; <code>operation_type: new | cut | join</code>.</li><li><b>Тип операции</b> определяется автоматически по реальному пересечению построенного тела с объектами сцены, если <code>operation_type</code> не задан (касание в пределах gap тоже считается). Нет пересечений → <code>new</code>. Для <code>extrude</code> при пересечении тип задаёт направление: <code>positive</code> → <code>join</code>, <code>negative</code> → <code>cut</code>, <code>both</code> → <code>join</code>. Для <code>revolve</code> / <code>sweep</code> / <code>loft</code> — доля объёма нового тела внутри существующего (&gt; 50% → <code>cut</code>, иначе <code>join</code>).</li><li><code>revolve</code> — тело вращения (ось или <code>line_axis_points</code>).</li><li><code>sweep</code> — профиль по траектории (<code>path_points</code>).</li><li><code>loft</code> — плавное соединение 2+ сечений.</li></ul>
+<h3>Изображения (<code>images</code>)</h3>
+<p>Рендер сделан под ассистента: одна картинка вместо четырёх, камера вписывает деталь в кадр целиком (а не по описанной сфере), размер задаётся явно, а в ответе честно указана цена в vision-токенах — картинка стоит их на каждом ходу, пока лежит в истории диалога.</p>
+<ul><li><code>get_viewport_screenshot(max_size?, hide_helpers?, show?)</code> — «что видит пользователь», по умолчанию 768 px по длинной стороне.</li><li><code>get_model_preview(uuids?, view?, size?, wireframe?, background?, show?)</code> — один ракурс, по умолчанию 768 px.</li><li><code>get_multi_view(uuids?, views?, size?, layout?, wireframe?, show?)</code> — мозаика ракурсов ОДНИМ изображением: по умолчанию <code>front | right | top | iso</code>, <code>size: 768</code> → 4 вида по 384 px.</li></ul>
+<p>Цена одной картинки (vision-токены у DeepSeek-маршрутов):</p>
+<table><thead><tr><th>Сторона картинки</th><th>Мозаика 2×2</th><th>Один ракурс</th></tr></thead><tbody><tr><td>512</td><td>~184</td><td>~184</td></tr><tr><td>768</td><td>~382</td><td>~382</td></tr><tr><td>1024</td><td>~652</td><td>~652</td></tr></tbody></table>
+<ul><li><code>views</code> — любой набор до 6 ракурсов (<code>iso</code>, <code>iso_alt</code>, <code>front</code>, <code>back</code>, <code>left</code>, <code>right</code>, <code>top</code>, <code>bottom</code>); чем меньше видов, тем крупнее каждый.</li><li><code>layout: "separate"</code> — каждый ракурс отдельной картинкой (в N раз дороже, зато детальнее).</li><li><code>show: true</code> — показать рендер в карточке прямо в редакторе.</li><li><code>max_size</code> — устаревший алиас <code>size</code>.</li></ul>
+<p>Как картинка доходит до модели:</p>
+<ul><li><strong>десктопный MCP</strong> — штатными image-блоками в ответе инструмента (клиенту нужен vision);</li><li><strong>десктопный MCP, клиент без vision</strong> — приложение дополнительно сохраняет PNG в <code>%APPDATA%\kontrbugcad\renders</code> (последние 40 файлов; если папка недоступна — во временную или в папку приложения) и дописывает пути в ответ, так что рендер можно открыть файлом;</li><li><strong>веб-версия</strong> — карточка <code>#kc-render-canvas</code> в редакторе: ассистент снимает её скриншотом элемента и получает ровно те пиксели, что отрендерил. base64 в контекст не отдаётся — это дорого (<code>__kc.call(name, args, { inline: true })</code> — если он всё-таки нужен).</li></ul>
+<p><strong>Нужен vision в MCP-клиенте.</strong> Если клиент изображения не показывает, рендер всё равно останется в карточке редактора — пользователь увидит его сам.</p>
+<h3>Библиотека (<code>library</code>)</h3>
+<ul><li><code>list_library_items(category_id?, search?, limit?)</code> — каталог встроенной библиотеки (без параметров — категории). Вызывайте до импорта.</li><li><code>import_library_model(item_id | name_query, position?, color?)</code> — вставить модель из библиотеки.</li></ul>
+<h3>Проекты и экспорт (<code>files</code>)</h3>
+<ul><li><code>new_project(confirm: true)</code> — очистить сцену и начать с нуля.</li><li><code>save_project(name, description?, existing_key?, overwrite?)</code> — сохранить в локальную БД.</li><li><code>list_saved_projects(search?, limit?)</code> / <code>open_saved_project(key, confirm: true)</code> / <code>delete_saved_project(key, confirm: true)</code>.</li><li><code>export_project_file(compact?)</code> — скачать <code>.kbcad</code> для бэкапа или переноса.</li><li><code>export_model(format: stl | stl-ascii | obj | ply | gltf | 3mf | step, file_name?, selected_only?)</code>.</li></ul>
+<p><strong>Импорт проекта из файла</strong> остаётся за пользователем — ассистент не может открыть диалог выбора файла.</p>
+<h3>Продвинутое (<code>advanced</code>)</h3>
+<ul><li><code>fillet_chamfer(target_uuid, edges, distance1, distance2?, segments?)</code> — фаска/скругление по рёбрам. Перед вызовом получите рёбра: <code>get_object_edges</code>.</li><li><code>get_object_edges(uuid, axis?, min_length?, min_crease_angle?, near_point?, radius?, limit?)</code> — рёбра в мировых координатах.</li><li><code>get_object_faces(uuid, axis?, min_area?, near_point?, radius?, limit?, include_face_ref?)</code> — грани (в т.ч. <code>face_ref</code> для создания плоскости по грани).</li><li><code>thickness(uuid, thickness, mode?, segments?, inset?)</code> — оболочка заданной толщины.</li><li><code>create_thread(type, standard?, diameter, pitch, length, threadType, …)</code> — отдельное тело резьбы.</li><li><code>thread_cut(target_uuid, diameter, pitch, length, position, …)</code> — нарезать резьбу на существующем теле (внутреннюю/наружную).</li><li><code>create_gear(teeth, module, faceWidth, …)</code> — эвольвентная шестерня.</li><li><code>split_by_plane(uuid, plane_id)</code> — разрезать плоскостью.</li><li><code>repair_geometry(uuids, …)</code> — починить «грязный» STL (manifold).</li><li><code>decimate_mesh(uuids, reduction_factor?, …)</code> — уменьшить число полигонов.</li><li><code>create_text3d(text, font_size?, depth?, …)</code> — объёмный текст.</li><li><code>array_linear</code> / <code>array_circular</code> — массивы.</li><li><code>mirror_object</code>, <code>duplicate_object</code>, <code>group_objects</code>, <code>ungroup_objects</code>.</li><li><code>change_color</code>, <code>change_name</code>, <code>change_visibility</code>.</li></ul>
+<h3>Мета-инструменты (доступны всегда)</h3>
+<ul><li><strong><code>list_tool_groups(include_tools?)</code></strong> — какие группы есть, что активно, сколько инструментов.</li><li><strong><code>enable_tool_group(groups)</code></strong> — включить группы (в вебе; в десктопе всё уже доступно).</li><li><strong><code>get_help(topic)</code></strong> — подробная справка по теме вместо длинных описаний в схеме: <code>general</code>, <code>sketch</code>, <code>extrude</code>, <code>move_object</code>, <code>boolean_operations</code>, <code>fillet_chamfer</code>, <code>get_object_edges</code>, <code>repair_geometry</code>, <code>create_primitive</code>.</li></ul>
+<h3>Как экономить контекст</h3>
+<ul><li><code>get_help(topic)</code> — длинные инструкции не висят в схеме инструментов, их запрашивают по необходимости.</li><li><code>batch</code> — несколько последовательных шагов одним вызовом (с <code>rollback: true</code> при ошибке сцена откатится).</li><li><code>expect</code> — во многих инструментах (<code>create_primitive</code>, <code>move_object</code>, булевы, <code>extrude</code>, <code>fillet_chamfer</code>) можно передать ожидаемые <code>bbox</code>/<code>volume</code>: ассистент сразу узнает, что размер не сошёлся, без отдельной проверки.</li><li><code>list_objects</code> вместо <code>get_scene_state</code>, <code>get_object</code> для одного объекта, изображения — только для финального показа.</li><li>Изображения: мозаика из 4 видов в одной картинке дешевле четырёх отдельных, а <code>size: 512</code> (~184 токена) достаточно, чтобы проверить «на месте ли отверстие/фаска». <code>size: 768</code> (~382) — компромисс, <code>1024</code> (~652) — когда нужны мелкие детали. Каждый рендер платится на всех последующих ходах, пока картинка в истории.</li></ul>
+<hr>
+<h2>Примеры промптов</h2>
+<p><strong>Простой:</strong></p>
+<blockquote><p>Создай куб 50×50×50 мм, затем цилиндр радиусом 10 мм и высотой 60 мм. Вычти цилиндр из куба — получится сквозное отверстие.</p></blockquote>
+<p><strong>Корпус:</strong></p>
+<blockquote><p>Создай корпус: куб 100×80×50 мм. Сделай оболочку (<code>thickness</code>) с толщиной стенок 2 мм. Затем 4 цилиндра радиусом 3 мм на расстоянии 10 мм от углов и вычти их из корпуса. В конце — фаска 1 мм на верхних рёбрах.</p></blockquote>
+<p><strong>Эскиз с текстом и проверкой DOF:</strong></p>
+<blockquote><p>На верхней грани корпуса создай плоскость эскиза. Нарисуй прямоугольник 40×15 и добавь текст «КонтрCAD» высотой 6 мм по центру. Проверь <code>get_sketch_dof</code> — текст должен быть закреплён. Выдави прямоугольник на 2 мм и вырежи текст на 0.5 мм.</p></blockquote>
+<p><strong>Резьба:</strong></p>
+<blockquote><p>На валу Ø20 нарежь внешнюю резьбу M20×2.5 длиной 15 мм. <code>position</code> подбери так, чтобы витки начинались в 3 мм от основания вала. Покажи результат через <code>get_multi_view</code>.</p></blockquote>
+<hr>
+<h2>Ограничения и безопасность</h2>
+<ul><li><strong>Локальность.</strong> Десктопный сервер слушает только <code>127.0.0.1:3100</code>, авторизации нет — не публикуйте порт в сеть.</li><li><strong>Жизненный цикл.</strong> HTTP-сервер живёт, пока запущен КонтрCAD; STDIO-режим завершается вместе с клиентом.</li><li><strong>Необратимое — только вручную.</strong> Сжатие/очистка истории, импорт файла проекта и выбор файлов остаются за пользователем.</li><li><strong>История защищена.</strong> <code>undo/redo/jump_to</code> требуют <code>expected_current_id</code> — ассистент не «перескочит» через ваши правки.</li><li><strong>Группы.</strong> В веб-версии набор инструментов ограничен активными группами — это не баг, а экономия контекста.</li></ul>
+<hr>
+<h2>Решение проблем</h2>
+<table><thead><tr><th>Симптом</th><th>Что делать</th></tr></thead><tbody><tr><td>Ассистент пишет «инструмент не найден»</td><td>В вебе включите группу: <code>list_tool_groups()</code> → <code>enable_tool_group({groups:[...]})</code></td></tr><tr><td>Ошибки с UUID «объект не найден»</td><td>Попросите <code>get_scene_state</code> или <code>list_objects</code> — ассистент увидит актуальные UUID</td></tr><tr><td>Нет <code>window.__kc</code> в веб-версии</td><td>Перезагрузите вкладку с <code>?nocache=1</code> (или сбросьте кэш в редакторе)</td></tr><tr><td>Ассистент ищет КОМПАС-3D или другие программы</td><td>Уточните: «Ты работаешь внутри редактора КонтрCAD. Используй только свои MCP-инструменты»</td></tr><tr><td>В десктопе не подключается <code>http://127.0.0.1:3100/mcp</code></td><td>Проверьте, что КонтрCAD запущен; не занят ли порт 3100 другой программой; в консоли приложения должно быть <code>[MCP] Streamable HTTP server: http://localhost:3100/mcp</code></td></tr><tr><td>В MCP Center статус не <code>Connected</code></td><td>Проверьте тип транспорта (<code>Streamable HTTP</code>, не SSE) и URL с <code>/mcp</code> на конце</td></tr><tr><td>Инструменты есть, но модель «не видит» изображения</td><td>Включите группу <code>images</code> и убедитесь, что у клиента есть vision</td></tr><tr><td>В DSH (MCP Center) рендер приходит текстом без картинки</td><td>MCP Center пробрасывает только текстовые блоки. В десктопе PNG сохраняется в <code>%APPDATA%\kontrbugcad\renders</code> (или в запасной папке), путь есть в ответе — откройте файл; либо подключите сервер через <code>@deepseek-ai/dsh-mcp-client</code>, он картинки передаёт</td></tr><tr><td>В вебе рендер не появился</td><td>Рендер показывается в карточке <code>#kc-render-canvas</code> в редакторе; если клиент не умеет image-блоки — снимайте карточку скриншотом по этому селектору</td></tr></tbody></table>
+<hr>
+<h2>Обновления этой инструкции</h2>
+<ul><li><strong>Рендер переделан под ассистента:</strong> <code>get_multi_view</code> получил <code>views</code> (до 6 ракурсов), <code>size</code> (256…1536, по умолчанию 768), <code>layout: mosaic | separate</code> и <code>show</code>; камера вписывает деталь в кадр целиком; в ответе пишется цена в vision-токенах. В вебе вместо новых вкладок — карточка <code>#kc-render-canvas</code> в редакторе (её и снимает ассистент), base64 в контекст не отдаётся. В десктопе PNG рендера дополнительно сохраняется в <code>%APPDATA%\kontrbugcad\renders</code> (запасные папки: temp, папка приложения) — путь дописывается в ответ, поэтому рендер доступен даже клиентам без vision (MCP Center и т.п.).</li><li><strong>68 инструментов</strong> вместо 63: добавлены <code>batch</code>, <code>body_topology</code>, <code>get_object_edges</code>, <code>get_object_faces</code>, <code>describe_operation</code>, <code>add_sketch_text</code>, <code>get_sketch_dof</code>, <code>list_tool_groups</code>, <code>enable_tool_group</code>, <code>get_help</code>.</li><li>Описаны <strong>группы инструментов</strong>: в веб-версии по умолчанию активны только <code>core</code> + мета (16), остальные включаются <code>enable_tool_group</code>.</li><li>Добавлены разделы про <strong>текст в эскизе</strong> (с закреплением, чтобы не поднимать DOF) и <strong>DOF-анализ</strong>.</li><li>Актуализирован десктопный транспорт: <strong>Streamable HTTP</strong> (<code>http://127.0.0.1:3100/mcp</code>), убран устаревший WebSocket из решения проблем.</li><li>Полный промт для десктопной версии (раньше он был обрезан).</li><li>Уточнены параметры инструментов и советы по экономии контекста (<code>get_help</code>, <code>batch</code>, <code>expect</code>, <code>get_multi_view</code> только в финале).</li></ul>
