@@ -638,12 +638,12 @@
                                  data-sketch-tool="fillet" data-tooltip-title="Скругление"
                                  data-collapse data-priority="26"
                                  data-tooltip-image="images/sketch/fillet_demo.png"
-                                 data-tooltip-description="Создаёт скругление (дугу) на углу двух линий">
+                                 data-tooltip-description="Создаёт скругление (дугу) на углу двух линий или дуг">
                             <span class="cad-icon icon-fillet"></span>
                         </button>
 
                         <div class="divider"></div>
-                        <button class="tool-btn sketch-tool-btn" data-sketch-tool="dimension" data-tooltip-title="Размеры (D)" data-tooltip-image="images/sketch/dimension_demo.png" data-tooltip-description="Создает и редактирует размерные ограничения">
+                        <button class="tool-btn sketch-tool-btn" data-sketch-tool="dimension" data-tooltip-title="Размеры (D)" data-tooltip-image="images/sketch/dimension_demo.png" data-tooltip-description="Создает и редактирует размерные ограничения. Shift+клик по дуге — размер угла дуги">
                             <i class="fas fa-ruler-combined"></i>
                         </button>
                         <div class="dropdown">
@@ -700,6 +700,9 @@
                                 <div class="dropdown-divider"></div>
                                 <a href="#" id="autoConstraintSelectedEntities" >
                                     Автоматические ограничения выделенных
+                                </a>
+                                <a href="#" id="cleanupRedundantConstraints" data-tooltip-title="Удаляет ограничения, которые следуют из других: дубли, лишние «точка на…», циклы совпадений">
+                                    <i class="fas fa-broom"></i>Убрать лишние ограничения
                                 </a>
                                 <a href="#" id="constraintDeleteSelectedEntities" >
                                     <span class="cad-icon-dropdown icon-delete"> </span>Удалить у выделенных объектов
