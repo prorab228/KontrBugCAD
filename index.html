@@ -359,9 +359,7 @@
                                 <a href="#" class="dropdown-tool-btn" data-tool="split" data-tooltip-title="Разрезать по плоскости (Ctrl+Shift+S)">
                                     <span class="cad-icon icon-split"></span> Разрезать (Ctrl+Shift+S)
                                 </a>
-                                <a href="#" class="dropdown-tool-btn" data-tool="sectionByPlane" data-tooltip-title="Сечение по плоскости" data-tooltip-description="Отсекает модель выбранной плоскостью и заливает разрез — удобно смотреть, что внутри">
-                                    <i class="fas fa-cut"></i> Сечение по плоскости
-                                </a>
+
                                 <a href="#" class="dropdown-tool-btn" data-tool="mirror" data-tooltip-title="Отражение (Ctrl+Shift+M)">
                                     <span class="cad-icon icon-mirror"></span> Отражение (Ctrl+Shift+M)
                                 </a>
@@ -402,7 +400,9 @@
                 <!-- Создание объектов -->
                 <div class="tool-section">
                     <div class="tool-group">
-
+                        <button class="tool-btn" data-collapse data-priority="56"  data-tool="sectionByPlane" data-tooltip-title="Сечение по плоскости" data-tooltip-image="images/home_demo.gif" data-tooltip-description="Отсекает модель выбранной плоскостью — удобно смотреть, что внутри">
+                            <i class="fas fa-cut"></i>
+                        </button>
                         <button class="tool-btn" data-collapse data-priority="55" data-tool="rulerTool" id="rulerTool" data-tooltip-title="Линейка (Ctrl+M)" data-tooltip-image="images/3Druler_demo.png" data-tooltip-description="Измеряет расстояние между двумя точками">
                             <span class="cad-icon icon-ruler"></span>
                         </button>
