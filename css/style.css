@@ -2799,3 +2799,65 @@ input:checked + .toggle-slider:before {
 }
 
 
+
+/* ============================================================
+   Сборки: список соединений в панели свойств и замок в сцен-листе
+   ============================================================ */
+
+.assembly-mates {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: 100%;
+    margin: 4px 0 6px;
+}
+
+.assembly-mate {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    border: 1px solid rgba(76, 175, 80, 0.35);
+    border-radius: 8px;
+    background: rgba(76, 175, 80, 0.10);
+}
+
+.assembly-mate.is-inactive {
+    border-color: rgba(158, 158, 158, 0.35);
+    background: rgba(158, 158, 158, 0.10);
+    opacity: 0.75;
+}
+
+.assembly-mate-icon {
+    color: #4CAF50;
+    flex: 0 0 auto;
+    width: 16px;
+    text-align: center;
+}
+
+.assembly-mate.is-inactive .assembly-mate-icon {
+    color: #9E9E9E;
+}
+
+.assembly-mate-text {
+    flex: 1 1 120px;
+    min-width: 0;
+    font-size: 12px;
+    line-height: 1.35;
+    overflow-wrap: break-word;
+}
+
+.assembly-mate-remove {
+    flex: 0 0 auto;
+}
+
+.scene-item-lock {
+    margin-left: 6px;
+    font-size: 11px;
+    color: #4CAF50;
+    opacity: 0.9;
+}
+.assembly-mate-edit {
+    flex: 0 0 auto;
+}
