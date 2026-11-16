@@ -1033,5 +1033,9 @@
     "Нажмите на деталь, которую нужно закрепить": "Click the part you want to fix",
     "Деталь будет неподвижна. Нажмите «Готово»": "The part will stay fixed. Press \"Done\"",
     "Проверьте пределы угла и нажмите «Готово»": "Check the angle limits and press \"Done\"",
-    "Сначала выберите деталь": "Select a part first"
+    "Сначала выберите деталь": "Select a part first",
+    "Прилипает к углам, серединам и центру грани": "Snaps to corners, edge midpoints and the face center",
+    "Углы и середины": "Corners and midpoints",
+    "Свободно — куда кликнул": "Free — wherever you click",
+    "Точка:": "Point:"
 }
