@@ -1491,7 +1491,7 @@ a:hover {
 {
     display: flex;
     gap: 8px;
-    flex-wrap: wrap;
+   /* flex-wrap: wrap;*/
 
 }
 .property-select
@@ -1685,6 +1685,28 @@ select option {
 }
 .scene-item.scene-folder .scene-item-name:hover {
     background: transparent;   /* у обычных item-ов hover-фон на имени — тут не нужен */
+}
+/* Переключатель «клик по детали / по сборке» у папки «Сборки» */
+.scene-item.scene-folder .scene-folder-mode {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-left: auto;
+    font-size: 10px;
+    font-weight: 400;
+    text-transform: none;
+    letter-spacing: 0;
+    color: var(--text-secondary);
+    opacity: 0.8;
+    cursor: pointer;
+    flex: 0 0 auto;
+}
+.scene-item.scene-folder .scene-folder-mode input {
+    width: 12px;
+    height: 12px;
+    margin: 0;
+    cursor: pointer;
+    accent-color: var(--accent-color, #16c8b4);
 }
 .scene-item.scene-folder .scene-item-name .property-hint {
     text-transform: none;
