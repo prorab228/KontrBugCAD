@@ -1,6 +1,6 @@
 // Версию меняем при выпуске нового JS: старый кэш удаляется в activate,
 // и клиенты сразу получают свежие файлы без «Полного сброса».
-const CACHE_NAME = 'kontrcad-cache-v70';
+const CACHE_NAME = 'kontrcad-cache-v81'; // v81: 0.9.86 — решатель, скорость, драг как в продакшене
 let isHardReload = false; // Флаг для принудительного обхода HTTP-кэша
 
 self.addEventListener('install', (event) => {

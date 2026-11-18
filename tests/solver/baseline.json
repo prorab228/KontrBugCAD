@@ -1,0 +1,123 @@
+{
+  "generatedAt": "2026-11-18T14:16:45.293Z",
+  "note": "эталон метрик; обновлять осознанно: npm run check:solver -- --update",
+  "scenarios": {
+    "rect-50x30": {
+      "converged": true,
+      "residual": 6.466760993362186e-8,
+      "iter": 3,
+      "ms": 9.5
+    },
+    "rect-anchored": {
+      "converged": true,
+      "residual": 4.358216975215872e-7,
+      "iter": 3,
+      "dof": 0,
+      "rank": 16,
+      "m": 16
+    },
+    "stair-20": {
+      "converged": true,
+      "residual": 1.0022905985374268e-8,
+      "iter": 4,
+      "nFree": 80,
+      "ms": 9.8
+    },
+    "stair-80": {
+      "converged": true,
+      "residual": 1.002290595846975e-8,
+      "iter": 4,
+      "nFree": 320,
+      "ms": 28.8
+    },
+    "grid-3x3": {
+      "converged": true,
+      "residual": 1.5671067998823673e-8,
+      "iter": 4,
+      "nFree": 144,
+      "ms": 13.6
+    },
+    "tangent-circles": {
+      "converged": true,
+      "residual": 2.4728024072828703e-8,
+      "iter": 4
+    },
+    "arc-chain": {
+      "converged": true,
+      "residual": 1.3278955490747535e-8,
+      "iter": 4
+    },
+    "oval-dims": {
+      "converged": true,
+      "residual": 5.39248645736734e-10,
+      "iter": 3
+    },
+    "redundant-dims": {
+      "converged": true,
+      "residual": 5.536720237842019e-8,
+      "iter": 3,
+      "dof": 2,
+      "rank": 14,
+      "m": 15
+    },
+    "conflict-dims": {
+      "converged": false,
+      "residual": 10.004997501249377,
+      "iter": 9,
+      "dof": 2,
+      "rank": 2,
+      "m": 3
+    },
+    "drag-loop": {
+      "converged": true,
+      "residual": 6.140510322438786e-11,
+      "iter": 1,
+      "frameMs": 1.66
+    },
+    "jacobian-analytic": {
+      "gradientCalls": 14,
+      "fdHybrid": 0,
+      "jacRelDiff": 7.72842728148658e-8,
+      "nFree": 16,
+      "m": 14
+    },
+    "jacobian-sweep": {
+      "analyticTypes": 17,
+      "seeds": 10,
+      "worstRelDiff": 0.000002098900418156621,
+      "fdOnly": 4
+    },
+    "no-postpass": {
+      "applyCalls": 0
+    },
+    "singular-matrix": {
+      "returnedNull": true
+    },
+    "bounds-radius": {
+      "converged": false,
+      "residual": 5.000001024461065,
+      "radius": 0.000001024461064932262
+    },
+    "timeout-partial": {
+      "partial": true,
+      "iter": 3,
+      "ms": 30.5
+    },
+    "manager-conflict": {
+      "count": 10,
+      "restored": 0
+    },
+    "manager-report": {
+      "converged": false,
+      "residual": 10.004997501249377
+    },
+    "determinism": {
+      "iter": 4,
+      "residual": 4.7980228159170266e-8
+    },
+    "changed-entities": {
+      "changedFirst": 4,
+      "changedSecond": 0
+    }
+  }
+}
