@@ -34,6 +34,7 @@ import { ConstraintVisualizer } from '../../js/tools/sketch/managers/constraints
 import { SketchConstraintManager } from '../../js/tools/sketch/managers/constraints/SketchConstraintManager.js';
 import { ArraySketchToolBase, getEntitiesBounds } from '../../js/tools/sketch/sketch-tools/array-tool-base.js';
 import { SketchArrow2D, arrowScaleForPx } from '../../js/tools/sketch/sketch-tools/helpers/sketch-arrow-helper.js';
+import { isOffsetConstraintData } from '../../js/mcp/helpers/sketchConstraints.js';
 import { LinearArraySketchTool } from '../../js/tools/sketch/sketch-tools/linear-array-tool.js';
 import { CircularArraySketchTool } from '../../js/tools/sketch/sketch-tools/circular-array-tool.js';
 import { isSketchDebug, setSketchDebug } from '../../js/tools/sketch/utils/sketch-debug.js';
@@ -1004,6 +1005,17 @@ const SCENARIOS = [
         const suppressed = history.saveState();
         fakeSketchManager.entityManager._suppressSave = false;
         checks.push({ name: 'suppressSave блокирует запись', ok: suppressed === false && ops.length === 3, detail: suppressed });
+    }],
+
+    ['mcp-offset-guard', 'MCP: ограничения на offset отклоняются по данным', (checks) => {
+        const entities = new Map([
+            ['off', { type: 'offset' }],
+            ['line', { type: 'line' }],
+            ['anchor', { type: 'point', userData: { isOffsetAnchor: true } }]
+        ]);
+        checks.push({ name: 'coincident на offset', ok: isOffsetConstraintData({ type: 'coincident', entity1UUID: 'line', entity2UUID: 'off' }, entities) === true, detail: null });
+        checks.push({ name: 'coincident на анкор разрешён', ok: isOffsetConstraintData({ type: 'coincident', entity1UUID: 'line', entity2UUID: 'anchor' }, entities) === false, detail: null });
+        checks.push({ name: 'distance на offset', ok: isOffsetConstraintData({ type: 'distance', entityUUID: 'off' }, entities) === true, detail: null });
     }],
 
     ['gizmo-scale', 'Стрелки move и значок offset держат экранный размер', (checks) => {
