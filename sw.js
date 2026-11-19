@@ -1,6 +1,6 @@
 // Версию меняем при выпуске нового JS: старый кэш удаляется в activate,
 // и клиенты сразу получают свежие файлы без «Полного сброса».
-const CACHE_NAME = 'kontrcad-cache-v136'; // v136: якорь создаётся до ограничений и в SketchExecutor
+const CACHE_NAME = 'kontrcad-cache-v137'; // v137: центр вращения шарнира обновляется после правки ранней истории
 let isHardReload = false; // Флаг для принудительного обхода HTTP-кэша
 
 self.addEventListener('install', (event) => {
