@@ -26,6 +26,7 @@ import { createSketchEntitiesOnPlane, readSketchState, disposeSketchEntityMeshes
 import { SketchEntityManager } from '../../js/tools/sketch/managers/entities/SketchEntityManager.js';
 import { SketchHistory } from '../../js/tools/sketch/managers/entities/SketchHistory.js';
 import { SketchSession } from '../../js/tools/sketch/managers/SketchSession.js';
+import { SketchExecutor } from '../../js/core/parametric/executors/SketchExecutor.js';
 import { EntityStore } from '../../js/tools/sketch/managers/entities/EntityStore.js';
 import { SketchPickingService } from '../../js/tools/sketch/managers/entities/SketchPickingService.js';
 import { OffsetAnchorService } from '../../js/tools/sketch/managers/entities/OffsetAnchorService.js';
@@ -383,6 +384,24 @@ const SCENARIOS = [
         });
     }],
 
+    ['origin-migration', 'SketchExecutor досоздаёт якорь до ограничений', (checks) => {
+        const executor = Object.create(SketchExecutor.prototype);
+        executor.editor = { sketchManager: {} };
+        const plane = { uuid: 'plane-1', userData: {}, add() {}, remove() {} };
+        const entities = [];
+
+        const created = executor._ensureOriginEntity(plane, entities);
+        checks.push({
+            name: 'якорь создан со стабильным UUID',
+            ok: !!created && created.userData.uuid === 'plane-1:origin' && created.userData.isOriginPoint === true && created._pinned === true,
+            detail: created?.userData?.uuid
+        });
+        checks.push({ name: 'якорь добавлен в entities', ok: entities.length === 1 && entities[0] === created, detail: entities.length });
+
+        const second = executor._ensureOriginEntity(plane, entities);
+        checks.push({ name: 'повторно якорь не создаётся', ok: second === null && entities.length === 1, detail: entities.length });
+    }],
+
     ['session-phases', 'Фазы жизненного цикла SketchSession', (checks) => {
         const calls = [];
         const plane = { userData: { entities: [], constraints: [] } };
@@ -397,12 +416,17 @@ const SCENARIOS = [
             constraints: [],
             solve() { calls.push('solve'); }
         };
-        const session = new SketchSession({ currentPlane: plane, entityManager, constraintManager });
+        const session = new SketchSession({
+            currentPlane: plane,
+            entityManager,
+            constraintManager,
+            addOriginPoint() { calls.push('origin'); }
+        });
 
         const stats = session.load({ entitiesData: [{}, {}], constraintsData: [{}, {}, {}] });
         checks.push({
-            name: 'порядок фаз: сущности → ограничения → производные → публикация',
-            ok: JSON.stringify(calls) === JSON.stringify(['entities', 'constraints', 'post', 'publish']),
+            name: 'порядок фаз: сущности → якорь → ограничения → производные → публикация',
+            ok: JSON.stringify(calls) === JSON.stringify(['entities', 'origin', 'constraints', 'post', 'publish']),
             detail: calls.join(' → ')
         });
         checks.push({
@@ -415,7 +439,7 @@ const SCENARIOS = [
         session.load({ entitiesData: [], constraintsData: [] }, { solve: 'once' });
         checks.push({
             name: 'solve: once — ровно один раз перед публикацией',
-            ok: JSON.stringify(calls) === JSON.stringify(['entities', 'constraints', 'post', 'solve', 'publish']),
+            ok: JSON.stringify(calls) === JSON.stringify(['entities', 'origin', 'constraints', 'post', 'solve', 'publish']),
             detail: calls.join(' → ')
         });
 
