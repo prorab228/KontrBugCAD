@@ -878,6 +878,11 @@ a:hover {
     box-shadow: var(--shadow-primary);
 }
 
+/* Дополнительная подсветка кнопки инструмента (не вместо .active) */
+.soft-active:not(.active):not(:hover) {
+    background: rgba(0, 200, 83, 0.4);
+}
+
 .tool-btn i,
 .sketch-tool i {
     display: block;
