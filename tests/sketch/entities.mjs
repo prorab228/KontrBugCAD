@@ -28,6 +28,7 @@ import { SketchHistory } from '../../js/tools/sketch/managers/entities/SketchHis
 import { SketchSession } from '../../js/tools/sketch/managers/SketchSession.js';
 import { EntityStore } from '../../js/tools/sketch/managers/entities/EntityStore.js';
 import { SketchPickingService } from '../../js/tools/sketch/managers/entities/SketchPickingService.js';
+import { OffsetAnchorService } from '../../js/tools/sketch/managers/entities/OffsetAnchorService.js';
 import { ConstraintStore } from '../../js/tools/sketch/managers/constraints/ConstraintStore.js';
 import { ConstraintVisualizer } from '../../js/tools/sketch/managers/constraints/ConstraintVisualizer.js';
 import { SketchConstraintManager } from '../../js/tools/sketch/managers/constraints/SketchConstraintManager.js';
@@ -757,6 +758,58 @@ const SCENARIOS = [
             existingEntities: created
         });
         checks.push({ name: 'существующий анкор не создаётся повторно', ok: skipped.length === 0, detail: skipped.length });
+    }],
+
+    ['derived-offset-guard', 'Ограничения на производный offset отклоняются', (checks) => {
+        const cm = Object.create(SketchConstraintManager.prototype);
+        const offset = { type: 'offset' };
+        const line = { type: 'line' };
+        const anchor = { type: 'point', userData: { isOffsetAnchor: true } };
+        cm._getConstraintEntities = (c) => c.entities || [];
+        cm._log = () => {};
+        cm.sketchManager = { addConstraints: true, editor: { showStatus() {} } };
+        cm.isConstraintDuplicate = () => false;
+        cm.solve = () => {};
+        const added = [];
+        cm._addSingleConstraint = (c) => added.push(c);
+
+        checks.push({ name: 'offset определяется как производный', ok: cm._isDerivedOffsetConstraint({ entities: [line, offset] }) === true, detail: null });
+        checks.push({ name: 'анкор отступа не считается производным', ok: cm._isDerivedOffsetConstraint({ entities: [anchor] }) === false, detail: null });
+
+        cm.addConstraints([{ entities: [offset] }, { entities: [line] }], { checkConflicts: false, solve: false });
+        checks.push({ name: 'ограничение на offset отфильтровано, обычное добавлено', ok: added.length === 1 && added[0].entities[0] === line, detail: added.length });
+    }],
+
+    ['offset-finalize-suppress', 'finalize подавляет saveState на всё время', (checks) => {
+        const service = Object.create(OffsetAnchorService.prototype);
+        const flags = [];
+        const em = {
+            _suppressSave: false,
+            entities: [],
+            removeEntity() {},
+            sketchManager: { constraintManager: null }
+        };
+        const offset = {
+            type: 'offset',
+            rebuild() { flags.push(em._suppressSave); },
+            ensureAnchors() {},
+            _hasConstrainedAnchors() { return false; }
+        };
+        em.entities.push(offset);
+        em.sketchManager = { constraintManager: null };
+        service.entityManager = em;
+        service.finalize();
+        checks.push({ name: 'во время rebuild saveState подавлен', ok: flags[0] === true, detail: flags[0] });
+        checks.push({ name: 'после finalize флаг снят', ok: em._suppressSave === false, detail: em._suppressSave });
+    }],
+
+    ['history-reentrancy', 'SketchHistory.saveState не рекурсирует', (checks) => {
+        const history = Object.create(SketchHistory.prototype);
+        history._saving = true;
+        checks.push({ name: 'повторный вход возвращает false', ok: history.saveState() === false, detail: null });
+        history._saving = false;
+        history.sketchManager = { entityManager: null };
+        checks.push({ name: 'обычный выход сбрасывает _saving', ok: history.saveState() === false && history._saving === false, detail: history._saving });
     }],
 
     ['offset-anchors-lifecycle', 'Жизненный цикл анкоров', (checks) => {
