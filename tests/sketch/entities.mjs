@@ -19,7 +19,7 @@ import { OvalEntity } from '../../js/tools/sketch/entities/OvalEntity.js';
 import { PolylineEntity } from '../../js/tools/sketch/entities/PolylineEntity.js';
 import { SplineEntity } from '../../js/tools/sketch/entities/SplineEntity.js';
 import { PointEntity } from '../../js/tools/sketch/entities/PointEntity.js';
-import { OffsetEntity } from '../../js/tools/sketch/entities/OffsetEntity.js';
+import { OffsetEntity, offsetIconScaleForPx } from '../../js/tools/sketch/entities/OffsetEntity.js';
 import { createSketchEntityFromData, SKETCH_ENTITY_TYPES } from '../../js/tools/sketch/entities/SketchEntityRegistry.js';
 import { translateEntityData, rotateEntityData, transformEntityData, mirrorEntityData } from '../../js/tools/sketch/entities/SketchEntityOps.js';
 import { createSketchEntitiesOnPlane, readSketchState, disposeSketchEntityMeshes } from '../../js/tools/sketch/managers/entities/SketchStateLoader.js';
@@ -33,6 +33,7 @@ import { ConstraintStore } from '../../js/tools/sketch/managers/constraints/Cons
 import { ConstraintVisualizer } from '../../js/tools/sketch/managers/constraints/ConstraintVisualizer.js';
 import { SketchConstraintManager } from '../../js/tools/sketch/managers/constraints/SketchConstraintManager.js';
 import { ArraySketchToolBase, getEntitiesBounds } from '../../js/tools/sketch/sketch-tools/array-tool-base.js';
+import { SketchArrow2D, arrowScaleForPx } from '../../js/tools/sketch/sketch-tools/helpers/sketch-arrow-helper.js';
 import { LinearArraySketchTool } from '../../js/tools/sketch/sketch-tools/linear-array-tool.js';
 import { CircularArraySketchTool } from '../../js/tools/sketch/sketch-tools/circular-array-tool.js';
 import { isSketchDebug, setSketchDebug } from '../../js/tools/sketch/utils/sketch-debug.js';
@@ -1003,6 +1004,30 @@ const SCENARIOS = [
         const suppressed = history.saveState();
         fakeSketchManager.entityManager._suppressSave = false;
         checks.push({ name: 'suppressSave блокирует запись', ok: suppressed === false && ops.length === 3, detail: suppressed });
+    }],
+
+    ['gizmo-scale', 'Стрелки move и значок offset держат экранный размер', (checks) => {
+        checks.push({
+            name: 'стрелка: масштаб обратно пропорционален px/мм',
+            ok: Math.abs(arrowScaleForPx(10, 6, 60) - 1) < 1e-9 &&
+                Math.abs(arrowScaleForPx(20, 6, 60) - 0.5) < 1e-9,
+            detail: `${arrowScaleForPx(10, 6, 60)}/${arrowScaleForPx(20, 6, 60)}`
+        });
+
+        const arrow = new SketchArrow2D(null, 'x', 1, 6);
+        arrow.setScale(2);
+        checks.push({
+            name: 'стрелка: scale и мировой хитбокс обновлены',
+            ok: arrow.group.scale.x === 2 && arrow.worldSize === 12 && arrow.hitboxSize === 12,
+            detail: `${arrow.group.scale.x}/${arrow.worldSize}/${arrow.hitboxSize}`
+        });
+
+        checks.push({
+            name: 'offset: масштаб обратно пропорционален px/мм',
+            ok: Math.abs(offsetIconScaleForPx(10, 2, 20) - 1) < 1e-9 &&
+                Math.abs(offsetIconScaleForPx(20, 2, 20) - 0.5) < 1e-9,
+            detail: `${offsetIconScaleForPx(10, 2, 20)}/${offsetIconScaleForPx(20, 2, 20)}`
+        });
     }],
 
     ['array-tool-base', 'Общая база инструментов-массивов', (checks) => {
