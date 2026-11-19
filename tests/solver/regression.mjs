@@ -28,7 +28,9 @@ import { CircleEntity } from '../../js/tools/sketch/entities/CircleEntity.js';
 import { ArcEntity } from '../../js/tools/sketch/entities/ArcEntity.js';
 import { OvalEntity } from '../../js/tools/sketch/entities/OvalEntity.js';
 import { PointEntity } from '../../js/tools/sketch/entities/PointEntity.js';
-import { SketchConstraintManager } from '../../js/tools/sketch/managers/SketchConstraintManager.js';
+import { SketchConstraintManager } from '../../js/tools/sketch/managers/constraints/SketchConstraintManager.js';
+import { ConstraintStore } from '../../js/tools/sketch/managers/constraints/ConstraintStore.js';
+import { SolveCoordinator } from '../../js/tools/sketch/managers/constraints/SolveCoordinator.js';
 import { ConstraintAnalyzer } from '../../js/tools/sketch/constraints/ConstraintAnalyzer.js';
 
 const NO_TIMEOUT = { IterationTimeOut: 1e9 };
@@ -289,16 +291,16 @@ function makeConstraintManager(sketchManager) {
     // поэтому собираем объект на прототипе и подставляем заглушку визуализатора.
     const cm = Object.create(SketchConstraintManager.prototype);
     cm.sketchManager = sketchManager;
-    cm.constraints = [];
+    cm.store = new ConstraintStore(cm);
     cm.solver = new NewtonSolver({ ...NO_TIMEOUT });
     cm.visualizer = {
         updateVisual() {}, removeVisual() {}, highlight() {}, rebuildAll() {}, clearAll() {},
         hoveredDof: null, hideTooltip() {}
     };
-    cm.selectedConstraints = new Set();
     cm._hasConflict = false;
     cm.analyzer = new ConstraintAnalyzer(cm.solver);
     cm.additionManager = {};
+    cm.solveCoordinator = new SolveCoordinator(cm);
     sketchManager.constraintManager = cm;
     return cm;
 }

@@ -1,6 +1,6 @@
 // Версию меняем при выпуске нового JS: старый кэш удаляется в activate,
 // и клиенты сразу получают свежие файлы без «Полного сброса».
-const CACHE_NAME = 'kontrcad-cache-v96'; // v96: реестр типов сущностей + тесты сущностей/анкоров
+const CACHE_NAME = 'kontrcad-cache-v124'; // v124: убран лишний setTimeout-rebuild визуала (session.loadFromPlane уже делает sync)
 let isHardReload = false; // Флаг для принудительного обхода HTTP-кэша
 
 self.addEventListener('install', (event) => {
