@@ -35,6 +35,7 @@ import { ConstraintVisualizer } from '../../js/tools/sketch/managers/constraints
 import { SketchConstraintManager } from '../../js/tools/sketch/managers/constraints/SketchConstraintManager.js';
 import { ArraySketchToolBase, getEntitiesBounds } from '../../js/tools/sketch/sketch-tools/array-tool-base.js';
 import { SketchArrow2D, arrowScaleForPx } from '../../js/tools/sketch/sketch-tools/helpers/sketch-arrow-helper.js';
+import { FilletSketchTool } from '../../js/tools/sketch/sketch-tools/fillet-tool.js';
 import { isOffsetConstraintData } from '../../js/mcp/helpers/sketchConstraints.js';
 import { LinearArraySketchTool } from '../../js/tools/sketch/sketch-tools/linear-array-tool.js';
 import { CircularArraySketchTool } from '../../js/tools/sketch/sketch-tools/circular-array-tool.js';
@@ -382,6 +383,40 @@ const SCENARIOS = [
                 new OffsetEntity({ sourceEntities: [], offsetDistance: 2 }).getDimensionSpec() === null,
             detail: null
         });
+    }],
+
+    ['fillet-dimensions', 'Fillet пересчитывает размеры после обрезки', (checks) => {
+        const tool = Object.create(FilletSketchTool.prototype);
+        const line = { type: 'line', length: 10 };
+        const distance = {
+            type: 'distance', entity: line, dimensionKey: 'length', value: 20,
+            error() { return line.length - this.value; },
+            getAffectedEntities() { return [line]; }
+        };
+        const angle = {
+            type: 'angle', targetAngle: 90,
+            error() { return 10; },
+            getAffectedEntities() { return [line]; }
+        };
+        const equality = {
+            type: 'equality',
+            getAffectedEntities() { return [line]; }
+        };
+        const removed = [];
+        const updated = [];
+        tool.sketchManager = {
+            constraintManager: {
+                constraints: [distance, angle, equality],
+                removeConstraints(list) { removed.push(...list); },
+                visualizer: { updateVisual(c) { updated.push(c); } }
+            }
+        };
+
+        tool._reconcileDimensions(line, {});
+        checks.push({ name: 'длина пересчитана по факту', ok: distance.value === 10, detail: distance.value });
+        checks.push({ name: 'угол пересчитан по факту', ok: angle.targetAngle === 100, detail: angle.targetAngle });
+        checks.push({ name: 'равенство удалено', ok: removed.length === 1 && removed[0] === equality, detail: removed.length });
+        checks.push({ name: 'визуал изменённых размеров обновлён', ok: updated.includes(distance) && updated.includes(angle), detail: updated.length });
     }],
 
     ['origin-migration', 'SketchExecutor досоздаёт якорь до ограничений', (checks) => {
