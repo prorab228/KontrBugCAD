@@ -936,9 +936,24 @@ a:hover {
     display: block;
 }*/
 
+/* Контекстные меню: 3D-окно, чертёж, закрепление вкладки */
 .context-menu,
 .object-context-menu {
+    position: fixed;
+    z-index: 100000;
     min-width: 200px;
+    background-color: var(--bg-primary);
+    border: 1px solid var(--border-primary);
+    border-radius: var(--border-radius-max);
+    box-shadow: var(--shadow-lg);
+    overflow: hidden auto;
+    max-height: calc(100vh - 16px);
+    visibility: hidden; /* до расчёта позиции скриптом */
+}
+
+.context-menu.is-visible,
+.object-context-menu.is-visible {
+    visibility: visible;
 }
 
 .dropdown-menu a,
@@ -1034,19 +1049,9 @@ a:hover {
     right: calc(-1 * var(--panel-width));
 }
 
-/* Контекстное меню для закрепления вкладки */
-.context-menu {
-    position: fixed;
-    z-index: 10000;
-    background-color: var(--bg-primary);
-    border-radius: var(--border-radius);
-    min-width: 180px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-    visibility: hidden; /* временно скрыто до расчёта позиции */
-}
-
+/* Пункт контекстного меню */
 .context-menu-item {
-    padding: 12px;
+    padding: 8px 12px;
     font-size: 13px;
     cursor: pointer;
     display: flex;
@@ -1056,7 +1061,7 @@ a:hover {
 }
 
 .context-menu-item:hover {
-    background-color: var(--bg-tertiary) !important;
+    background-color: var(--hover-overlay) !important;
 }
 
 /*
