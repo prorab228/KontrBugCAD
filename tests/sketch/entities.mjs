@@ -36,6 +36,8 @@ import { SketchConstraintManager } from '../../js/tools/sketch/managers/constrai
 import { ArraySketchToolBase, getEntitiesBounds } from '../../js/tools/sketch/sketch-tools/array-tool-base.js';
 import { SketchArrow2D, arrowScaleForPx } from '../../js/tools/sketch/sketch-tools/helpers/sketch-arrow-helper.js';
 import { FilletSketchTool } from '../../js/tools/sketch/sketch-tools/fillet-tool.js';
+import { PolygonSketchTool } from '../../js/tools/sketch/sketch-tools/polygon-tool.js';
+import { RectangleSketchTool } from '../../js/tools/sketch/sketch-tools/rectangle-tool.js';
 import { isOffsetConstraintData } from '../../js/mcp/helpers/sketchConstraints.js';
 import { LinearArraySketchTool } from '../../js/tools/sketch/sketch-tools/linear-array-tool.js';
 import { CircularArraySketchTool } from '../../js/tools/sketch/sketch-tools/circular-array-tool.js';
@@ -1084,6 +1086,47 @@ const SCENARIOS = [
         const suppressed = history.saveState();
         fakeSketchManager.entityManager._suppressSave = false;
         checks.push({ name: 'suppressSave блокирует запись', ok: suppressed === false && ops.length === 3, detail: suppressed });
+    }],
+
+    ['rectangle-dimensions', 'Прямоугольник: ширина/высота по сторонам и вынос', (checks) => {
+        const tool = Object.create(RectangleSketchTool.prototype);
+        const l0 = { type: 'line' }, l1 = { type: 'line' }, l2 = { type: 'line' }, l3 = { type: 'line' };
+        const [w, h] = tool._rectDimensionConstraints([l0, l1, l2, l3], 40, 20, 1);
+        checks.push({ name: 'ширина между вертикальными сторонами', ok: w.line1 === l1 && w.line2 === l3 && w.targetDistance === 40, detail: `${w.line1 === l1}/${w.line2 === l3}` });
+        checks.push({ name: 'высота между горизонтальными сторонами', ok: h.line1 === l0 && h.line2 === l2 && h.targetDistance === 20, detail: `${h.line1 === l0}/${h.line2 === l2}` });
+        checks.push({ name: 'выносы наружу', ok: w.visualOffset === -(20 / 2 + 8) && h.visualOffset === -(40 / 2 + 8), detail: `${w.visualOffset}/${h.visualOffset}` });
+    }],
+
+    ['polygon-mode', 'Многоугольник: геометрия и связи режимов', (checks) => {
+        const tool = Object.create(PolygonSketchTool.prototype);
+        tool.sketchManager = { auxiliaryMode: false, auxiliaryDashSize: 1, auxiliaryGapSize: 1 };
+
+        const circumscribed = tool.createPolygonLines({ x: 0, y: 0 }, 10, 6, 0, 'circumscribed', 0);
+        const inscribed = tool.createPolygonLines({ x: 0, y: 0 }, 10, 6, 0, 'inscribed', 0);
+        checks.push({
+            name: 'описанный: вершины снаружи окружности',
+            ok: Math.abs(circumscribed[0].start.length() - 10 / Math.cos(Math.PI / 6)) < 1e-9,
+            detail: circumscribed[0].start.length()
+        });
+        checks.push({
+            name: 'вписанный: вершины на окружности',
+            ok: Math.abs(inscribed[0].start.length() - 10) < 1e-9,
+            detail: inscribed[0].start.length()
+        });
+
+        const circle = { type: 'circle', userData: { uuid: 'c-1' } };
+        tool.mode = 'circumscribed';
+        checks.push({
+            name: 'описанный: стороны касаются (tangent)',
+            ok: tool._boundaryConstraints([circumscribed[0]], circle)[0]?.type === 'tangent',
+            detail: tool._boundaryConstraints([circumscribed[0]], circle)[0]?.type
+        });
+        tool.mode = 'inscribed';
+        checks.push({
+            name: 'вписанный: вершины на окружности (point_on_curve)',
+            ok: tool._boundaryConstraints([inscribed[0]], circle)[0]?.type === 'point_on_curve',
+            detail: tool._boundaryConstraints([inscribed[0]], circle)[0]?.type
+        });
     }],
 
     ['mcp-offset-guard', 'MCP: ограничения на offset отклоняются по данным', (checks) => {
