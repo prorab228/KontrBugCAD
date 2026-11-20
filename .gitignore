@@ -5,6 +5,9 @@ project_content.txt
 project_parser.py
 renders
 
+# staging для локальной сборки Live-Update бандла (scripts/make-bundle.mjs)
+.bundle-build
+
 # Локальные артефакты прогонов и отладки
 test-artifacts/*
 !test-artifacts/e2e/
