@@ -385,6 +385,26 @@ const SCENARIOS = [
         });
     }],
 
+    ['fillet-direction-constraints', 'Fillet сохраняет H/V/параллель/перпендикуляр', (checks) => {
+        const tool = Object.create(FilletSketchTool.prototype);
+        const e1 = { type: 'line' };
+        const e2 = { type: 'line' };
+        const constraint = (type) => ({ type, getAffectedEntities: () => [e1, e2] });
+
+        for (const type of ['horizontal', 'vertical', 'parallel', 'perpendicular', 'angle']) {
+            checks.push({
+                name: `${type} не удаляется`,
+                ok: tool._isJointConstraint(constraint(type), e1, e2, 'end', 'start', null) === false,
+                detail: type
+            });
+        }
+        checks.push({
+            name: 'coincident в узле по-прежнему удаляется',
+            ok: tool._isJointConstraint(constraint('coincident'), e1, e2, 'end', 'start', null) === true,
+            detail: 'coincident'
+        });
+    }],
+
     ['fillet-dimensions', 'Fillet пересчитывает размеры после обрезки', (checks) => {
         const tool = Object.create(FilletSketchTool.prototype);
         const line = { type: 'line', length: 10 };

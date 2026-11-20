@@ -1,6 +1,6 @@
 // Версию меняем при выпуске нового JS: старый кэш удаляется в activate,
 // и клиенты сразу получают свежие файлы без «Полного сброса».
-const CACHE_NAME = 'kontrcad-cache-v139'; // v139: у передачи в редакторе есть отдельное направление
+const CACHE_NAME = 'kontrcad-cache-v140'; // v140: fillet сохраняет H/V/параллель/перпендикуляр
 let isHardReload = false; // Флаг для принудительного обхода HTTP-кэша
 
 self.addEventListener('install', (event) => {
