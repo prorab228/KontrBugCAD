@@ -21,7 +21,7 @@ import {
     FixedConstraint, CircleCircleTangentConstraint, PointOnCurveConstraint, ArcAngleConstraint,
     ParallelConstraint, PerpendicularConstraint, TwoPointDistanceConstraint, AngleConstraint,
     PointLineDistanceConstraint, PointOnLineConstraint, PointToMidpointConstraint,
-    EqualityConstraint, TangentConstraint, SymmetryConstraint
+    EqualityConstraint, TangentConstraint, SymmetryConstraint, LineLineDistanceConstraint
 } from '../../js/tools/sketch/constraints/SketchConstraint.js';
 import { LineEntity } from '../../js/tools/sketch/entities/LineEntity.js';
 import { CircleEntity } from '../../js/tools/sketch/entities/CircleEntity.js';
@@ -801,7 +801,24 @@ export function runRegression() {
         };
     });
 
-    // 17. Конфликтное ограничение не добавляется, геометрия откатывается (S3).
+    // 17. Расстояние между двумя линиями: численный якобиан должен сходиться.
+    def('line-line-distance', 'Расстояние между линиями сходится', () => {
+        const l1 = new LineEntity({ start: { x: 0, y: 0 }, end: { x: 40, y: 0 } });
+        const l2 = new LineEntity({ start: { x: 0, y: 3 }, end: { x: 20, y: 13 } });
+        const constraint = new LineLineDistanceConstraint(l1, l2, 5);
+        const solver = new NewtonSolver({ ...NO_TIMEOUT });
+        const result = solver.solveConstraintSet([constraint], [l1], 100, 1e-9, 1);
+        return {
+            checks: [
+                C('сошёлся', result.converged === true, result.converged),
+                C('невязка ≈ 0', Math.abs(constraint.error()) < 1e-6, constraint.error()),
+                C('вторая линия сдвинулась', Math.abs(l2.start.y - 3) + Math.abs(l2.end.y - 13) > 0.1, `${l2.start.y}/${l2.end.y}`)
+            ],
+            metrics: { residual: result.maxResidual, iter: result.iterUsed }
+        };
+    });
+
+    // 18. Конфликтное ограничение не добавляется, геометрия откатывается (S3).
     def('manager-conflict', 'Менеджер: конфликт откатывается (S3)', () => {
         const { entities, constraints } = buildRect();
         const sm = makeFakeSketchManager(entities);
