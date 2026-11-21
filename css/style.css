@@ -1525,9 +1525,16 @@ a:hover {
 .property-buttons
 {
     display: flex;
+    flex-wrap: wrap;
+    align-items: center;
     gap: 8px;
-   /* flex-wrap: wrap;*/
+}
 
+/* Кнопки в панели свойств: сначала пытаемся уложить в строку,
+   переносим только если суммарно не влезают. */
+.property-buttons > button
+{
+    flex: 1;
 }
 .property-select
 {
@@ -1737,8 +1744,8 @@ select option {
     flex: 0 0 auto;
 }
 .scene-item.scene-folder .scene-folder-mode input {
-    width: 12px;
-    height: 12px;
+  /*  width: 12px;
+    height: 12px;*/
     margin: 0;
     cursor: pointer;
     accent-color: var(--accent-color, #16c8b4);
@@ -2916,5 +2923,32 @@ input:checked + .toggle-slider:before {
     opacity: 0.9;
 }
 .assembly-mate-edit {
+    flex: 0 0 auto;
+}
+
+/* Мотор в строке связи: третья мини-кнопка Пуск/Стоп. */
+.assembly-mate-motor {
+    flex: 0 0 auto;
+    color: #4CAF50;
+}
+
+/* Название сборки + маленькая иконка «выделить». */
+.assembly-title-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+    margin: 2px 0 4px;
+}
+
+.assembly-title-text {
+    flex: 1 1 auto;
+    min-width: 0;
+    font-size: 12px;
+    font-weight: 600;
+    overflow-wrap: break-word;
+}
+
+.assembly-select {
     flex: 0 0 auto;
 }

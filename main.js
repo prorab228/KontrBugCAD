@@ -2,6 +2,20 @@ const { app, BrowserWindow, Menu, shell, ipcMain, dialog, protocol, session } = 
 const path = require('path');
 const fs = require('fs').promises;
 const fsSync = require('fs');
+
+// ============================================================
+//  STDIO-режим (--mcp): stdout принадлежит JSON-RPC
+//  Любая служебная строка в stdout ломает поток сообщений клиенту
+//  (Claude Desktop и подобные), поэтому console.log уводим в stderr.
+// ============================================================
+const IS_MCP_MODE = process.argv.includes('--mcp');
+if (IS_MCP_MODE) {
+    console.log = console.error;
+    console.info = console.error;
+    console.debug = console.error;
+}
+let mcpStdin = null; // поток stdin для STDIO-транспорта (см. ветку --mcp)
+
 const { v4: uuidv4 } = require('uuid');
 const { ElectronUpdater, setupIPCHandlers } = require('@capgo/electron-updater');
 // ============================================================
@@ -771,10 +785,16 @@ app.whenReady().then(async () => {
             { capabilities: { tools: {} } }
         );
 
-        // ★ Читаем глобальный mcpToolsList — обновляется persistent-хендлером
-        server.setRequestHandler(ListToolsRequestSchema, async () => ({
-            tools: mcpToolsList || [],
-        }));
+        // ★ Клиент (Claude Desktop) спрашивает tools/list сразу после initialize,
+        //   а рендерер отдаёт список инструментов только через ~10-12 сек
+        //   (initApp → notifyAppReady → CADEditor → McpManager.init).
+        //   Без ожидания клиент получает пустой список и кэширует его.
+        server.setRequestHandler(ListToolsRequestSchema, async () => {
+            if (mcpToolsList === null) {
+                await waitForMcpToolsReady(20000);
+            }
+            return { tools: mcpToolsList || [] };
+        });
 
         server.setRequestHandler(CallToolRequestSchema, async (req) => {
             // сериализуем через тот же мьютекс, что и HTTP-сервер
@@ -824,13 +844,60 @@ app.whenReady().then(async () => {
         registerAppProtocol();
         mcpWindow.loadURL('app://local/index.html');
 
-        mcpWindow.webContents.on('did-finish-load', () => {
-            mcpWindow.webContents.send('mcp-get-tools');
+        // ★ Ретраи, как у главного окна (см. createWindow): рендерер вешает
+        //   onMcpGetTools не сразу, одиночный запрос по did-finish-load теряется.
+        mcpWindow.webContents.once('did-finish-load', () => {
+            let attempts = 0;
+            const sendRequest = () => {
+                if (mcpToolsList !== null) return; // ответ уже пришёл
+                if (attempts >= 12 || mcpWindow.isDestroyed()) {
+                    console.warn('[MCP] MCP-окно так и не прислало список инструментов');
+                    return;
+                }
+                attempts++;
+                mcpWindow.webContents.send('mcp-get-tools');
+                setTimeout(sendRequest, 500 * attempts); // 0.5, 1, 1.5 … 6 сек
+            };
+            sendRequest();
         });
 
-        const transport = new StdioServerTransport();
-        server.connect(transport);
-        console.error('[MCP] STDIO server started');
+        // ★ Windows + упакованное Electron-приложение (GUI-subsystem): process.stdin
+        //   приходит БЕЗ хендла, транспорт подписывается на заглушку и мгновенно
+        //   получает EOF — ни один запрос клиента не доходит. Поэтому при отсутствии
+        //   хендла читаем дескриптор 0 напрямую.
+        mcpStdin = process.stdin;
+        if (!mcpStdin || !mcpStdin._handle || mcpStdin.destroyed) {
+            try {
+                mcpStdin = fsSync.createReadStream(null, { fd: 0, autoClose: false });
+                mcpStdin.on('error', (e) => console.error('[MCP] stdin error:', e.message));
+                console.error('[MCP] process.stdin без хендла — читаем fd 0 напрямую');
+            } catch (e) {
+                console.error('[MCP] Не удалось открыть fd 0:', e.message);
+                mcpStdin = process.stdin;
+            }
+        }
+
+        const transport = new StdioServerTransport(mcpStdin, process.stdout);
+
+        // Клиент закрыл stdin (вышел из приложения) — завершаемся, чтобы не
+        // оставлять висящий процесс без окна.
+        const quitOnStdinClose = () => {
+            console.error('[MCP] stdin закрыт — выход');
+            app.quit();
+        };
+        if (mcpStdin && typeof mcpStdin.once === 'function') {
+            mcpStdin.once('end', quitOnStdinClose);
+            mcpStdin.once('close', quitOnStdinClose);
+        }
+        server.onclose = () => app.quit();
+
+        server.connect(transport).then(
+            () => console.error('[MCP] STDIO server started'),
+            (e) => {
+                console.error('[MCP] STDIO транспорт не запустился:', e.message);
+                app.quit();
+            }
+        );
         return;
     }
 
