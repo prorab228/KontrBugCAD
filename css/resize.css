@@ -1,10 +1,12 @@
-/* ========== АДАПТАЦИЯ ДЛЯ МАСШТАБИРОВАНИЯ СИСТЕМЫ И МАЛЕНЬКИХ ЭКРАНОВ ========== */
+/* ============================================================
+   Адаптивность, DPI, печать и доступность.
+   Все @media собраны здесь; style.css содержит только базовые стили.
+   ============================================================ */
 
-/* Для системного масштабирования 125% */
+/* ---------- Системное масштабирование 125% ---------- */
 @media screen and (min-resolution: 120dpi) and (max-resolution: 140dpi),
        screen and (-webkit-min-device-pixel-ratio: 1.25) {
     :root {
-        --toolbar-height: 50px;
         --panel-width: 280px;
         --border-radius: 5px;
     }
@@ -19,16 +21,8 @@
         font-size: 18px;
     }
 
-    .logo i {
-        font-size: 24px;
-    }
-
     .panel-tab {
         padding: 12px;
-    }
-
-    .properties-panel {
-        width: var(--panel-width);
     }
 
     .status-bar {
@@ -44,22 +38,27 @@
     }
 }
 
-
-
-/* Для маленьких экранов (ширина < 1200px) */
-
+/* ---------- ≤ 1200px: компактный десктоп ---------- */
 @media (max-width: 1200px) {
     :root {
-        --toolbar-height: 48px;
         --panel-width: 250px;
     }
 
     .toolbar-container {
         gap: 5px;
+        padding: 0 5px;
     }
 
     .tool-section {
         padding: 0 3px;
+    }
+
+    .divider {
+        margin: 0 3px;
+    }
+
+    .tool-group {
+        gap: 6px;
     }
 
     .tool-btn {
@@ -67,14 +66,8 @@
         height: 30px;
     }
 
-
-
     .logo span {
         font-size: 16px;
-    }
-
-    .logo i {
-        font-size: 20px;
     }
 
     #projectName {
@@ -82,20 +75,9 @@
         max-width: 150px;
     }
 
-
-
-    .properties-panel {
-        width: var(--panel-width);
-    }
-
     .panel-tab {
         padding: 10px;
         font-size: 13px;
-    }
-
-    .compact-view-controls {
-        top: 15px;
-        left: 15px;
     }
 
     .view-btn-compact {
@@ -103,28 +85,35 @@
         height: 28px;
         font-size: 12px;
     }
-
-
 }
-/* Для очень маленьких экранов (ширина < 1400px) */
+
+/* ---------- ≤ 992px: планшет ---------- */
 @media (max-width: 992px) {
     :root {
-        --toolbar-height: 50px;
-        --panel-width: 280px;
+        --panel-width: 150px;
+        --border-radius: 5px;
     }
 
     .logo span {
         font-size: 18px;
+        display: none;
     }
 
-    .logo i {
-        font-size: 22px;
+    .logo {
+        padding: 0;
     }
 
     .tool-btn {
-        width: 36px;
-        height: 36px;
-        font-size: 14px;
+        width: 40px;
+        height: 40px;
+        font-size: 10px;
+    }
+
+    .tool-btn .cad-icon,
+    .tool-btn .fas {
+        width: 20px;
+        height: 20px;
+        font-size: 16px;
     }
 
     .divider {
@@ -132,43 +121,41 @@
         margin: 0 10px;
     }
 
-    .properties-panel {
-        width: var(--panel-width);
+    .toolbar-container {
+        gap: 0;
+        padding-left: 0;
+        flex-wrap: nowrap;
+    }
+
+    .tool-section {
+        padding: 0;
+    }
+
+    .project-info {
+        border-left: 1px solid var(--border-primary);
+        padding: 0;
+    }
+
+    #projectName {
+        position: absolute;
+        left: 10px;
+        top: 65px;
     }
 
     .panel-content {
-        padding: 15px;
+        padding: 6px;
     }
 
     .library-grid {
         grid-template-columns: 1fr;
+        gap: 5px;
+        padding: 0;
+        margin: 0;
+        scrollbar-width: none;
     }
 
     .modal-content {
         max-width: 450px;
-    }
-
-    .logo span {
-        display: none;
-    }
-
-
-
-
-
-    .sketch-modal {
-        width: 98%;
-        max-width: 98%;
-    }
-
-    .compact-view-controls {
-        display: none;
-    }
-
-    :root {
-        --toolbar-height: 50px;
-        --panel-width: 150px;
-        --border-radius: 5px;
     }
 
     .status {
@@ -179,83 +166,18 @@
         right: 10px;
     }
 
-    #projectName {
-        position: absolute;
-        left: 10px;
-        top: 65px;
-    }
-
-
-
-    .logo {
-        padding:0;
-    }
-
-    .tool-btn {
-        width: 40px;
-        height: 40px;
-        font-size: 10px;
-    }
-
-    .tool-btn .cad-icon, .tool-btn .fas {
-        width: 20px;
-        height: 20px;
-        font-size: 16px;
-    }
-    .toolbar-container {
-        gap: 0;
-        padding-left: 0;
-        flex-wrap: nowrap;
-    }
-
-    .project-info {
-
-      border-left: 1px solid var(--border-primary);
-      }
-
-    .tool-section, divider {
-        padding: 0;
-    }
-    .project-info {
-        padding:0;
-    }
-
-    #settings.hidden {
-        display: none;
-    }
-
     #accountAvatar.hidden {
         display: none;
     }
 
-    .controls-hint {
-        display:none;
+    .controls-hint,
+    .coordinates {
+        display: none;
     }
 
-    .scene-item .scene-item-name,.scene-item .fas {
+    .scene-item .scene-item-name,
+    .scene-item .fas {
         font-size: 12px;
-    }
-
-    /* Когда панель открыта, кнопка смещается влево на её ширину */
-    .properties-panel:not(.hidden) + .panel-toggle-btn {
-        right: var(--panel-width);
-    }
-
-    .panel-content
-    {
-      padding: 6px;
-    }
-
-    .library-grid
-    {
-        scrollbar-width: none;
-        gap: 5px;
-        padding: 0;
-        margin: 0;
-    }
-    .library-info, .status-left
-    {
-        display:none;
     }
 
     .status-bar {
@@ -263,12 +185,13 @@
         height: auto;
         display: none;
     }
-    .coordinates
-    {
+
+    .status-left {
         display: none;
     }
 
-    .status-left, .status-right {
+    .status-left,
+    .status-right {
         justify-content: center;
         text-align: center;
         flex-wrap: wrap;
@@ -279,46 +202,11 @@
     }
 }
 
-
-
-
-/* Уменьшение шрифтов для лучшего восприятия при масштабировании */
-@media screen and (min-resolution: 120dpi) {
-    body {
-        font-size: 14px;
-    }
-
-    h3, h4 {
-        font-size: 1.1em;
-    }
-
-    .panel-tab {
-        font-size: 13px;
-    }
-
-    .property-row label {
-        font-size: 13px;
-    }
-}
-
-/* Отключение анимаций для пользователей с предпочтением reduced-motion */
-@media (prefers-reduced-motion: reduce) {
-    .tool-btn, .sketch-tool-btn, .view-btn-compact {
-        transition: none;
-    }
-
-    .properties-panel {
-        transition: none;
-    }
-}
-
-/* ============================================================
-   МОБИЛЬНАЯ ВЕРСИЯ (≤ 768px)
-   ============================================================ */
+/* ---------- ≤ 768px: мобильная версия ---------- */
 @media (max-width: 768px) {
-
-    /* ---------- 0. Высоты (dvh + fallback) ---------- */
-    html, body {
+    /* 0. Высоты (dvh + fallback) */
+    html,
+    body {
         height: 100vh;
         height: 100dvh;
         overflow: hidden;
@@ -330,7 +218,7 @@
         --mobile-tools-w: 52px;    /* ширина вертикального меню */
     }
 
-    /* ---------- 1. Верхний бар: только логотип + project-info ---------- */
+    /* 1. Верхний бар: только логотип + project-info */
     .navbar {
         padding: 6px 8px !important;
         min-height: var(--mobile-nav-h);
@@ -339,22 +227,23 @@
         gap: 8px;
     }
 
-    .navbar > a { flex-shrink: 0; }
-    .project-info { margin-left: auto; }
+    .navbar > a {
+        flex-shrink: 0;
+    }
 
-     #settings.hidden {
-        display: flex;
+    .project-info {
+        margin-left: auto;
     }
 
     #accountAvatar.hidden {
         display: flex;
     }
 
-  .logo span {
-    display: flex;
-  }
+    .logo span {
+        display: flex;
+    }
 
-    /* ---------- 2. Главное меню (toolbar) → вертикальная панель справа ---------- */
+    /* 2. Главное меню (toolbar) → вертикальная панель справа */
     .toolbar-container {
         position: fixed;
         top: var(--mobile-nav-h);
@@ -375,7 +264,10 @@
         z-index: 100;
         scrollbar-width: thin;
     }
-    .toolbar-container::-webkit-scrollbar { width: 3px; height: 0; }
+    .toolbar-container::-webkit-scrollbar {
+        width: 3px;
+        height: 0;
+    }
 
     /* Все секции и группы — столбцом */
     .toolbar-container .tool-section,
@@ -403,10 +295,15 @@
         font-size: 15px;
     }
 
-   /* .dropdown-toggle .fa-caret-down {margin-right: -20px; margin-left: 0;}*/
-    .toolbar-container .sketch-tool-menu { width: 100%; }
-    .toolbar-container .sketch-tool-menu .tool-btn { width: 28px; }
-    .toolbar-container .sketch-tool-menu .dropdown-toggle { width: 12px; }
+    .toolbar-container .sketch-tool-menu {
+        width: 100%;
+    }
+    .toolbar-container .sketch-tool-menu .tool-btn {
+        width: 28px;
+    }
+    .toolbar-container .sketch-tool-menu .dropdown-toggle {
+        width: 12px;
+    }
 
     /* Выпадающие меню открываем влево от панели, не давая им уехать за экран */
     .toolbar-container .dropdown-menu {
@@ -414,7 +311,7 @@
         right: calc(var(--mobile-tools-w) + 4px) !important;
     }
 
-    /* ---------- 3. Вьюпорт + панели учитывают ширину меню ---------- */
+    /* 3. Вьюпорт + панели учитывают ширину меню */
     .main-container {
         padding-right: var(--mobile-tools-w);
     }
@@ -439,33 +336,44 @@
         transition: bottom 0.28s ease;
     }
 
-
-
     .properties-panel.hidden {
         bottom: -42vh !important;
         bottom: -42dvh !important;
     }
-    .properties-panel .panel-tabs { flex-shrink: 0; }
-    .properties-panel .panel-content {
-        flex: 1 1 auto; min-height: 0; height: auto;
-        overflow-y: auto; padding: 0 6px;
+
+    .properties-panel .panel-tabs {
+        flex-shrink: 0;
     }
+
+    .properties-panel .panel-content {
+        flex: 1 1 auto;
+        min-height: 0;
+        height: auto;
+        overflow-y: auto;
+        padding: 0 6px;
+    }
+
     .properties-panel .scene-list,
-    .properties-panel .history-list { max-height: none; }
+    .properties-panel .history-list {
+        max-height: none;
+    }
 
-    .panel-tab { padding: 8px 4px; font-size: 12px; }
+    .panel-tab {
+        padding: 8px 4px;
+        font-size: 12px;
+    }
 
-    /* ---------- 4. Кнопка-«язычок» — по центру видимой области ---------- */
+    /* 4. Кнопка-«язычок» — по центру видимой области */
     .right-panel-elements {
         left: 0 !important;
         right: 0 !important;
         width: 100% !important;
     }
+
     .properties-panel:not(.hidden) + .right-panel-elements {
         left: 0 !important;
         right: 0 !important;
     }
-
 
     .panel-toggle-btn {
         position: absolute;
@@ -482,22 +390,23 @@
         z-index: 25;
         transition: bottom 0.28s ease;
     }
+
     .panel-toggle-btn i {
         display: inline-block !important;
         transform: rotate(90deg) !important;
         transition: transform 0.28s ease;
     }
+
     .properties-panel:not(.hidden) + .right-panel-elements .panel-toggle-btn {
         bottom: 42vh;
         bottom: 42dvh;
-
     }
+
     .properties-panel:not(.hidden) + .right-panel-elements .panel-toggle-btn i {
         transform: rotate(90deg) !important;
     }
 
-    .viewport-hints
-    {
+    .viewport-hints {
         right: 65px;
     }
 
@@ -507,17 +416,13 @@
         top: 6px !important;
     }
 
-    /* ---------- 5. Библиотека: 3 колонки ---------- */
+    /* 5. Библиотека: 3 колонки */
     .library-grid {
         grid-template-columns: repeat(3, 1fr) !important;
         gap: 5px;
     }
 
-    /* ---------- 6. Скрываемые оверлеи ---------- */
-    .controls-hint,
-    .coordinates { display: none !important; }
-
-    /* ---------- 7. Компактный статус-бар с плавной обрезкой metrics ---------- */
+    /* 6. Компактный статус-бар с плавной обрезкой metrics */
     .status-bar {
         display: flex !important;
         flex-direction: row !important;
@@ -531,6 +436,7 @@
         gap: 6px;
         flex-shrink: 0;
     }
+
     .status-bar .status-left,
     .status-bar .status-right {
         display: flex;
@@ -541,8 +447,15 @@
         overflow: hidden;
         text-align: left;
     }
-    .status-bar .status-left  { flex: 1 1 auto; justify-content: flex-start; }
-    .status-bar .status-right { flex: 0 0 auto;  margin-left: auto; }
+
+    .status-bar .status-left {
+        flex: 1 1 auto;
+        justify-content: flex-start;
+    }
+    .status-bar .status-right {
+        flex: 0 0 auto;
+        margin-left: auto;
+    }
 
     .status-bar #modeIndicator,
     .status-bar #selectedInfo,
@@ -552,6 +465,7 @@
         overflow: hidden;
         text-overflow: ellipsis;
     }
+
     .status-bar #modeIndicator i,
     .status-bar #fpsCounter i {
         font-size: 10px;
@@ -575,18 +489,141 @@
     .status-bar .separator,
     .status-bar #version,
     .status-bar #modeIndicator,
-    .status-bar .status-right > a, .search-box,
-    .status-bar .status-right > span:not(#fpsCounter) {
+    .status-bar .status-right > a,
+    .status-bar .status-right > span:not(#fpsCounter),
+    .search-box {
         display: none !important;
     }
 
     .filter-btn {
-      padding: 2px 8px;
-      font-size: 12px;
-      margin-bottom: 0;
-      scrollbar-width: none;
+        padding: 2px 8px;
+        font-size: 12px;
+        margin-bottom: 0;
+        scrollbar-width: none;
+    }
+}
+
+/* ---------- ≤ 520px: карточки проектов ---------- */
+@media (max-width: 520px) {
+    .projects-list {
+        grid-template-columns: 1fr;
     }
 
+    .project-card__preview {
+        aspect-ratio: 16 / 9;
     }
 
+    .project-card__actions .modal-mini-button,
+    .project-card__actions .modal-mini-button-delete {
+        padding: 6px;
+    }
+}
+
+/* 360–520px: две компактные колонки.
+   На экранах уже 360px оставляем одну колонку, иначе текст не читается. */
+@media (min-width: 360px) and (max-width: 520px) {
+    .modal-content.modal-lg .modal-body {
+        padding: 8px;
+    }
+
+    .projects-list {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+    }
+
+    .project-card__preview {
+        aspect-ratio: 4 / 3;
+    }
+
+    .project-card__body {
+        gap: 2px;
+        padding: 6px 6px 4px;
+    }
+
+    .project-card__name {
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        min-height: 2.4em;
+        font-size: 12px;
+        line-height: 1.2;
+    }
+
+    .project-card__auto {
+        font-size: 8px;
+    }
+
+    .project-card__meta {
+        flex-direction: column;
+        gap: 0;
+        font-size: 9px;
+        line-height: 1.25;
+    }
+
+    .project-card__desc {
+        min-height: 2.5em;
+        font-size: 10.5px;
+        line-height: 1.25;
+    }
+
+    .project-card__footer {
+        gap: 2px;
+        padding: 4px 4px 4px 6px;
+    }
+
+    .project-card__status {
+        gap: 2px;
+        font-size: 9px;
+    }
+
+    .project-card__status-icons {
+        gap: 2px;
+    }
+
+    .project-status-icon {
+        font-size: 9px;
+    }
+
+    .project-card__actions {
+        gap: 0;
+    }
+
+    .project-card__actions .modal-mini-button,
+    .project-card__actions .modal-mini-button-delete {
+        padding: 4px;
+        font-size: 12px;
+    }
+}
+
+/* ---------- Уменьшение анимаций для доступности ---------- */
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* ---------- Печать ---------- */
+@media print {
+    .navbar,
+    .properties-panel,
+    .status-bar,
+    .coordinates {
+        display: none !important;
+    }
+
+    .main-container {
+        display: block !important;
+    }
+
+    .viewport-container {
+        position: static !important;
+        height: auto !important;
+    }
+
+    #viewport {
+        height: 600px !important;
+    }
 }

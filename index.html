@@ -108,7 +108,6 @@
     <script src="js/ui/ui-helper.js"></script>
 
     <link rel="stylesheet" href="css/style.css">
-<!--    <link rel="stylesheet" href="css/sketch-extended.css">-->
 <!--    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">-->
     <link rel="stylesheet" href="lib/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="css/icons.css">
@@ -122,7 +121,7 @@
     <div class="navbar">
         <a href="/">
             <div class="logo">
-                <img style="height: 40px; padding-right: 5px" src="css/Logo.png">
+                <img src="css/Logo.png" alt="КонтрCAD">
                 <span> КонтрCAD</span>
             </div>
         </a>
@@ -144,9 +143,9 @@
                             <a href="#" id="openProjectManager"><i class="fas fa-list"></i> Мои проекты</a>
                             <div class="dropdown-divider" ></div>
 
-                            <a href="#" id="openProject"><i class="fas fa-folder-open"></i></span> Открыть файл проекта (Ctrl+O)</a>
+                            <a href="#" id="openProject"><i class="fas fa-folder-open"></i> Открыть файл проекта (Ctrl+O)</a>
                             <a href="#" id="importProject"><i class="fas fa-file-import"></i> Импорт проекта из файла (Ctrl+I)</a>
-                            <a href="#" id="exportProject"><i class="fas fa-save"></i></span> Сохранить проект в файл </a>
+                            <a href="#" id="exportProject"><i class="fas fa-save"></i> Сохранить проект в файл </a>
 
 
                         </div>
@@ -736,7 +735,7 @@
                             <span class="cad-icon icon-clean"></span>
                         </button>
                         <button class="tool-btn" id="exitSketchBtn" data-tooltip-title="Завершить чертеж" data-tooltip-description="Завершает редактирование чертежа и возвращает в 3D-режим">
-                            <span class="fas fa-sign-out-alt" style="color: var(--primary-color);"></span>
+                            <span class="fas fa-sign-out-alt text-primary"></span>
                         </button>
 
 
@@ -847,7 +846,7 @@
                                         </div>
                                         <div class="color-picker-group">
                                             <label>Размеры сетки ширина/длинна:</label>
-                                            <div style="display: flex; align-items: center; gap: 10px;">
+                                            <div class="grid-size-inputs">
                                                 <input type="number" id="gridSizeX" value="500" step="100" min="100" max="2000">
                                                 <input type="number" id="gridSizeZ" value="500" step="100" min="100" max="2000">
                                             </div>
@@ -872,7 +871,7 @@
 
 
                                 <div class="property-row">
-                                    <button id="openGraphicsSettings" class="btn-small" style="width: 100%; margin-top: 8px;">
+                                    <button id="openGraphicsSettings" class="btn-small btn-block">
                                         <i class="fas fa-tachometer-alt"></i> Остальные настройки
                                     </button>
                                 </div>
@@ -904,7 +903,7 @@
         <div class="viewport-container">
             <div id="viewport"></div>
             <!-- Координаты -->
-            <div class="coordinates" style="cursor: pointer;" onclick="this.style.display='none'" data-tooltip-title="Кликните чтобы скрыть">
+            <div class="coordinates" onclick="this.style.display='none'" data-tooltip-title="Кликните чтобы скрыть">
                 <span id="coords">X: 0.00, Y: 0.00, Z: 0.00</span>
             </div>
         </div>
@@ -990,7 +989,7 @@
                 <div class="history-toolbar">
                     <div id="historyFilterInfo" class="property-hint"
                          style="display:none;"></div>
-                    <div class="dropdown" style="margin-left:auto;">
+                    <div class="dropdown">
                         <button class="tool-btn dropdown-toggle" data-tooltip-title="Действия с историей">
                             <i class="fas fa-ellipsis-v"></i>
                         </button>
@@ -1071,7 +1070,7 @@
                     <div class="grid-scale-bar__cell" id="gridScaleBarCell">сетка 1 мм</div>
                 </div>
 
-                <div class="controls-hint" style="cursor: pointer;" onclick="this.classList.add('is-collapsed')" data-tooltip-title="Кликните чтобы скрыть">
+                <div class="controls-hint" onclick="this.classList.add('is-collapsed')" data-tooltip-title="Кликните чтобы скрыть">
                     <b>ЛКМ</b> - выделение, <br><b>ПКМ</b>  - вращение, <br><b>Колесико</b>  - перемещение камеры
                 </div>
             </div>
@@ -1100,7 +1099,7 @@
 
     <!-- Модальное окно управления аккаунтом -->
     <div id="accountModal" class="modal-overlay">
-        <div class="modal-content" style="width: 400px;">
+        <div class="modal-content modal-sm">
             <div class="modal-header">
                 <h3><i class="fas fa-user-circle"></i>  <a href="https://cloud.xn--80abhivsgrre8a.xn--p1ai"> КонтрCAD Облако</a></h3>
                 <button class="close-modal" data-modal="accountModal">&times;</button>
@@ -1192,7 +1191,7 @@
                     <p><strong>Редактор разработан (и продолжает разрабатываться) одним человеком исключительно при поддержке сообщества (за что я очень благодарен!).<br><br> Буду благодарен за обратную связь, сообщения об ошибках и предложения по развитию.</strong></p>
                 </div>
             </div>
-            <div class="modal-footer" style="justify-content: center;">
+            <div class="modal-footer modal-footer--center">
                  <p><strong>© 2026 КонтрБагТех</strong></p>
             </div>
         </div>
@@ -1200,7 +1199,7 @@
 
     <!-- Модальное окно настроек графики -->
     <div id="graphicsSettingsModal" class="modal-overlay">
-        <div class="modal-content" style="width: 450px;">
+        <div class="modal-content modal-md">
             <div class="modal-header">
                 <h3><i class="fas fa-tachometer-alt"></i> Настройки </h3>
                 <button class="close-modal">&times;</button>
@@ -1247,10 +1246,10 @@
                 <div class="modal-section">
                     <h4>Сброс и обслуживание</h4>
                     <div class="property-row">
-                        <button id="resetSettingsBtn" class="btn-small" style="width: 100%; margin-top: 8px;">
+                        <button id="resetSettingsBtn" class="btn-small btn-block">
                             <i class="fas fa-undo"></i> Сбросить настройки
                         </button>
-                        <button id="hardResetBtn" class="btn-small" style="width: 100%; margin-top: 8px; background: #f44336; color: white; border: none;">
+                        <button id="hardResetBtn" class="btn-small btn-block btn-danger">
                             <i class="fas fa-trash-alt"></i> Полный сброс и очистка кэша
                         </button>
                     </div>
@@ -1265,18 +1264,13 @@
 
     <!-- Модальное окно менеджера проектов -->
     <div id="projectManagerModal" class="modal-overlay">
-        <div class="modal-content" style="width: 800px; max-width: 100%; height: 90vh">
+        <div class="modal-content modal-lg">
             <div class="modal-header">
                 <h3><i class="fas fa-database"></i> Мои проекты</h3>
                 <button class="close-modal" data-modal="projectManagerModal">&times;</button>
             </div>
-            <div class="modal-body" style="overflow-y: auto;">
-                <table id="projectsTable" style="width: 100%; border-collapse: collapse;">
-                    <thead>
-
-                    </thead>
-                    <tbody id="projectsList"></tbody>
-                </table>
+            <div class="modal-body">
+                <div id="projectsList" class="projects-list"></div>
             </div>
             <div class="modal-footer">
                 <div id="storageInfo" ></div>
@@ -1288,7 +1282,7 @@
     </div>
 
     <div id="addModelModal" class="modal-overlay">
-      <div class="modal-content" style="width: 400px;">
+      <div class="modal-content modal-sm">
         <div class="modal-header">
           <h3><i class="fas fa-plus-circle"></i> Добавить модель в библиотеку</h3>
           <button class="close-modal">&times;</button>

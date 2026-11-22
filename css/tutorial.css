@@ -34,29 +34,6 @@
     background: none; border: none; font-size: 20px; cursor: pointer;
     color: var(--text-primary, #eee);
 }
-.lesson-tabs {
-    display: flex;
-    gap: 4px;
-    border-bottom: 1px solid var(--border-primary, #444);
-    margin-bottom: 12px;
-}
-.lesson-tab {
-    padding: 6px 12px;
-    background: transparent;
-    border: none;
-    color: var(--text-secondary, #aaa);
-    cursor: pointer;
-    font-size: 13px;
-    border-bottom: 2px solid transparent;
-}
-.lesson-tab.active {
-    color: var(--text-primary, #eee);
-    border-bottom-color: #4CAF50;
-}
-.lesson-pane {
-    display: block; /* всегда видима, содержимое обновляется динамически */
-}
-
 .lesson-step-icon { font-size: 20px; margin-bottom: 4px; }
 .lesson-step-title { font-size: 16px; font-weight: bold; margin-bottom: 6px; color: var(--text-primary, #eee); }
 .lesson-step-description { font-size: 14px; line-height: 1.6; color: var(--text-primary, #eee); }
@@ -97,16 +74,6 @@
     background-color: rgba(76, 175, 80, 0.15) !important;
     border-left: 3px solid #4CAF50 !important;
 }
-
-.lesson-mode-toggle {
-    font-size: 13px;
-}
-.lesson-mode-toggle label {
-    display: flex;
-    gap: 6px;
-    cursor: pointer;
-}
-
 
 /* ===== ВСТУПЛЕНИЕ ===== */
 .tutorial-intro-grid {
@@ -171,7 +138,3 @@
   margin: 10px;
 }
 
-.tutorial-intro-checkbox {
-  margin-top: 12px;
-  text-align: left;
-}
