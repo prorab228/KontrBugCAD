@@ -617,54 +617,191 @@ a:hover {
 
 
 
-/* ========== ИИ-ассистент: шапка провайдеров и панель ключа ========== */
-.ai-provider-bar,
-.ai-key-panel {
-    flex: 0 0 auto;
-    display: flex;
-    gap: 6px;
-    align-items: center;
-    padding: 8px 0;
-    border-bottom: 1px solid var(--border-primary);
+/* ========== ИИ-ассистент: иконка вкладки и композер ========== */
+.panel-tab-ai {
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    line-height: 1;
 }
 
-.ai-provider-bar .property-select {
-    flex: 1 1 0;
-    min-width: 0;
-    font-size: 12px;
-    padding: 6px 8px;
+/* Композер в стиле harness: ввод растёт вверх, действия мелкие снизу */
+.ai-composer {
+    position: relative;
+    flex: 0 0 auto;
+    margin: 0 0 5px;
+    padding: 8px 8px 6px;
     background: var(--bg-primary);
+    border-radius: var(--border-radius-max);
+    transition: border-color 0.15s;
+}
+
+.ai-composer:focus-within { border-color: var(--primary-color); }
+
+.ai-composer__input {
+    display: block;
+    width: 100%;
+    min-height: 26px;
+    max-height: 140px;
+    padding: 2px 4px;
+    background: transparent;
+    border: none;
+    outline: none;
+    resize: none;
+    overflow-y: auto;
     color: var(--text-primary);
+    font-family: inherit;
+    font-size: 13px;
+    line-height: 1.45;
+}
+
+.ai-composer__bar {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    margin-top: 4px;
+}
+
+.ai-icon-btn {
+    width: 28px;
+    height: 28px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    background: transparent;
+    border: none;
+    border-radius: 50%;
+    color: var(--text-secondary);
+    font-size: 13px;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.ai-icon-btn:hover {
+    background: var(--hover-overlay);
+    color: var(--text-primary);
+}
+
+.ai-icon-btn:disabled { opacity: 0.5; cursor: default; }
+
+.ai-model-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    min-width: 0;
+    max-width: 62%;
+    margin-left: auto;
+    padding: 4px 9px;
+    background: transparent;
     border: 1px solid var(--border-primary);
-    border-radius: var(--border-radius);
+    border-radius: 999px;
+    color: var(--text-secondary);
+    font-family: inherit;
+    font-size: 11px;
     cursor: pointer;
 }
 
-.ai-provider-bar .tool-btn {
-    width: 32px;
-    height: 32px;
-    font-size: 13px;
-    flex-shrink: 0;
+.ai-model-pill span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
-.ai-key-panel .modal-input {
-    flex: 1;
-    font-size: 13px;
-    padding: 6px 10px;
-    background: var(--bg-primary);
+.ai-model-pill i { font-size: 8px; opacity: 0.7; flex-shrink: 0; }
+
+.ai-model-pill:hover {
+    border-color: var(--primary-color);
     color: var(--text-primary);
-    border: 1px solid var(--border-primary);
-    border-radius: var(--border-radius);
 }
 
-.ai-key-panel .btn-small {
-    padding: 6px 10px;
-    font-size: 12px;
+.ai-model-pill--empty {
+    border-style: dashed;
+    color: var(--text-secondary);
+}
+
+.ai-send-circle {
+    width: 30px;
+    height: 30px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    margin-left: 2px;
+    background: var(--primary-color);
+    border: none;
+    border-radius: 50%;
+    color: #fff;
+    font-size: 13px;
+    cursor: pointer;
     flex-shrink: 0;
+}
+
+.ai-send-circle:hover { filter: brightness(1.1); }
+.ai-send-circle.btn-stop { background: #e53935; }
+
+/* Меню моделей (раскрывается над композером) */
+.ai-model-menu {
+    position: absolute;
+    left: 6px;
+    right: 6px;
+    bottom: calc(100% + 6px);
+    max-height: 260px;
+    overflow-y: auto;
+    padding: 6px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-primary);
+    border-radius: 10px;
+    box-shadow: var(--shadow-lg);
+    z-index: 40;
+}
+
+.ai-model-menu__group {
+    padding: 6px 8px 2px;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.2px;
+    color: var(--text-secondary);
+    opacity: 0.75;
+}
+
+.ai-model-menu__item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    width: 100%;
+    padding: 6px 8px;
+    background: transparent;
+    border: none;
+    border-radius: 6px;
+    color: var(--text-primary);
+    font-family: inherit;
+    font-size: 12px;
+    text-align: left;
+    cursor: pointer;
+}
+
+.ai-model-menu__item:hover { background: var(--hover-overlay); }
+.ai-model-menu__item--active { color: var(--primary-color); }
+
+.ai-model-menu__item span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.ai-model-menu__settings {
+    margin-top: 4px;
+    padding-top: 8px;
+    border-top: 1px solid var(--border-primary);
+    border-radius: 0 0 6px 6px;
+    color: var(--text-secondary);
 }
 
 /* ========== Чат ========== */
-#aiContent { padding: 0 10px; }
+#aiContent { padding: 0 5px; }
 
 .ai-chat-history {
     flex: 1 1 auto;
@@ -687,36 +824,48 @@ a:hover {
     font-size: 13px;
     gap: 4px;
 }
-.ai-chat-welcome i {
-    font-size: 36px;
-    color: var(--primary-color);
+.ai-logo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
     margin-bottom: 10px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    color: #fff;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
 }
 
 .ai-message {
-    padding: 8px 12px;
-    border-radius: var(--border-radius);
+    padding: 5px 6px;
+    border-radius: var(--border-radius-max);
     max-width: 92%;
     word-wrap: break-word;
     overflow-wrap: break-word;
     font-size: 13px;
     line-height: 1.45;
     white-space: pre-wrap;
+    /* В остальном интерфейсе выделение запрещено, но текст в чате нужно копировать */
+    -webkit-user-select: text;
+    user-select: text;
+    cursor: text;
 }
 
 .ai-message-user {
-    background: var(--secondary-color);
+    background: var(--primary-dark);
     color: #fff;
     align-self: flex-end;
-    border-bottom-right-radius: 4px;
+    border-bottom-right-radius: 1px;
 }
 
 .ai-message-assistant {
-    background: var(--hover-overlay);
     color: var(--text-primary);
     align-self: flex-start;
     border: 1px solid var(--border-primary);
-    border-bottom-left-radius: 4px;
+    border-bottom-left-radius: 1px;
 }
 
 .ai-message-error {
@@ -728,41 +877,163 @@ a:hover {
     border: 1px solid rgba(244, 67, 54, 0.3);
 }
 
-/* ========== Ввод ========== */
-.ai-chat-input-wrapper {
-    flex: 0 0 auto;
-    display: flex;
-    gap: 6px;
-    align-items: flex-end;
-    border-top: 1px solid var(--border-primary);
-    padding: 10px 0;
+/* «Ассистент думает» — три пульсирующие точки вместо пошаговых сообщений */
+.ai-thinking {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 10px 12px;
+    min-height: 20px;
 }
 
-.ai-chat-input {
-    flex: 1;
+.ai-thinking span {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--text-secondary);
+    animation: ai-thinking-pulse 1.2s infinite ease-in-out;
+}
+
+.ai-thinking span:nth-child(2) { animation-delay: 0.15s; }
+.ai-thinking span:nth-child(3) { animation-delay: 0.3s; }
+
+@keyframes ai-thinking-pulse {
+    0%, 80%, 100% { opacity: 0.25; transform: scale(0.85); }
+    40% { opacity: 1; transform: scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .ai-thinking span { animation-duration: 2.4s; }
+}
+
+/* ========== Вложения ========== */
+.ai-attachments {
+    flex: 0 0 auto;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 0 0 6px;
+}
+
+.ai-attachment {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    max-width: 100%;
+    padding: 3px 6px 3px 3px;
+    background: var(--hover-overlay);
+    border: 1px solid var(--border-primary);
+    border-radius: var(--border-radius);
+    font-size: 11px;
+    color: var(--text-secondary);
+}
+
+.ai-attachment img {
+    width: 28px;
+    height: 28px;
+    object-fit: cover;
+    border-radius: 4px;
+}
+
+.ai-attachment i {
+    width: 28px;
+    text-align: center;
+    font-size: 14px;
+}
+
+.ai-attachment__name {
+    max-width: 110px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.ai-attachment__x {
+    cursor: pointer;
+    padding: 0 3px;
+    font-size: 14px;
+    line-height: 1;
+}
+
+.ai-attachment__x:hover { color: #ef5350; }
+
+.ai-drop-target { outline: 2px dashed var(--primary-color); outline-offset: -4px; }
+
+/* ========== Модалка «ИИ-ассистент» ========== */
+/* modal-lg задаёт height: 90vh — для настроек это лишняя пустота */
+#aiSettingsModal .modal-content {
+    height: auto;
+    max-height: 88vh;
+}
+
+.ai-settings-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.ai-settings-row .modal-input {
+    flex: 1 1 200px;
+    min-width: 0;
+}
+
+#aiSettingsBaseUrl { width: 100%; }
+
+.ai-models {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 8px;
+}
+
+.ai-models:empty { display: none; }
+
+.ai-model-chip {
+    position: relative;
+    padding: 4px 8px;
+    border: 1px solid var(--border-primary);
+    border-radius: 12px;
+    font-size: 12px;
+    cursor: pointer;
+    color: var(--text-secondary);
+    background: var(--bg-primary);
+}
+
+.ai-model-chip:hover,
+.ai-model-chip--active {
+    border-color: var(--primary-color);
+    color: var(--text-primary);
+}
+
+.ai-model-chip-x {
+    margin-left: 6px;
+    opacity: 0.6;
+}
+
+.ai-model-chip-x:hover {
+    opacity: 1;
+    color: #ef5350;
+}
+
+.ai-param {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.ai-param input {
+    width: 110px;
+    padding: 6px 8px;
     background: var(--bg-primary);
     color: var(--text-primary);
     border: 1px solid var(--border-primary);
     border-radius: var(--border-radius);
-    padding: 8px 10px;
-    font-family: inherit;
-    font-size: 13px;
-    resize: none;
-    outline: none;
-    min-height: 36px;
-    max-height: 140px;
-    line-height: 1.4;
-    transition: border-color 0.2s;
 }
-.ai-chat-input:focus    { border-color: var(--primary-color); }
-.ai-chat-input:disabled { opacity: 0.6; cursor: not-allowed; }
 
-.ai-send-btn {
-    padding: 8px 12px;
-    height: 36px;
-    flex-shrink: 0;
-    border-radius: var(--border-radius);
-}
+#aiSettingsKeyStatus.ai-key-ok { color: var(--primary-color); }
 
 
 .tool-section {
@@ -1514,7 +1785,6 @@ select option {
 */
 
 
-.ai-send-btn:disabled,
 .btn-primary:disabled {
     opacity: 0.5;
     cursor: not-allowed;

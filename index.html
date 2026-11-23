@@ -782,6 +782,12 @@
                                 </div>
                                 <!-- В модальном окне настроек добавьте: -->
                                 <div class="dropdown-section">
+                                    <h4>ИИ-ассистент</h4>
+                                    <button id="openAiSettingsBtn" class="btn-secondary btn-small btn-block">
+                                        <i class="fas fa-wand-magic-sparkles"></i> Модели и ключи
+                                    </button>
+                                </div>
+                                <div class="dropdown-section">
                                     <h4>Язык / Language</h4>
                                     <div class="language-options">
                                         <select id="languageSelect" class="modal-select">
@@ -928,11 +934,11 @@
                     <i class="fas fa-history"></i>
                 </button>
 
-<!--                <button class="panel-tab" data-tab="ai"-->
-<!--                        data-tooltip-title="ИИ-ассистент"-->
-<!--                        data-tooltip-description="Чат с GigaChat / DeepSeek / OpenRouter / Ollama">-->
-<!--                    <i class="fas fa-robot"></i>-->
-<!--                </button>-->
+                <button class="panel-tab" data-tab="ai"
+                        data-tooltip-title="ИИ-ассистент"
+                        data-tooltip-description="Чат с GigaChat / DeepSeek / OpenRouter / OpenAI и другими">
+                    <span class="panel-tab-ai">AI</span>
+                </button>
             </div>
 
             <div class="panel-content active" id="libraryContent">
@@ -1006,53 +1012,37 @@
                 </div>
             </div>
 
-<!--            <div class="panel-content" id="aiContent">-->
-<!--                    &lt;!&ndash; Шапка: провайдер + модель + ключ + очистка &ndash;&gt;-->
-<!--                    <div class="ai-provider-bar">-->
-<!--                        <select id="aiProviderSelect" class="property-select"></select>-->
-<!--                        <select id="aiModelSelect" class="property-select"></select>-->
-<!--                        <button id="aiAddModelBtn" class="tool-btn" data-tooltip-title="Добавить свою модель">-->
-<!--                            <i class="fas fa-plus"></i>-->
-<!--                        </button>-->
-<!--                        <button id="aiKeyBtn" class="tool-btn" data-tooltip-title="Ключ доступа">-->
-<!--                            <i class="fas fa-key"></i>-->
-<!--                        </button>-->
-<!--                        <button id="aiChatClearBtn" class="tool-btn" data-tooltip-title="Очистить чат">-->
-<!--                            <i class="fas fa-trash"></i>-->
-<!--                        </button>-->
-<!--                    </div>-->
+            <div class="panel-content" id="aiContent">
+                <div class="ai-chat-history" id="aiChatHistory"></div>
 
-<!--                    &lt;!&ndash; Скрытая панель ввода ключа &ndash;&gt;-->
-<!--                    <div class="ai-key-panel" id="aiKeyPanel" style="display: none;">-->
-<!--                        <input type="password" id="aiApiKeyInput" class="modal-input"-->
-<!--                               placeholder="API-ключ">-->
-<!--                        <button id="aiKeySaveBtn" class="btn-primary btn-small">-->
-<!--                            <i class="fas fa-check"></i> Сохранить-->
-<!--                        </button>-->
-<!--                    </div>-->
+                <div class="ai-composer" id="aiComposer">
+                    <div class="ai-attachments" id="aiAttachments" style="display: none;"></div>
 
-<!--                    &lt;!&ndash; История чата &ndash;&gt;-->
-<!--                    <div class="ai-chat-history" id="aiChatHistory">-->
-<!--                        <div class="ai-chat-welcome">-->
-<!--                            <i class="fas fa-robot"></i>-->
-<!--                            <p>Привет! Я ИИ-ассистент КонтрCAD.</p>-->
-<!--                            <p class="property-hint" style="margin-top: 6px;">-->
-<!--                                Выберите провайдера и модель сверху-->
-<!--                            </p>-->
-<!--                        </div>-->
-<!--                    </div>-->
+                    <textarea id="aiChatInput"
+                              class="ai-composer__input"
+                              rows="1"
+                              placeholder="Сообщение…"></textarea>
 
-<!--                    &lt;!&ndash; Поле ввода &ndash;&gt;-->
-<!--                    <div class="ai-chat-input-wrapper">-->
-<!--                        <textarea id="aiChatInput"-->
-<!--                                  class="ai-chat-input"-->
-<!--                                  rows="2"-->
-<!--                                  placeholder="Сообщение… (Enter — отправить, Shift+Enter — новая строка)"></textarea>-->
-<!--                        <button id="aiChatSendBtn" class="btn-primary ai-send-btn" data-tooltip-title="Отправить">-->
-<!--                            <i class="fas fa-paper-plane"></i>-->
-<!--                        </button>-->
-<!--                    </div>-->
-<!--                </div>-->
+                    <div class="ai-composer__bar">
+                        <button id="aiNewChatBtn" class="ai-icon-btn" data-tooltip-title="Новый диалог">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                        <button id="aiAttachBtn" class="ai-icon-btn" data-tooltip-title="Прикрепить файл или изображение">
+                            <i class="fas fa-paperclip"></i>
+                        </button>
+                        <button id="aiModelBtn" class="ai-model-pill" data-tooltip-title="Модель">
+                            <span id="aiModelLabel">Подключить модель</span>
+                            <i class="fas fa-chevron-down"></i>
+                        </button>
+                        <button id="aiChatSendBtn" class="ai-send-circle" data-tooltip-title="Отправить">
+                            <i class="fas fa-arrow-up"></i>
+                        </button>
+                    </div>
+
+                    <input type="file" id="aiFileInput" multiple hidden
+                           accept="image/*,.txt,.md,.csv,.json,.js,.ts,.py,.html,.css,.xml,.yml,.yaml,.log,.ini,.toml,.sql,.sh,.ps1,.gcode,.dxf">
+                </div>
+            </div>
         </div>
 
         <div class="right-panel-elements">
@@ -1281,8 +1271,77 @@
         </div>
     </div>
 
-    <div id="addModelModal" class="modal-overlay">
-      <div class="modal-content modal-sm">
+    <!-- Модальное окно настроек ИИ -->
+    <div id="aiSettingsModal" class="modal-overlay">
+        <div class="modal-content modal-lg">
+            <div class="modal-header">
+                <h3><i class="fas fa-wand-magic-sparkles"></i> ИИ-ассистент</h3>
+                <button class="close-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="modal-section">
+                    <label>Провайдер</label>
+                    <select id="aiSettingsProviderSelect" class="modal-select"></select>
+                    <p class="property-hint" id="aiSettingsNotes"></p>
+                </div>
+
+                <div class="modal-section" id="aiSettingsKeySection">
+                    <label>Ключ доступа</label>
+                    <div class="ai-settings-row">
+                        <input type="password" id="aiSettingsKeyInput" class="modal-input"
+                               autocomplete="off" spellcheck="false">
+                        <button id="aiSettingsKeySave" class="btn-primary btn-small">Сохранить</button>
+                        <button id="aiSettingsKeyDelete" class="btn-secondary btn-small">Удалить</button>
+                    </div>
+                    <p class="property-hint" id="aiSettingsKeyStatus">Ключ не задан</p>
+                </div>
+
+                <div class="modal-section" id="aiSettingsUrlSection" style="display: none;">
+                    <label>URL запроса chat/completions</label>
+                    <input type="text" id="aiSettingsBaseUrl" class="modal-input"
+                           placeholder="http://localhost:1234/v1/chat/completions" spellcheck="false">
+                    <p class="property-hint">
+                        Подойдёт любой OpenAI-совместимый сервер: vLLM, LiteLLM, LM Studio,
+                        корпоративный шлюз.
+                    </p>
+                </div>
+
+                <div class="modal-section" id="aiSettingsModelsSection">
+                    <label>Модели</label>
+                    <div class="ai-models" id="aiSettingsModels"></div>
+                    <div class="ai-settings-row">
+                        <input type="text" id="aiSettingsNewModel" class="modal-input" placeholder="своя модель">
+                        <button id="aiSettingsAddModel" class="btn-secondary btn-small">Добавить</button>
+                        <button id="aiSettingsRefreshModels" class="btn-secondary btn-small">Обновить список</button>
+                    </div>
+                    <p class="property-hint" id="aiSettingsModelsStatus"></p>
+                </div>
+
+                <div class="modal-section">
+                    <h4>Параметры</h4>
+                    <div class="ai-settings-row">
+                        <label class="ai-param">Температура
+                            <input type="number" id="aiSettingsTemperature" min="0" max="2" step="0.1">
+                        </label>
+                        <label class="ai-param">Макс. токенов (0 — без ограничения)
+                            <input type="number" id="aiSettingsMaxTokens" min="0" max="32000" step="256"
+                                   placeholder="0">
+                        </label>
+                    </div>
+                    <label class="checkbox-row">
+                        <input type="checkbox" id="aiSettingsStream">
+                        <span>Печатать ответ по мере готовности (стриминг)</span>
+                    </label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="aiSettingsReset" class="btn-secondary">Сбросить настройки ИИ</button>
+                <button id="aiSettingsClose" class="btn-primary">Готово</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="addModelModal" class="modal-overlay">      <div class="modal-content modal-sm">
         <div class="modal-header">
           <h3><i class="fas fa-plus-circle"></i> Добавить модель в библиотеку</h3>
           <button class="close-modal">&times;</button>

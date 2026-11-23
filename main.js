@@ -1,7 +1,20 @@
-const { app, BrowserWindow, Menu, shell, ipcMain, dialog, protocol, session } = require('electron');
+const { app, BrowserWindow, Menu, shell, ipcMain, dialog, protocol, session, safeStorage } = require('electron');
 const path = require('path');
 const fs = require('fs').promises;
 const fsSync = require('fs');
+
+// ============================================================
+//  ПЕРЕОПРЕДЕЛЕНИЕ ПАПКИ ДАННЫХ (для e2e-тестов и портативных сборок)
+//  Должно стоять до первого app.getPath('userData').
+// ============================================================
+if (process.env.KC_USER_DATA) {
+    try {
+        app.setPath('userData', path.resolve(process.env.KC_USER_DATA));
+        console.log('[App] userData →', app.getPath('userData'));
+    } catch (err) {
+        console.warn('[App] Не удалось переопределить userData:', err.message);
+    }
+}
 
 // ============================================================
 //  STDIO-режим (--mcp): stdout принадлежит JSON-RPC
@@ -632,6 +645,30 @@ protocol.registerSchemesAsPrivileged([
     }
 ]);
 
+/**
+ * Папка с файлами приложения: OTA-бандл (в собранном виде) или каталог
+ * установки (в dev-режиме). Используется и протоколом app://, и ИИ-прокси,
+ * чтобы каталог провайдеров читался из того же места, откуда его грузит UI.
+ */
+function resolveBaseDir() {
+    // ★ OTA-бандл подключаем только в собранном приложении: в dev-режиме
+    //   (`electron .` из репозитория) всегда отдаём актуальные файлы с диска.
+    //   Проверить скачанный бандл в dev можно флагом KONTRCAD_USE_BUNDLE=1.
+    const useBundle = app.isPackaged || process.env.KONTRCAD_USE_BUNDLE === '1';
+    const currentBundlePath = useBundle ? updater.getCurrentBundlePath() : null;
+    let baseDir = currentBundlePath ? path.dirname(currentBundlePath) : __dirname;
+
+    // ★ Если в папке обновления нет index-файлов — полностью откатываемся на встроенную версию
+    const hasIndex = fsSync.existsSync(path.join(baseDir, 'index-desktop.html')) ||
+                     fsSync.existsSync(path.join(baseDir, 'index.html'));
+
+    if (!hasIndex && baseDir !== __dirname) {
+        console.warn(`[app://] Файлы не найдены в ${baseDir}. Переключение на встроенную версию: ${__dirname}`);
+        baseDir = __dirname;
+    }
+    return baseDir;
+}
+
 function registerAppProtocol() {
     protocol.handle('app', async (request) => {
         const urlObj = new URL(request.url);
@@ -643,21 +680,7 @@ function registerAppProtocol() {
         let filePath = host ? `${host}${pathname}` : pathname;
         if (filePath.startsWith('/')) filePath = filePath.slice(1);
 
-        // ★ OTA-бандл подключаем только в собранном приложении: в dev-режиме
-        //   (`electron .` из репозитория) всегда отдаём актуальные файлы с диска.
-        //   Проверить скачанный бандл в dev можно флагом KONTRCAD_USE_BUNDLE=1.
-        const useBundle = app.isPackaged || process.env.KONTRCAD_USE_BUNDLE === '1';
-        const currentBundlePath = useBundle ? updater.getCurrentBundlePath() : null;
-        let baseDir = currentBundlePath ? path.dirname(currentBundlePath) : __dirname;
-
-        // ★ Если в папке обновления нет index-файлов — полностью откатываемся на встроенную версию
-        const hasIndex = fsSync.existsSync(path.join(baseDir, 'index-desktop.html')) ||
-                         fsSync.existsSync(path.join(baseDir, 'index.html'));
-
-        if (!hasIndex && baseDir !== __dirname) {
-            console.warn(`[app://] Файлы не найдены в ${baseDir}. Переключение на встроенную версию: ${__dirname}`);
-            baseDir = __dirname;
-        }
+        let baseDir = resolveBaseDir();
 
         // ★ Умный выбор файла для «корня»
         if (filePath === '' || filePath === 'index.html' || filePath === 'index-desktop.html') {
@@ -769,6 +792,18 @@ app.whenReady().then(async () => {
 
     await updater.initialize();
     setupIPCHandlers(updater);
+
+    // ============================================================
+    //  ВСТРОЕННЫЙ ИИ-ПРОКСИ (замена server.py)
+    //  Поднимается вместе с приложением: ключи, OAuth GigaChat,
+    //  российские сертификаты, единый OpenAI-совместимый формат.
+    // ============================================================
+    try {
+        const { registerAiProxy } = require('./electron/ai');
+        registerAiProxy({ app, safeStorage, getBaseDir: resolveBaseDir });
+    } catch (err) {
+        console.error('[AI] Не удалось поднять встроенный прокси:', err);
+    }
 
     // ============================================================
     //  MCP STDIO-режим (по флагу --mcp)

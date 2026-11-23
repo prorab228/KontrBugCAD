@@ -1,6 +1,6 @@
 {
   "name": "kontrbugcad",
-  "version": "0.9.88",
+  "version": "0.9.89",
   "description": "Простой и мощный параметрический 3D-САПР, с параметрическими эскизами и экспортом в STL",
   "author": "Лунев Валерий Константинович",
   "license": "SEE LICENSE IN LICENSE.md",
@@ -13,7 +13,8 @@
     "check:sketch": "node --no-warnings scripts/check-sketch.mjs",
     "check:syntax": "node --experimental-vm-modules --no-warnings scripts/check-syntax.mjs",
     "check:duplicates": "node scripts/find-duplicates.mjs --mode=lines --min=10 --top=40",
-    "check": "npm run check:syntax && npm run check:imports && npm run check:solver && npm run check:sketch",
+    "check:ai": "node --no-warnings scripts/ai/check.mjs",
+    "check": "npm run check:syntax && npm run check:imports && npm run check:ai && npm run check:solver && npm run check:sketch",
     "start": "electron .",
     "start:no-sandbox": "electron . --no-sandbox",
     "dist": "electron-builder",

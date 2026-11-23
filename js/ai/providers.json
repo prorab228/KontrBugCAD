@@ -1,0 +1,119 @@
+{
+  "version": 1,
+  "updated": "2026-11-23",
+  "comment": "Каталог провайдеров: только метаданные (URL, авторизация, адаптер). Списки моделей и их подписи берутся из API провайдера, поэтому новые модели не требуют правок каталога.",
+  "providers": [
+    {
+      "id": "gigachat",
+      "label": "GigaChat",
+      "adapter": "gigachat",
+      "transport": "proxy",
+      "auth": "oauth",
+      "baseUrl": "https://api.giga.chat/v1/chat/completions",
+      "oauth": {
+        "url": "https://ngw.devices.sberbank.ru:9443/api/v2/oauth",
+        "scope": "GIGACHAT_API_PERS"
+      },
+      "useRussianCA": true,
+      "keyHint": "Authorization Key из кабинета GigaChat (строка вида MDFh... или Basic ...)",
+      "keyUrl": "https://developers.sber.ru/studio",
+      "notes": "OAuth и российские сертификаты — через встроенный прокси"
+    },
+    {
+      "id": "deepseek",
+      "label": "DeepSeek",
+      "adapter": "openai",
+      "transport": "both",
+      "auth": "bearer",
+      "baseUrl": "https://api.deepseek.com/v1/chat/completions",
+      "keyHint": "API-ключ DeepSeek (sk-...)",
+      "keyUrl": "https://platform.deepseek.com/api_keys"
+    },
+    {
+      "id": "openrouter",
+      "label": "OpenRouter",
+      "adapter": "openai",
+      "transport": "both",
+      "auth": "bearer",
+      "baseUrl": "https://openrouter.ai/api/v1/chat/completions",
+      "extraHeaders": {
+        "HTTP-Referer": "{{origin}}",
+        "X-Title": "КонтрCAD"
+      },
+      "keyHint": "API-ключ OpenRouter (sk-or-...)",
+      "keyUrl": "https://openrouter.ai/keys"
+    },
+    {
+      "id": "openai",
+      "label": "OpenAI",
+      "adapter": "openai",
+      "transport": "both",
+      "auth": "bearer",
+      "baseUrl": "https://api.openai.com/v1/chat/completions",
+      "keyHint": "API-ключ OpenAI (sk-...)",
+      "keyUrl": "https://platform.openai.com/api-keys"
+    },
+    {
+      "id": "gemini",
+      "label": "Google Gemini",
+      "adapter": "openai",
+      "transport": "both",
+      "auth": "bearer",
+      "baseUrl": "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
+      "keyHint": "API-ключ Google AI Studio (AIza...)",
+      "keyUrl": "https://aistudio.google.com/apikey"
+    },
+    {
+      "id": "groq",
+      "label": "Groq",
+      "adapter": "openai",
+      "transport": "both",
+      "auth": "bearer",
+      "baseUrl": "https://api.groq.com/openai/v1/chat/completions",
+      "keyHint": "API-ключ Groq (gsk_...)",
+      "keyUrl": "https://console.groq.com/keys"
+    },
+    {
+      "id": "mistral",
+      "label": "Mistral",
+      "adapter": "openai",
+      "transport": "both",
+      "auth": "bearer",
+      "baseUrl": "https://api.mistral.ai/v1/chat/completions",
+      "keyHint": "API-ключ Mistral",
+      "keyUrl": "https://console.mistral.ai/api-keys"
+    },
+    {
+      "id": "ollama",
+      "label": "Ollama (локально)",
+      "adapter": "openai",
+      "transport": "both",
+      "auth": "none",
+      "baseUrl": "http://localhost:11434/v1/chat/completions",
+      "keyHint": "Ключ не нужен — запустите `ollama serve`",
+      "keyUrl": "https://ollama.com/download",
+      "notes": "В браузере Ollama разрешает запросы только с localhost (нужен OLLAMA_ORIGINS=*), поэтому в вебе скрыт"
+    },
+    {
+      "id": "custom",
+      "label": "Свой OpenAI-совместимый API",
+      "adapter": "openai",
+      "transport": "both",
+      "auth": "bearer",
+      "baseUrl": "",
+      "keyHint": "API-ключ вашего сервера (vLLM, LiteLLM, LM Studio…)",
+      "notes": "Любой OpenAI-совместимый сервер: vLLM, LiteLLM, LM Studio, корпоративный шлюз"
+    },
+    {
+      "id": "kontrcad",
+      "label": "API КонтрCAD",
+      "adapter": "openai",
+      "transport": "both",
+      "auth": "bearer-jwt",
+      "baseUrl": "https://www.kontrcad.ru/api/ai/v1/chat/completions",
+      "keyHint": "Вход в аккаунт КонтрCAD — ключ не нужен",
+      "notes": "Скоро: доступ по уровню доступа",
+      "comingSoon": true
+    }
+  ]
+}
