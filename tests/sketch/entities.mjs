@@ -38,6 +38,8 @@ import { SketchArrow2D, arrowScaleForPx } from '../../js/tools/sketch/sketch-too
 import { FilletSketchTool } from '../../js/tools/sketch/sketch-tools/fillet-tool.js';
 import { PolygonSketchTool } from '../../js/tools/sketch/sketch-tools/polygon-tool.js';
 import { RectangleSketchTool } from '../../js/tools/sketch/sketch-tools/rectangle-tool.js';
+import { DimensionSketchTool } from '../../js/tools/sketch/sketch-tools/dimension-tool.js';
+import { SketchDimensionManager } from '../../js/tools/sketch/managers/view/sketch-dimension-manager.js';
 import { isOffsetConstraintData } from '../../js/mcp/helpers/sketchConstraints.js';
 import { LinearArraySketchTool } from '../../js/tools/sketch/sketch-tools/linear-array-tool.js';
 import { CircularArraySketchTool } from '../../js/tools/sketch/sketch-tools/circular-array-tool.js';
@@ -1086,6 +1088,50 @@ const SCENARIOS = [
         const suppressed = history.saveState();
         fakeSketchManager.entityManager._suppressSave = false;
         checks.push({ name: 'suppressSave блокирует запись', ok: suppressed === false && ops.length === 3, detail: suppressed });
+    }],
+
+    ['dimension-tool-zero', 'Инструмент размеров: точка на линии = 0', (checks) => {
+        const tool = Object.create(DimensionSketchTool.prototype);
+        const point = new PointEntity({ x: 5, y: 0 });
+        const line = new LineEntity({ start: { x: 0, y: 0 }, end: { x: 10, y: 0 } });
+        const added = [];
+        const statuses = [];
+        tool.sketchManager = {
+            constraintManager: { constraints: [], addConstraint(c) { added.push(c); } },
+            entityManager: { getEntityAtPoint: () => line },
+            editor: { showStatus(msg, kind) { statuses.push([msg, kind]); } }
+        };
+        tool.findSnapPointAtPoint = () => null;
+        tool.cancelSelection = () => {};
+        tool.firstSelection = { type: 'point', pointEntity: point, pointType: 'center', point: new THREE.Vector3(5, 0, 0), line: null };
+
+        tool.handleSecondSelection({}, new THREE.Vector3(5, 0, 0));
+        checks.push({ name: 'создана связь point_on_line', ok: added.length === 1 && added[0].type === 'point_on_line', detail: added[0]?.type });
+        checks.push({ name: 'без предупреждения о нуле', ok: statuses.every(([, kind]) => kind !== 'warning'), detail: JSON.stringify(statuses) });
+    }],
+
+    ['dimension-edit-zero', 'Редактирование размера: 0 у точка–линия', (checks) => {
+        const manager = Object.create(SketchDimensionManager.prototype);
+        const point = new PointEntity({ x: 5, y: 3 });
+        const line = new LineEntity({ start: { x: 0, y: 0 }, end: { x: 10, y: 0 } });
+        const old = { type: 'point_line_distance', pointEntity: point, pointName: 'center', lineEntity: line };
+        const removed = [];
+        const added = [];
+        let saved = 0;
+        manager.sketchManager = {
+            constraintManager: {
+                removeConstraint(c) { removed.push(c); },
+                isConstraintDuplicate() { return false; },
+                addConstraint(c) { added.push(c); },
+                solve() {}
+            },
+            entityManager: { saveState() { saved++; } },
+            editor: { showStatus() {} }
+        };
+        manager._convertPointLineToPointOnLine(old);
+        checks.push({ name: 'размер заменён на point_on_line', ok: removed.length === 1 && added.length === 1 && added[0].type === 'point_on_line', detail: added[0]?.type });
+        checks.push({ name: 'точка притянута к линии', ok: Math.abs(point.params.y) < 1e-6, detail: point.params.y });
+        checks.push({ name: 'состояние сохранено', ok: saved === 1, detail: saved });
     }],
 
     ['rectangle-dimensions', 'Прямоугольник: ширина/высота по сторонам и вынос', (checks) => {

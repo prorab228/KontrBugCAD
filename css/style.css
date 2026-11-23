@@ -423,8 +423,8 @@ a:hover {
     flex-direction: column;
     min-width: 0;
     overflow: hidden;
-   /* background: var(--bg-surface);
-    border: 1px solid var(--border-primary);*/
+    background: var(--bg-surface);
+   /* border: 1px solid var(--border-primary);*/
     border-radius: var(--border-radius-max);
     cursor: pointer;
     transition: border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
@@ -1674,7 +1674,7 @@ select option {
     max-height: 90vh;
     overflow: hidden;
     box-shadow: var(--shadow-lg);
-    border: 1px solid var(--border-primary);
+  /*  border: 1px solid var(--border-primary);*/
     display: flex;
     flex-direction: column;
 }

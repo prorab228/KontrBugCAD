@@ -1,6 +1,6 @@
 // Версию меняем при выпуске нового JS: старый кэш удаляется в activate,
 // и клиенты сразу получают свежие файлы без «Полного сброса».
-const CACHE_NAME = 'kontrcad-cache-v149'; // v149: «Мои проекты» — карточки, 2 колонки на телефоне; рефакторинг CSS
+const CACHE_NAME = 'kontrcad-cache-v153'; // v153: 0 в существующем размере точка–линия = point_on_line
 let isHardReload = false; // Флаг для принудительного обхода HTTP-кэша
 
 self.addEventListener('install', (event) => {
