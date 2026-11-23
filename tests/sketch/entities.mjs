@@ -1134,6 +1134,26 @@ const SCENARIOS = [
         checks.push({ name: 'состояние сохранено', ok: saved === 1, detail: saved });
     }],
 
+    ['symbol-overlap', 'Значки с общим якорем не накладываются', (checks) => {
+        const viz = Object.create(ConstraintVisualizer.prototype);
+        viz.visualMap = new Map();
+        viz.getAnchorOffsetMM = () => 0;
+        const make = (x, y) => ({
+            userData: { isSymbol: true, anchor: new THREE.Vector3(x, y, 0), baseH: 1, stackOffsetY: 0 },
+            position: new THREE.Vector3(),
+            updateMatrixWorld() {}
+        });
+        const s1 = make(0, 0), s2 = make(0, 0), s3 = make(20, 0);
+        viz.visualMap.set('a', { children: [s1] });
+        viz.visualMap.set('b', { children: [s2] });
+        viz.visualMap.set('c', { children: [s3] });
+
+        viz._layoutSymbols();
+        checks.push({ name: 'одинаковый якорь разведён по Y', ok: s1.position.y !== s2.position.y, detail: `${s1.position.y}/${s2.position.y}` });
+        checks.push({ name: 'далёкий якорь не сдвинут', ok: s3.position.y === 0 && s3.userData.stackOffsetY === 0, detail: `${s3.position.y}/${s3.userData.stackOffsetY}` });
+        checks.push({ name: 'сдвиг сохранён в stackOffsetY', ok: s2.userData.stackOffsetY > 0, detail: s2.userData.stackOffsetY });
+    }],
+
     ['rectangle-dimensions', 'Прямоугольник: ширина/высота по сторонам и вынос', (checks) => {
         const tool = Object.create(RectangleSketchTool.prototype);
         const l0 = { type: 'line' }, l1 = { type: 'line' }, l2 = { type: 'line' }, l3 = { type: 'line' };
