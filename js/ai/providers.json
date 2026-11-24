@@ -11,7 +11,8 @@
       "auth": "bearer-jwt",
       "baseUrl": "https://www.kontrcad.ru/api/ai/v1/chat/completions",
       "keyHint": "Вход в аккаунт КонтрCAD — ключ не нужен",
-      "notes": "Доступ по подписке КонтрCAD"
+      "notes": "Скоро: доступ по подписке КонтрCAD",
+      "comingSoon": true
     },
     {
       "id": "gigachat",

@@ -173,12 +173,12 @@ await check('каталог провайдеров валиден', () => {
     assert.ok(ids.has('gigachat') && ids.has('deepseek'), 'нет обязательных провайдеров');
 });
 
-await check('API КонтрCAD включён и работает по JWT', () => {
+await check('API КонтрCAD виден в настройках как «скоро»', () => {
     const catalog = JSON.parse(fs.readFileSync(path.join(ROOT, 'js', 'ai', 'providers.json'), 'utf8'));
     const provider = catalog.providers.find((item) => item.id === 'kontrcad');
     assert.ok(provider, 'нет записи kontrcad');
     assert.equal(provider.auth, 'bearer-jwt');
-    assert.ok(!provider.comingSoon, 'kontrcad не должен быть «скоро»');
+    assert.equal(provider.comingSoon, true);
     assert.ok(!provider.hidden, 'kontrcad не должен быть скрыт');
     assert.match(provider.baseUrl, /\/api\/ai\/v1\/chat\/completions$/);
 });
