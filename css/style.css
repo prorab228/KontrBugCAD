@@ -219,7 +219,7 @@ a:hover {
    /* background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-tertiary) 100%);*/
    /*background:var(--bg-secondary) ;*/
     color: var(--text-primary);
-    padding: 9px 20px;
+    padding: 5px 10px;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -1360,18 +1360,22 @@ a:hover {
     pointer-events: auto;
 }
 
-.controls-hint {
-    position: relative;
+/* Общий стиль информационных плашек вьюпорта: координаты и подсказка мыши. */
+.viewport-badge {
     background: rgba(0, 0, 0, 0.7);
-    color: white;
+    color: #fff;
     padding: 10px 15px;
     border-radius: var(--border-radius-max);
     font-size: 12px;
     line-height: 1.2;
+    cursor: pointer;
+}
+
+.controls-hint {
+    position: relative;
     width: 300px;
     max-height: 66px;          /* естественная высота 3 строк ≈ 63 px */
     overflow: hidden;
-    cursor: pointer;
     transition: max-height 0.22s ease, opacity 0.2s ease, padding 0.22s ease;
 }
 
@@ -1388,15 +1392,20 @@ a:hover {
     position: absolute;
     bottom: 20px;
     left: 20px;
-    background: rgba(0, 0, 0, 0.7);
-    color: #FFF;
-    padding: 10px 15px;
-    border-radius: var(--border-radius-max);
-    font-size: 13px;
-    font-family: 'Consolas', 'Monaco', monospace;
-    border: 1px solid var(--border-primary);
     z-index: 100;
-    cursor: pointer;
+    font-variant-numeric: tabular-nums;
+    transform: translateY(0);
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+/* Плавное скрытие: сначала фейд, затем visibility через задержку.
+   При обратном показе visibility срабатывает сразу, без задержки. */
+.coordinates.is-hidden {
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(6px);
+    pointer-events: none;
+    transition: opacity 0.2s ease, transform 0.2s ease, visibility 0s linear 0.2s;
 }
 
 /* Сдвиг всего контейнера при открытой панели */

@@ -909,7 +909,7 @@
         <div class="viewport-container">
             <div id="viewport"></div>
             <!-- Координаты -->
-            <div class="coordinates" onclick="this.style.display='none'" data-tooltip-title="Кликните чтобы скрыть">
+            <div class="coordinates viewport-badge" onclick="this.classList.add('is-hidden')" data-tooltip-title="Кликните чтобы скрыть">
                 <span id="coords">X: 0.00, Y: 0.00, Z: 0.00</span>
             </div>
         </div>
@@ -1060,7 +1060,7 @@
                     <div class="grid-scale-bar__cell" id="gridScaleBarCell">сетка 1 мм</div>
                 </div>
 
-                <div class="controls-hint" onclick="this.classList.add('is-collapsed')" data-tooltip-title="Кликните чтобы скрыть">
+                <div class="controls-hint viewport-badge" onclick="this.classList.add('is-collapsed')" data-tooltip-title="Кликните чтобы скрыть">
                     <b>ЛКМ</b> - выделение, <br><b>ПКМ</b>  - вращение, <br><b>Колесико</b>  - перемещение камеры
                 </div>
             </div>
