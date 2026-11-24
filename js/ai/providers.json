@@ -112,8 +112,7 @@
       "auth": "bearer-jwt",
       "baseUrl": "https://www.kontrcad.ru/api/ai/v1/chat/completions",
       "keyHint": "Вход в аккаунт КонтрCAD — ключ не нужен",
-      "notes": "Скоро: доступ по уровню доступа",
-      "comingSoon": true
+      "notes": "Доступ по подписке КонтрCAD"
     }
   ]
 }
