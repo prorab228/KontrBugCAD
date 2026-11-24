@@ -4,6 +4,16 @@
   "comment": "Каталог провайдеров: только метаданные (URL, авторизация, адаптер). Списки моделей и их подписи берутся из API провайдера, поэтому новые модели не требуют правок каталога.",
   "providers": [
     {
+      "id": "kontrcad",
+      "label": "API КонтрCAD",
+      "adapter": "openai",
+      "transport": "both",
+      "auth": "bearer-jwt",
+      "baseUrl": "https://www.kontrcad.ru/api/ai/v1/chat/completions",
+      "keyHint": "Вход в аккаунт КонтрCAD — ключ не нужен",
+      "notes": "Доступ по подписке КонтрCAD"
+    },
+    {
       "id": "gigachat",
       "label": "GigaChat",
       "adapter": "gigachat",
@@ -103,16 +113,6 @@
       "baseUrl": "",
       "keyHint": "API-ключ вашего сервера (vLLM, LiteLLM, LM Studio…)",
       "notes": "Любой OpenAI-совместимый сервер: vLLM, LiteLLM, LM Studio, корпоративный шлюз"
-    },
-    {
-      "id": "kontrcad",
-      "label": "API КонтрCAD",
-      "adapter": "openai",
-      "transport": "both",
-      "auth": "bearer-jwt",
-      "baseUrl": "https://www.kontrcad.ru/api/ai/v1/chat/completions",
-      "keyHint": "Вход в аккаунт КонтрCAD — ключ не нужен",
-      "notes": "Доступ по подписке КонтрCAD"
     }
   ]
 }
