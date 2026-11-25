@@ -874,6 +874,21 @@ a:hover {
     border: 1px solid rgba(244, 67, 54, 0.3);
 }
 
+.ai-message-images {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 6px;
+}
+
+.ai-message-images img {
+    max-width: 160px;
+    max-height: 140px;
+    object-fit: cover;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+}
+
 /* «Ассистент думает» — три пульсирующие точки вместо пошаговых сообщений */
 .ai-thinking {
     display: inline-flex;

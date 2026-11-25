@@ -595,6 +595,24 @@ function createWindow() {
         }
     });
 
+    // Контекстное меню для текста: в Electron его нет по умолчанию,
+    // поэтому добавляем копирование/вставку/выделение для полей и выделенного текста.
+    mainWindow.webContents.on('context-menu', (_event, params) => {
+        const hasSelection = Boolean(params.selectionText && params.selectionText.trim());
+        if (!hasSelection && !params.isEditable) return;
+
+        const template = [];
+        if (hasSelection) template.push({ role: 'copy', label: 'Копировать' });
+        if (params.isEditable) {
+            template.push({ role: 'cut', label: 'Вырезать' });
+            template.push({ role: 'paste', label: 'Вставить' });
+        }
+        template.push({ type: 'separator' });
+        template.push({ role: 'selectAll', label: 'Выделить всё' });
+
+        Menu.buildFromTemplate(template).popup({ window: mainWindow });
+    });
+
     // Единый index.html: окружение (desktop) определяется на странице по protocol app://,
     // legacy-режим передаём флагом — он выбирает three 0.162.0 вместо 0.185.1
     const legacyQuery = getSettings().useLegacy ? '?legacy=1' : '';
