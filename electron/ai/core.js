@@ -69,6 +69,13 @@ function mapOpenAIResponse(data) {
     }
     if (typeof content !== 'string') content = '';
 
+    // Reasoning-модели отдают «мысли» отдельным полем — без него ответ пустой.
+    let reasoning = message.reasoning_content !== undefined ? message.reasoning_content : message.reasoning;
+    if (Array.isArray(reasoning)) {
+        reasoning = reasoning.map((part) => (typeof part === 'string' ? part : (part && part.text) || '')).join('');
+    }
+    if (typeof reasoning !== 'string') reasoning = '';
+
     const toolCalls = [];
     for (const call of message.tool_calls || []) {
         if (!call || !call.function || !call.function.name) continue;
@@ -89,6 +96,7 @@ function mapOpenAIResponse(data) {
 
     return {
         content,
+        reasoning,
         toolCalls,
         usage: data.usage || null,
         finishReason: choice.finish_reason || null
@@ -170,6 +178,7 @@ async function chatStreamOpenAI(options) {
     }
 
     let content = '';
+    let reasoning = '';
     let finishReason = null;
     let usage = null;
     let streamError = null;
@@ -186,6 +195,14 @@ async function chatStreamOpenAI(options) {
         const choice = data.choices && data.choices[0];
         if (!choice) return;
         const delta = choice.delta || {};
+
+        const reasoningDelta = delta.reasoning_content !== undefined
+            ? delta.reasoning_content
+            : delta.reasoning;
+        if (typeof reasoningDelta === 'string' && reasoningDelta) {
+            reasoning += reasoningDelta;
+            onDelta({ type: 'reasoning', text: reasoningDelta });
+        }
 
         if (typeof delta.content === 'string' && delta.content) {
             content += delta.content;
@@ -210,7 +227,7 @@ async function chatStreamOpenAI(options) {
         .filter((call) => call.name)
         .map((call) => ({ id: call.id || randomId(), name: call.name, args: parseArgs(call.args) }));
 
-    return { content, toolCalls, usage, finishReason };
+    return { content, reasoning, toolCalls, usage, finishReason };
 }
 
 /** Один вызов модели с потоковой отдачей текста. Возвращает обычный нормализованный ответ. */
