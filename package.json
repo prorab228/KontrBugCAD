@@ -54,6 +54,12 @@
       "!terser.config.json",
       "LICENSE.md"
     ],
+    "extraResources": [
+      {
+        "from": "electron/ai/certs",
+        "to": "certs"
+      }
+    ],
     "win": {
       "target": "nsis",
       "icon": "build/icon.ico"

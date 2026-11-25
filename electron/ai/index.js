@@ -22,6 +22,7 @@ const { ipcMain } = require('electron');
 const core = require('./core');
 const { createKeyStore } = require('./keystore');
 const { deriveModelsUrl } = require('./util');
+const embeddedCerts = require('./certs-inline');
 
 const HANDLE_CHANNELS = [
     'ai:keys',
@@ -53,10 +54,17 @@ function readCatalog(baseDir) {
     return { providers: [] };
 }
 
-function loadRussianCA(baseDir) {
+function loadRussianCA(baseDir, app) {
     const names = ['russian_trusted_root_ca.crt', 'russian_trusted_sub_ca.crt'];
-    // Сертификаты лежат рядом с main-модулем и не зависят от OTA-бандла
-    const roots = [path.join(__dirname, 'certs'), baseDir, path.join(__dirname, '..', '..', 'certs')];
+    // Порядок: рядом с main, в userData, рядом с app.asar, в OTA-бандле,
+    // затем в корне asar. Первые два удобны для ручной установки.
+    const roots = [
+        path.join(__dirname, 'certs'),
+        app ? path.join(app.getPath('userData'), 'certs') : null,
+        process.resourcesPath ? path.join(process.resourcesPath, 'certs') : null,
+        baseDir,
+        path.join(__dirname, '..', '..', 'certs')
+    ].filter(Boolean);
     const buffers = [];
     for (const name of names) {
         for (const root of roots) {
@@ -67,9 +75,20 @@ function loadRussianCA(baseDir) {
         }
     }
     if (buffers.length !== names.length) {
-        console.warn('[AI] Российские сертификаты найдены не полностью — GigaChat может не подключиться');
+        // Страховка для старых сборок и OTA-бандлов без certs/.
+        console.warn('[AI] Сертификаты не найдены на диске — использую встроенные');
+        return [
+            Buffer.from(embeddedCerts.root, 'base64'),
+            Buffer.from(embeddedCerts.sub, 'base64')
+        ];
     }
     return buffers.length ? buffers : null;
+}
+
+/** GigaChat всегда требует российский CA; старый каталог мог не иметь флага. */
+function usesRussianCA(provider) {
+    if (provider.useRussianCA === false) return false;
+    return provider.useRussianCA === true || provider.adapter === 'gigachat';
 }
 
 function sanitizeMessages(messages) {
@@ -100,7 +119,7 @@ function registerAiProxy({ app, safeStorage, getBaseDir }) {
 
     let caCache;
     function russianCA() {
-        if (caCache === undefined) caCache = loadRussianCA(baseDir);
+        if (caCache === undefined) caCache = loadRussianCA(baseDir, app);
         return caCache;
     }
 
@@ -160,7 +179,7 @@ function registerAiProxy({ app, safeStorage, getBaseDir }) {
             tools,
             params,
             apiKey,
-            ca: provider.useRussianCA ? russianCA() : null,
+            ca: usesRussianCA(provider) ? russianCA() : null,
             insecure: provider.insecureTLS === true,
             origin: 'https://www.kontrcad.ru',
             timeoutMs: isLocal ? 600000 : undefined
@@ -206,7 +225,7 @@ function registerAiProxy({ app, safeStorage, getBaseDir }) {
         return core.checkKey({
             provider,
             apiKey,
-            ca: provider.useRussianCA ? russianCA() : null,
+            ca: usesRussianCA(provider) ? russianCA() : null,
             insecure: provider.insecureTLS === true,
             origin: 'https://www.kontrcad.ru'
         });
@@ -225,7 +244,7 @@ function registerAiProxy({ app, safeStorage, getBaseDir }) {
                 provider,
                 apiKey,
                 modelsUrl: deriveModelsUrl(provider.baseUrl),
-                ca: provider.useRussianCA ? russianCA() : null,
+                ca: usesRussianCA(provider) ? russianCA() : null,
                 insecure: provider.insecureTLS === true,
                 origin: 'https://www.kontrcad.ru'
             });
