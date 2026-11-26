@@ -17,3 +17,6 @@ e-start.out.txt
 e-start.err.txt
 electron-run.log
 preview*.png
+
+# Документы для заявки в реестр российского ПО
+_reestr_docs/
