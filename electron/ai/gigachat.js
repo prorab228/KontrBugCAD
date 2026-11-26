@@ -123,15 +123,32 @@ function buildBody({ model, messages, system, tools, params }) {
     if (params && params.temperature !== undefined) body.temperature = params.temperature;
     if (params && params.max_tokens !== undefined) body.max_tokens = params.max_tokens;
     if (params && params.top_p !== undefined) body.top_p = params.top_p;
+
+    // GigaChat не рассуждает без явного параметра, поэтому «низкую» глубину
+    // ставим по умолчанию. Но только когда функции НЕ передаются: с functions
+    // модель уходит в 40–90 секунд размышлений и перестаёт вызывать инструменты,
+    // возвращая пустой ответ (проверено на живом API).
+    if (!body.functions) {
+        body.reasoning_effort = (params && params.reasoning_effort) || 'low';
+    } else if (params && params.reasoning_effort) {
+        body.reasoning_effort = params.reasoning_effort;
+    }
     return body;
 }
 
 function normalizeAnswer(message, usage) {
     const result = {
         content: typeof message.content === 'string' ? message.content : '',
+        reasoning: '',
         toolCalls: [],
         usage: usage || null
     };
+
+    // GigaChat отдаёт «размышления» reasoning-моделей отдельным полем.
+    const reasoning = message.reasoning_content !== undefined
+        ? message.reasoning_content
+        : message.reasoning;
+    if (typeof reasoning === 'string') result.reasoning = reasoning;
 
     if (message.function_call && message.function_call.name) {
         result.toolCalls.push({
@@ -241,17 +258,27 @@ async function chatStream(options) {
         const data = JSON.parse(text);
         const message = (data.choices && data.choices[0] && data.choices[0].message) || {};
         const result = normalizeAnswer(message, data.usage);
+        if (result.reasoning) onDelta({ type: 'reasoning', text: result.reasoning });
         if (result.content) onDelta({ type: 'text', text: result.content });
         return result;
     }
 
     let content = '';
+    let reasoning = '';
     let functionCall = null;
 
     await readSSE(res, (data) => {
         const choice = data.choices && data.choices[0];
         if (!choice) return;
         const delta = choice.delta || {};
+
+        const reasoningDelta = delta.reasoning_content !== undefined
+            ? delta.reasoning_content
+            : delta.reasoning;
+        if (typeof reasoningDelta === 'string' && reasoningDelta) {
+            reasoning += reasoningDelta;
+            onDelta({ type: 'reasoning', text: reasoningDelta });
+        }
 
         if (typeof delta.content === 'string' && delta.content) {
             content += delta.content;
@@ -267,7 +294,7 @@ async function chatStream(options) {
         }
     });
 
-    const result = { content, toolCalls: [], usage: null };
+    const result = { content, reasoning, toolCalls: [], usage: null };
     if (functionCall && functionCall.name) {
         result.toolCalls.push({ id: randomId(), name: functionCall.name, args: parseArgs(functionCall.args) });
     }
