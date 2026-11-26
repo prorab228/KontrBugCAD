@@ -3,7 +3,7 @@ export const CONFIG = {
     // Базовый URL API сервера (без завершающего слеша)
     API_URL:'https://www.kontrcad.ru',
     //API_URL:'http://localhost',
-    APP_VERSION: '0.9.89d',
+    APP_VERSION: '0.9.89e',
     APP_NAME: 'КонтрCAD',
     APP_AUTHOR: 'Лунев Валерий Константинович'
 };
