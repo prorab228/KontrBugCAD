@@ -1337,6 +1337,18 @@
                             <input type="number" id="aiSettingsRequestTimeout" min="0" max="3600" step="30"
                                    placeholder="180">
                         </label>
+                        <label class="ai-param">Запросов в минуту (0 — без лимита)
+                            <input type="number" id="aiSettingsRpm" min="0" max="600" step="5"
+                                   placeholder="25">
+                        </label>
+                        <label class="ai-param" id="aiSettingsReasoningRow" style="display:none">Глубина размышлений (GigaChat)
+                            <select id="aiSettingsReasoning">
+                                <option value="off">выключено</option>
+                                <option value="low">низкая</option>
+                                <option value="medium">средняя</option>
+                                <option value="high">высокая</option>
+                            </select>
+                        </label>
                     </div>
                     <label class="checkbox-row">
                         <input type="checkbox" id="aiSettingsStream">

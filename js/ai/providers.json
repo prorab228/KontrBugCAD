@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated": "2026-11-23",
+  "updated": "2026-11-27",
   "comment": "Каталог провайдеров: только метаданные (URL, авторизация, адаптер). Списки моделей и их подписи берутся из API провайдера, поэтому новые модели не требуют правок каталога.",
   "providers": [
     {
@@ -17,18 +17,13 @@
     {
       "id": "gigachat",
       "label": "GigaChat",
-      "adapter": "gigachat",
+      "adapter": "openai",
       "transport": "proxy",
-      "auth": "oauth",
-      "baseUrl": "https://api.giga.chat/v1/chat/completions",
-      "oauth": {
-        "url": "https://ngw.devices.sberbank.ru:9443/api/v2/oauth",
-        "scope": "GIGACHAT_API_PERS"
-      },
-      "useRussianCA": true,
-      "keyHint": "Authorization Key из кабинета GigaChat (строка вида MDFh... или Basic ...)",
-      "keyUrl": "https://developers.sber.ru/studio",
-      "notes": "OAuth и российские сертификаты — через встроенный прокси"
+      "auth": "bearer",
+      "baseUrl": "https://api.aistudio.giga.chat/v1/chat/completions",
+      "keyHint": "API-ключ GigaChat AI Studio (aisk_...)",
+      "keyUrl": "https://aistudio.giga.chat",
+      "notes": "Ключ создаётся в AI Studio. Сайт aistudio.giga.chat подписан российским корневым сертификатом — если он не установлен, браузер покажет ошибку TLS. Сам API (api.aistudio.giga.chat) использует публичную цепочку, поэтому на работу ассистента это не влияет."
     },
     {
       "id": "deepseek",
